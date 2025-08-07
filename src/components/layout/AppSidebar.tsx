@@ -37,8 +37,6 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(path + "/");
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-accent text-accent-foreground font-medium" : "hover:bg-accent/50";
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
@@ -50,19 +48,23 @@ export function AppSidebar() {
           
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={getNavCls}
+              {menuItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild
+                      tooltip={item.title}
+                      isActive={isActive(item.url)}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <NavLink to={item.url}>
+                        <IconComponent className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

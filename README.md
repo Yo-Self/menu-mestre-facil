@@ -1,73 +1,105 @@
-# Welcome to your Lovable project
+# Menu Mestre Fácil - Sistema de Gestão de Restaurantes
 
-## Project info
+Sistema completo de gestão de restaurantes desenvolvido com React, TypeScript e Supabase.
 
-**URL**: https://lovable.dev/projects/5b2a3e05-8a46-4c77-83bb-c85c51d74524
+## 🚀 Funcionalidades
 
-## How can I edit this code?
+- **Gestão de Restaurantes**: Cadastro e gerenciamento de restaurantes
+- **Menus Digitais**: Criação e personalização de menus
+- **Categorias de Pratos**: Organização por categorias
+- **Gestão de Pratos**: Cadastro completo de pratos com preços e descrições
+- **Dashboard Interativo**: Visão geral das estatísticas
+- **Sistema de Autenticação**: Login seguro com Supabase
+- **Interface Responsiva**: Funciona em desktop e mobile
 
-There are several ways of editing your application.
+## 🛠️ Tecnologias Utilizadas
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript
+- **UI Components**: shadcn/ui + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **Build Tool**: Vite
+- **Roteamento**: React Router DOM
+- **Ícones**: Lucide React
+- **Estado**: TanStack Query
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5b2a3e05-8a46-4c77-83bb-c85c51d74524) and start prompting.
+## 📦 Instalação
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# Clone o repositório
+git clone <URL_DO_REPOSITORIO>
 
-**Use your preferred IDE**
+# Entre no diretório
+cd menu-mestre-facil
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Instale as dependências
+npm install
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Configure as variáveis de ambiente
+# Crie um arquivo .env.local com suas credenciais do Supabase
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🔧 Configuração do Supabase
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Crie uma conta no [Supabase](https://supabase.com)
+2. Crie um novo projeto
+3. Configure as tabelas necessárias (restaurants, menus, categories, dishes)
+4. Copie as credenciais para o arquivo de configuração
 
-**Use GitHub Codespaces**
+## 📱 Como Usar
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Cadastro**: Crie sua conta no sistema
+2. **Restaurantes**: Adicione seus restaurantes
+3. **Categorias**: Crie categorias para organizar os pratos
+4. **Pratos**: Cadastre os pratos com preços e descrições
+5. **Menus**: Crie menus personalizados para cada restaurante
 
-## What technologies are used for this project?
+## 🎨 Interface
 
-This project is built with:
+O sistema possui uma interface moderna e intuitiva com:
+- Barra lateral responsiva com navegação
+- Dashboard com estatísticas em tempo real
+- Formulários intuitivos para cadastro
+- Design adaptativo para diferentes dispositivos
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔒 Segurança
 
-## How can I deploy this project?
+- Autenticação segura com Supabase Auth
+- Proteção de rotas com AuthGuard
+- Validação de dados com Zod
+- Sessões persistentes
 
-Simply open [Lovable](https://lovable.dev/projects/5b2a3e05-8a46-4c77-83bb-c85c51d74524) and click on Share -> Publish.
+## 📊 Estrutura do Projeto
 
-## Can I connect a custom domain to my Lovable project?
+```
+src/
+├── components/          # Componentes reutilizáveis
+│   ├── auth/           # Componentes de autenticação
+│   ├── layout/         # Componentes de layout
+│   └── ui/             # Componentes de interface
+├── pages/              # Páginas da aplicação
+│   ├── auth/           # Páginas de autenticação
+│   └── dashboard/      # Páginas do dashboard
+├── hooks/              # Hooks customizados
+├── integrations/       # Integrações externas
+│   └── supabase/       # Configuração do Supabase
+└── lib/                # Utilitários e configurações
+```
 
-Yes, you can!
+## 🚀 Deploy
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+O projeto pode ser facilmente deployado em:
+- Vercel
+- Netlify
+- Railway
+- Qualquer plataforma que suporte aplicações React
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📝 Licença
+
+Este projeto está sob a licença MIT.
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests.

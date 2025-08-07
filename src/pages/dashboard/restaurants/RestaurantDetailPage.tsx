@@ -101,21 +101,21 @@ export default function RestaurantDetailPage() {
       title: "Gerenciar Menus",
       description: `${stats.menus} menus cadastrados`,
       icon: Menu,
-      href: `/dashboard/restaurants/${id}/menus`,
+      href: "/dashboard/menus",
       color: "text-primary",
     },
     {
       title: "Gerenciar Categorias",
       description: `${stats.categories} categorias cadastradas`,
       icon: FolderOpen,
-      href: `/dashboard/restaurants/${id}/categories`,
+      href: "/dashboard/categories",
       color: "text-accent",
     },
     {
       title: "Gerenciar Pratos",
       description: `${stats.dishes} pratos cadastrados`,
       icon: UtensilsCrossed,
-      href: `/dashboard/restaurants/${id}/dishes`,
+      href: "/dashboard/dishes",
       color: "text-secondary",
     },
   ];
@@ -208,7 +208,7 @@ export default function RestaurantDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link to={`/dashboard/restaurants/${id}/menus/new`}>
+                  <Link to="/dashboard/menus/new">
                     <Button className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Menu
@@ -225,7 +225,7 @@ export default function RestaurantDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link to={`/dashboard/restaurants/${id}/categories/new`}>
+                  <Link to="/dashboard/categories/new">
                     <Button className="w-full" variant="outline">
                       <Plus className="h-4 w-4 mr-2" />
                       Nova Categoria

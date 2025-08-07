@@ -10,9 +10,14 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import RestaurantsPage from "./pages/dashboard/restaurants/RestaurantsPage";
 import NewRestaurantPage from "./pages/dashboard/restaurants/NewRestaurantPage";
 import RestaurantDetailPage from "./pages/dashboard/restaurants/RestaurantDetailPage";
+import EditRestaurantPage from "./pages/dashboard/restaurants/EditRestaurantPage";
 import MenusPage from "./pages/dashboard/menus/MenusPage";
 import CategoriesPage from "./pages/dashboard/categories/CategoriesPage";
 import DishesPage from "./pages/dashboard/dishes/DishesPage";
+import NewDishPage from "./pages/dashboard/dishes/NewDishPage";
+import NewCategoryPage from "./pages/dashboard/categories/NewCategoryPage";
+import NewMenuPage from "./pages/dashboard/menus/NewMenuPage";
+import SettingsPage from "./pages/dashboard/settings/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,9 +40,14 @@ const App = () => (
             <Route path="restaurants" element={<RestaurantsPage />} />
             <Route path="restaurants/new" element={<NewRestaurantPage />} />
             <Route path="restaurants/:id" element={<RestaurantDetailPage />} />
+            <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
             <Route path="menus" element={<MenusPage />} />
+            <Route path="menus/new" element={<NewMenuPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="categories/new" element={<NewCategoryPage />} />
             <Route path="dishes" element={<DishesPage />} />
+            <Route path="dishes/new" element={<NewDishPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

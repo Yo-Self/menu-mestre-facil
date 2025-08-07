@@ -27,9 +27,36 @@ export default function Dashboard() {
         // Buscar estatísticas dos restaurantes do usuário
         const [restaurantsRes, menusRes, categoriesRes, dishesRes] = await Promise.all([
           supabase.from("restaurants").select("id", { count: "exact" }).eq("user_id", user.id),
-          supabase.from("menus").select("id", { count: "exact" }).eq("restaurant_id", user.id),
-          supabase.from("categories").select("id", { count: "exact" }),
-          supabase.from("dishes").select("id", { count: "exact" })
+          supabase
+            .from("menus")
+            .select(`
+              id,
+              restaurants!inner (
+                id,
+                user_id
+              )
+            `, { count: "exact" })
+            .eq("restaurants.user_id", user.id),
+          supabase
+            .from("categories")
+            .select(`
+              id,
+              restaurants!inner (
+                id,
+                user_id
+              )
+            `, { count: "exact" })
+            .eq("restaurants.user_id", user.id),
+          supabase
+            .from("dishes")
+            .select(`
+              id,
+              restaurants!inner (
+                id,
+                user_id
+              )
+            `, { count: "exact" })
+            .eq("restaurants.user_id", user.id)
         ]);
 
         setStats({
