@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todos os pratos</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; margin: 0; padding: 24px; background:#fafafa; }
+    header, main { max-width:1100px; margin:0 auto; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:16px; }
+    .card { background:white; border:1px solid #eee; border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .card img { width:100%; height:140px; object-fit:cover; display:block; }
+    .card .p { padding:12px 14px; }
+    .muted { color:#6b7280; font-size:14px; }
+    .search { display:flex; gap:8px; margin-bottom:12px; }
+    .search input { flex:1; padding:10px 12px; border:1px solid #ddd; border-radius:10px; }
+  </style>
+</head>
+<body>
+  <nav style="max-width:1100px;margin:0 auto 12px;">
+    <a id="back-link" href="/menu/index.html">← Voltar</a>
+  </nav>
+  <header>
+    <h1 id="title">Todos os pratos</h1>
+    <div class="search">
+      <input id="search-input" placeholder="Buscar prato (min. 2 letras)" />
+    </div>
+  </header>
+  <main>
+    <div id="all-dishes" class="grid">—</div>
+    <h3 style="margin-top:24px">Resultados da busca</h3>
+    <div id="search-results" class="grid"></div>
+  </main>
+
+  <script type="module">
+    import { esc, getRestaurantByCuisine, getAllDishes, searchDishes } from '/js/menu-data.js'
+
+    const params = new URLSearchParams(location.search)
+    const cuisine = params.get('cuisine')
+    const restaurantId = params.get('restaurant')
+
+    const back = document.querySelector('#back-link')
+    const grid = document.querySelector('#all-dishes')
+    const input = document.querySelector('#search-input')
+    const results = document.querySelector('#search-results')
+
+    back.href = `/menu/restaurant.html?cuisine=${encodeURIComponent(cuisine)}`
+
+    async function renderAll() {
+      grid.textContent = 'Carregando…'
+      try {
+        const dishes = await getAllDishes(restaurantId)
+        grid.innerHTML = dishes.length ? dishes.map(d => `
+          <article class="card">
+            <img src="${esc(d.image_url)}" alt="Prato ${esc(d.name)}" loading="lazy" />
+            <div class="p">
+              <h3>${esc(d.name)}</h3>
+              <p class="muted">${esc(d.category?.name ?? '')} · R$ ${(Number(d.price)||0).toFixed(2)}</p>
+            </div>
+          </article>
+        `).join('') : '<p class="muted">Nenhum prato disponível.</p>'
+      } catch (e) {
+        console.error(e)
+        grid.innerHTML = '<p>Erro ao carregar.</p>'
+      }
+    }
+
+    let handle
+    input.addEventListener('input', () => {
+      clearTimeout(handle)
+      handle = setTimeout(runSearch, 350)
+    })
+
+    async function runSearch() {
+      const term = input.value
+      if (!term || term.trim().length < 2) {
+        results.innerHTML = ''
+        return
+      }
+      results.textContent = 'Buscando…'
+      try {
+        const rows = await searchDishes(restaurantId, term)
+        results.innerHTML = rows.length ? rows.map(d => `
+          <article class="card">
+            <img src="${esc(d.image_url)}" alt="Prato ${esc(d.name)}" loading="lazy" />
+            <div class="p">
+              <h3>${esc(d.name)}</h3>
+              <p class="muted">${esc(d.category?.name ?? '')}</p>
+            </div>
+          </article>
+        `).join('') : '<p class="muted">Nenhum prato encontrado.</p>'
+      } catch (e) {
+        console.error(e)
+        results.innerHTML = '<p>Erro na busca.</p>'
+      }
+    }
+
+    renderAll()
+  </script>
+</body>
+</html>

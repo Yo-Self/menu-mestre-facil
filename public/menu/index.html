@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Menu Mestre Fácil - Restaurantes</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; margin: 0; padding: 24px; background:#fafafa; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
+    .card { background:white; border:1px solid #eee; border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .card img { width:100%; height:160px; object-fit:cover; display:block; }
+    .card .p { padding:12px 14px; }
+    .muted { color:#6b7280; font-size:14px; }
+    header { max-width:1100px; margin:0 auto 16px; }
+    main { max-width:1100px; margin:0 auto; }
+    a.btn { display:inline-block; margin-top:8px; padding:8px 10px; border:1px solid #f97316; color:#f97316; border-radius:8px; text-decoration:none; font-weight:600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Restaurantes</h1>
+    <p class="muted">Selecione um restaurante para ver o cardápio.</p>
+  </header>
+  <main>
+    <div id="restaurants-grid" class="grid">Carregando…</div>
+  </main>
+
+  <script type="module">
+    import { getRestaurants, esc } from '/js/menu-data.js'
+    const grid = document.querySelector('#restaurants-grid')
+    async function render() {
+      grid.textContent = 'Carregando…'
+      try {
+        const restaurants = await getRestaurants()
+        if (!restaurants.length) {
+          grid.innerHTML = '<p>Nenhum restaurante encontrado.</p>'
+          return
+        }
+        grid.innerHTML = restaurants.map(r => `
+          <article class="card">
+            <img src="${esc(r.image_url)}" alt="Restaurante ${esc(r.name)}" loading="lazy" />
+            <div class="p">
+              <h3>${esc(r.name)}</h3>
+              <p class="muted">${esc(r.description ?? '')}</p>
+              <a class="btn" href="/menu/restaurant.html?cuisine=${encodeURIComponent(r.cuisine_type)}">Ver cardápio</a>
+            </div>
+          </article>
+        `).join('')
+      } catch (e) {
+        console.error(e)
+        grid.innerHTML = '<p>Erro ao carregar restaurantes.</p>'
+      }
+    }
+    render()
+  </script>
+</body>
+</html>
