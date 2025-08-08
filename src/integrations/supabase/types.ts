@@ -46,6 +46,97 @@ export type Database = {
           },
         ]
       }
+      complement_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          dish_id: string
+          id: string
+          max_selections: number
+          position: number | null
+          required: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          dish_id: string
+          id?: string
+          max_selections?: number
+          position?: number | null
+          required?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          dish_id?: string
+          id?: string
+          max_selections?: number
+          position?: number | null
+          required?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_complement_groups_dish"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complements: {
+        Row: {
+          created_at: string
+          description: string | null
+          group_id: string
+          id: string
+          image_url: string | null
+          ingredients: string | null
+          name: string
+          position: number | null
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          group_id: string
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          name: string
+          position?: number | null
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          group_id?: string
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          name?: string
+          position?: number | null
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_complements_group"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "complement_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dishes: {
         Row: {
           allergens: string | null
