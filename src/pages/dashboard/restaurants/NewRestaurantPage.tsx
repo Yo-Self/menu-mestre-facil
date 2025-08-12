@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const cuisineTypes = [
@@ -61,6 +62,7 @@ export default function NewRestaurantPage() {
           {
             ...formData,
             user_id: user.id,
+            slug: generateSlug(formData.name),
           },
         ])
         .select()
