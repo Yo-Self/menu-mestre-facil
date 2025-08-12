@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ListPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -212,6 +212,12 @@ export default function EditDishPage() {
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
               <Button type="button" variant="outline" onClick={() => navigate("/dashboard/dishes")}>Cancelar</Button>
+              {id && (
+                <Button type="button" variant="outline" onClick={() => navigate(`/dashboard/dishes/${id}/complements`)}>
+                  <ListPlus className="h-4 w-4 mr-2" />
+                  Complementos do prato
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
