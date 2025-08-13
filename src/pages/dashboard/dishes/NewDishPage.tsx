@@ -21,6 +21,7 @@ export default function NewDishPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [ingredients, setIngredients] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
@@ -103,6 +104,7 @@ export default function NewDishPage() {
           description: description || null,
           price: parseFloat(price),
           image_url: imageUrl || "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&crop=center",
+          ingredients: ingredients || null,
           category_id: categoryId,
           restaurant_id: restaurants[0].id,
           is_available: isAvailable,
@@ -170,6 +172,16 @@ export default function NewDishPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Descreva os ingredientes e características do prato"
                 rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ingredients">Ingredientes (opcional)</Label>
+              <Textarea
+                id="ingredients"
+                value={ingredients}
+                onChange={(e) => setIngredients(e.target.value)}
+                placeholder="Liste os ingredientes principais do prato"
+                rows={2}
               />
             </div>
 

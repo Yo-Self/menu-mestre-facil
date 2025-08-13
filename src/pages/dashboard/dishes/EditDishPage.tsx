@@ -41,6 +41,7 @@ export default function EditDishPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [ingredients, setIngredients] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
@@ -63,6 +64,7 @@ export default function EditDishPage() {
       setDescription(dish.description || "");
       setPrice(String(dish.price));
       setImageUrl(dish.image_url);
+      setIngredients(dish.ingredients || "");
       setCategoryId(dish.category_id);
       setIsAvailable(Boolean(dish.is_available));
       setIsFeatured(Boolean(dish.is_featured));
@@ -115,6 +117,7 @@ export default function EditDishPage() {
           description: description || null,
           price: parseFloat(price),
           image_url: imageUrl,
+          ingredients: ingredients || null,
           category_id: categoryId,
           is_available: isAvailable,
           is_featured: isFeatured,
@@ -165,6 +168,11 @@ export default function EditDishPage() {
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ingredients">Ingredientes</Label>
+              <Textarea id="ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} rows={2} placeholder="Liste os ingredientes principais do prato" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
