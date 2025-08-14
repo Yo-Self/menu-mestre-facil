@@ -20,6 +20,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          position: number | null
           restaurant_id: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          position?: number | null
           restaurant_id: string
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          position?: number | null
           restaurant_id?: string
         }
         Relationships: [
@@ -137,10 +140,52 @@ export type Database = {
           },
         ]
       }
+      dish_categories: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          dish_id: string
+          id: string
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          dish_id: string
+          id?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          dish_id?: string
+          id?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dish_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dish_categories_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dishes: {
         Row: {
           allergens: string | null
-          category_id: string
+          category_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -157,7 +202,7 @@ export type Database = {
         }
         Insert: {
           allergens?: string | null
-          category_id: string
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -174,7 +219,7 @@ export type Database = {
         }
         Update: {
           allergens?: string | null
-          category_id?: string
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -379,6 +424,10 @@ export type Database = {
         Returns: boolean
       }
       import_restaurant_from_json: {
+        Args: { p_payload: Json; p_cuisine?: string }
+        Returns: undefined
+      }
+      import_restaurant_with_complements_from_json: {
         Args: { p_payload: Json; p_cuisine?: string }
         Returns: undefined
       }

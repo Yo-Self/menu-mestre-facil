@@ -15,6 +15,8 @@
     .muted { color:#6b7280; font-size:14px; }
     .search { display:flex; gap:8px; margin-bottom:12px; }
     .search input { flex:1; padding:10px 12px; border:1px solid #ddd; border-radius:10px; }
+    .categories { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+    .category-tag { background:#f3f4f6; color:#374151; padding:2px 6px; border-radius:4px; font-size:11px; }
   </style>
 </head>
 <body>
@@ -47,19 +49,35 @@
 
     back.href = `/menu/restaurant.html?cuisine=${encodeURIComponent(cuisine)}`
 
+    function renderCategories(categories) {
+      if (!categories || categories.length === 0) return ''
+      return `
+        <div class="categories">
+          ${categories.map(cat => `<span class="category-tag">${esc(cat.name)}</span>`).join('')}
+        </div>
+      `
+    }
+
+    function renderDish(d) {
+      const categories = d.categories || []
+      const primaryCategory = categories.length > 0 ? categories[0] : null
+      return `
+        <article class="card">
+          <img src="${esc(d.image_url)}" alt="Prato ${esc(d.name)}" loading="lazy" />
+          <div class="p">
+            <h3>${esc(d.name)}</h3>
+            <p class="muted">${primaryCategory ? esc(primaryCategory.name) : ''} · R$ ${(Number(d.price)||0).toFixed(2)}</p>
+            ${renderCategories(categories.slice(1))}
+          </div>
+        </article>
+      `
+    }
+
     async function renderAll() {
       grid.textContent = 'Carregando…'
       try {
         const dishes = await getAllDishes(restaurantId)
-        grid.innerHTML = dishes.length ? dishes.map(d => `
-          <article class="card">
-            <img src="${esc(d.image_url)}" alt="Prato ${esc(d.name)}" loading="lazy" />
-            <div class="p">
-              <h3>${esc(d.name)}</h3>
-              <p class="muted">${esc(d.category?.name ?? '')} · R$ ${(Number(d.price)||0).toFixed(2)}</p>
-            </div>
-          </article>
-        `).join('') : '<p class="muted">Nenhum prato disponível.</p>'
+        grid.innerHTML = dishes.length ? dishes.map(renderDish).join('') : '<p class="muted">Nenhum prato disponível.</p>'
       } catch (e) {
         console.error(e)
         grid.innerHTML = '<p>Erro ao carregar.</p>'
@@ -81,15 +99,7 @@
       results.textContent = 'Buscando…'
       try {
         const rows = await searchDishes(restaurantId, term)
-        results.innerHTML = rows.length ? rows.map(d => `
-          <article class="card">
-            <img src="${esc(d.image_url)}" alt="Prato ${esc(d.name)}" loading="lazy" />
-            <div class="p">
-              <h3>${esc(d.name)}</h3>
-              <p class="muted">${esc(d.category?.name ?? '')}</p>
-            </div>
-          </article>
-        `).join('') : '<p class="muted">Nenhum prato encontrado.</p>'
+        results.innerHTML = rows.length ? rows.map(renderDish).join('') : '<p class="muted">Nenhum prato encontrado.</p>'
       } catch (e) {
         console.error(e)
         results.innerHTML = '<p>Erro na busca.</p>'

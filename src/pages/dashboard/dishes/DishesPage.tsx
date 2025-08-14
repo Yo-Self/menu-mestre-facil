@@ -16,11 +16,13 @@ interface Dish {
   is_featured: boolean;
   is_available: boolean;
   restaurant_id: string;
-  category_id: string;
+  category_id: string | null;
   created_at: string;
-  categories: {
-    name: string;
-  };
+  dish_categories: {
+    categories: {
+      name: string;
+    };
+  }[];
 }
 
 export default function DishesPage() {
@@ -41,7 +43,9 @@ export default function DishesPage() {
         .from("dishes")
         .select(`
           *,
-          categories (name),
+          dish_categories (
+            categories (name)
+          ),
           restaurants!inner (
             id,
             name,
@@ -94,6 +98,13 @@ export default function DishesPage() {
     }
 
     try {
+      // Primeiro, remover as categorias múltiplas
+      await supabase
+        .from("dish_categories")
+        .delete()
+        .eq("dish_id", id);
+
+      // Depois, remover o prato
       const { error } = await supabase
         .from("dishes")
         .delete()
@@ -121,6 +132,14 @@ export default function DishesPage() {
       style: "currency",
       currency: "BRL",
     }).format(price);
+  };
+
+  const getCategoryNames = (dish: Dish) => {
+    if (dish.dish_categories && dish.dish_categories.length > 0) {
+      return dish.dish_categories.map(dc => dc.categories.name);
+    }
+    // Fallback para categoria principal (compatibilidade)
+    return dish.category_id ? ["Categoria Principal"] : [];
   };
 
   if (loading) {
@@ -167,83 +186,94 @@ export default function DishesPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {dishes.map((dish) => (
-            <Card key={dish.id} className="overflow-hidden">
-              <div className="aspect-video relative">
-                <img
-                  src={dish.image_url}
-                  alt={dish.name}
-                  className="w-full h-full object-cover"
-                />
-                {dish.is_featured && (
-                  <div className="absolute top-2 right-2">
-                    <Badge className="bg-accent text-accent-foreground">
-                      <Star className="h-3 w-3 mr-1" />
-                      Destaque
-                    </Badge>
-                  </div>
-                )}
-              </div>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{dish.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary">
-                        {dish.categories?.name || "Sem categoria"}
-                      </Badge>
-                      <Badge variant={dish.is_available ? "default" : "outline"}>
-                        {dish.is_available ? "Disponível" : "Indisponível"}
+          {dishes.map((dish) => {
+            const categoryNames = getCategoryNames(dish);
+            return (
+              <Card key={dish.id} className="overflow-hidden">
+                <div className="aspect-video relative">
+                  <img
+                    src={dish.image_url}
+                    alt={dish.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {dish.is_featured && (
+                    <div className="absolute top-2 right-2">
+                      <Badge className="bg-accent text-accent-foreground">
+                        <Star className="h-3 w-3 mr-1" />
+                        Destaque
                       </Badge>
                     </div>
+                  )}
+                </div>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{dish.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {categoryNames.length > 0 ? (
+                          categoryNames.map((categoryName, index) => (
+                            <Badge key={index} variant="secondary">
+                              {categoryName}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="secondary">
+                            Sem categoria
+                          </Badge>
+                        )}
+                        <Badge variant={dish.is_available ? "default" : "outline"}>
+                          {dish.is_available ? "Disponível" : "Indisponível"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => toggleFeatured(dish.id, dish.is_featured)}
+                    >
+                      <Star 
+                        className={`h-4 w-4 ${
+                          dish.is_featured ? "fill-accent text-accent" : "text-muted-foreground"
+                        }`} 
+                      />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleFeatured(dish.id, dish.is_featured)}
-                  >
-                    <Star 
-                      className={`h-4 w-4 ${
-                        dish.is_featured ? "fill-accent text-accent" : "text-muted-foreground"
-                      }`} 
-                    />
-                  </Button>
-                </div>
-                <div className="text-lg font-bold text-primary">
-                  {formatPrice(dish.price)}
-                </div>
-                {dish.description && (
-                  <CardDescription className="line-clamp-2">
-                    {dish.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Link to={`/dashboard/dishes/${dish.id}/edit`}>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
+                  <div className="text-lg font-bold text-primary">
+                    {formatPrice(dish.price)}
+                  </div>
+                  {dish.description && (
+                    <CardDescription className="line-clamp-2">
+                      {dish.description}
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <Link to={`/dashboard/dishes/${dish.id}/edit`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                    </Link>
+                    <Link to={`/dashboard/dishes/${dish.id}/complements`}>
+                      <Button variant="outline" size="sm">
+                        <ListPlus className="h-4 w-4 mr-2" />
+                        Complementos
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(dish.id, dish.name)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
                     </Button>
-                  </Link>
-                  <Link to={`/dashboard/dishes/${dish.id}/complements`}>
-                    <Button variant="outline" size="sm">
-                      <ListPlus className="h-4 w-4 mr-2" />
-                      Complementos
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(dish.id, dish.name)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

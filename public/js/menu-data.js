@@ -77,14 +77,28 @@ export async function getFeaturedDishes(restaurantId) {
   if (cached) return cached
   const { data, error } = await supabase
     .from('dishes')
-    .select('*, category:categories(*)')
+    .select(`
+      *,
+      category:categories(*),
+      dish_categories(
+        categories(*)
+      )
+    `)
     .eq('restaurant_id', restaurantId)
     .eq('is_featured', true)
     .eq('is_available', true)
     .order('created_at', { ascending: false })
   if (error) throw error
-  setCache(k, data ?? [])
-  return data ?? []
+  
+  // Processar múltiplas categorias
+  const processedData = data?.map(dish => ({
+    ...dish,
+    categories: dish.dish_categories?.map(dc => dc.categories) || 
+                (dish.category ? [dish.category] : [])
+  })) || []
+  
+  setCache(k, processedData)
+  return processedData
 }
 
 export async function getAllDishes(restaurantId) {
@@ -94,13 +108,27 @@ export async function getAllDishes(restaurantId) {
   if (cached) return cached
   const { data, error } = await supabase
     .from('dishes')
-    .select('*, category:categories(*)')
+    .select(`
+      *,
+      category:categories(*),
+      dish_categories(
+        categories(*)
+      )
+    `)
     .eq('restaurant_id', restaurantId)
     .eq('is_available', true)
     .order('category_id', { ascending: true })
   if (error) throw error
-  setCache(k, data ?? [])
-  return data ?? []
+  
+  // Processar múltiplas categorias
+  const processedData = data?.map(dish => ({
+    ...dish,
+    categories: dish.dish_categories?.map(dc => dc.categories) || 
+                (dish.category ? [dish.category] : [])
+  })) || []
+  
+  setCache(k, processedData)
+  return processedData
 }
 
 export async function getDishesByCategory(categoryId) {
@@ -108,15 +136,40 @@ export async function getDishesByCategory(categoryId) {
   const k = `dishes:category:${categoryId}`
   const cached = getCache(k)
   if (cached) return cached
+  
+  // Buscar pratos que têm esta categoria nas múltiplas categorias
   const { data, error } = await supabase
-    .from('dishes')
-    .select('*, category:categories(*)')
+    .from('dish_categories')
+    .select(`
+      dishes(
+        *,
+        category:categories(*),
+        dish_categories(
+          categories(*)
+        )
+      )
+    `)
     .eq('category_id', categoryId)
-    .eq('is_available', true)
-    .order('name', { ascending: true })
+    .eq('dishes.is_available', true)
   if (error) throw error
-  setCache(k, data ?? [])
-  return data ?? []
+  
+  // Processar e remover duplicatas
+  const dishes = data
+    ?.map(dc => dc.dishes)
+    ?.filter(dish => dish) // Remover nulls
+    ?.map(dish => ({
+      ...dish,
+      categories: dish.dish_categories?.map(dc => dc.categories) || 
+                  (dish.category ? [dish.category] : [])
+    })) || []
+  
+  // Remover duplicatas baseado no ID do prato
+  const uniqueDishes = dishes.filter((dish, index, self) => 
+    index === self.findIndex(d => d.id === dish.id)
+  )
+  
+  setCache(k, uniqueDishes)
+  return uniqueDishes
 }
 
 export async function searchDishes(restaurantId, term) {
@@ -124,13 +177,27 @@ export async function searchDishes(restaurantId, term) {
   if (!t || t.length < 2) return []
   const { data, error } = await supabase
     .from('dishes')
-    .select('*, category:categories(*)')
+    .select(`
+      *,
+      category:categories(*),
+      dish_categories(
+        categories(*)
+      )
+    `)
     .eq('restaurant_id', restaurantId)
     .eq('is_available', true)
     .or(`name.ilike.%${t}%,description.ilike.%${t}%`)
     .order('name', { ascending: true })
   if (error) throw error
-  return data ?? []
+  
+  // Processar múltiplas categorias
+  const processedData = data?.map(dish => ({
+    ...dish,
+    categories: dish.dish_categories?.map(dc => dc.categories) || 
+                (dish.category ? [dish.category] : [])
+  })) || []
+  
+  return processedData
 }
 
 // Pequena ajuda utilitária

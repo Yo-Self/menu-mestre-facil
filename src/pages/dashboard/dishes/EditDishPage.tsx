@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,7 +25,14 @@ interface DishRow {
   is_featured: boolean | null;
   is_available: boolean | null;
   restaurant_id: string;
+  category_id: string | null;
+}
+
+interface DishCategory {
+  id: string;
+  dish_id: string;
   category_id: string;
+  position: number;
 }
 
 export default function EditDishPage() {
@@ -42,7 +49,7 @@ export default function EditDishPage() {
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
@@ -53,6 +60,7 @@ export default function EditDishPage() {
 
   const fetchDish = async (dishId: string) => {
     try {
+      // Buscar o prato
       const { data, error } = await supabase
         .from("dishes")
         .select("*")
@@ -65,9 +73,26 @@ export default function EditDishPage() {
       setPrice(String(dish.price));
       setImageUrl(dish.image_url);
       setIngredients(dish.ingredients || "");
-      setCategoryId(dish.category_id);
       setIsAvailable(Boolean(dish.is_available));
       setIsFeatured(Boolean(dish.is_featured));
+
+      // Buscar as categorias do prato
+      const { data: dishCategories, error: categoriesError } = await supabase
+        .from("dish_categories")
+        .select("category_id")
+        .eq("dish_id", dishId)
+        .order("position");
+
+      if (categoriesError) {
+        console.error("Erro ao carregar categorias do prato:", categoriesError);
+        // Se não conseguir carregar as categorias múltiplas, usar a categoria principal
+        if (dish.category_id) {
+          setSelectedCategories([dish.category_id]);
+        }
+      } else {
+        const categoryIds = dishCategories.map((dc: DishCategory) => dc.category_id);
+        setSelectedCategories(categoryIds);
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao carregar prato",
@@ -107,10 +132,13 @@ export default function EditDishPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id) return;
     setSaving(true);
+
     try {
-      const { error } = await supabase
+      if (!id) return;
+
+      // Atualizar o prato
+      const { error: dishError } = await supabase
         .from("dishes")
         .update({
           name,
@@ -118,25 +146,71 @@ export default function EditDishPage() {
           price: parseFloat(price),
           image_url: imageUrl,
           ingredients: ingredients || null,
-          category_id: categoryId,
+          category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
           is_available: isAvailable,
           is_featured: isFeatured,
         })
         .eq("id", id);
-      if (error) throw error;
-      toast({ title: "Prato atualizado", description: `${name} foi atualizado com sucesso.` });
+
+      if (dishError) throw dishError;
+
+      // Atualizar as categorias múltiplas
+      // Primeiro, remover todas as categorias existentes
+      const { error: deleteError } = await supabase
+        .from("dish_categories")
+        .delete()
+        .eq("dish_id", id);
+
+      if (deleteError) {
+        console.error("Erro ao remover categorias:", deleteError);
+      }
+
+      // Depois, adicionar as novas categorias
+      if (selectedCategories.length > 0) {
+        const dishCategories = selectedCategories.map((categoryId, index) => ({
+          dish_id: id,
+          category_id: categoryId,
+          position: index,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("dish_categories")
+          .insert(dishCategories);
+
+        if (insertError) {
+          console.error("Erro ao adicionar categorias:", insertError);
+        }
+      }
+
+      toast({
+        title: "Prato atualizado",
+        description: `${name} foi atualizado com sucesso.`,
+      });
+
       navigate("/dashboard/dishes");
     } catch (error: any) {
-      toast({ title: "Erro ao atualizar prato", description: error.message, variant: "destructive" });
+      toast({
+        title: "Erro ao atualizar prato",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  const categoryOptions = categories.map(cat => ({
+    value: cat.id,
+    label: cat.name,
+  }));
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -149,25 +223,41 @@ export default function EditDishPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold text-primary">Editar Prato</h1>
-          <p className="text-muted-foreground">Atualize as informações do prato</p>
+          <p className="text-muted-foreground">
+            Atualize as informações do prato
+          </p>
         </div>
       </div>
 
       <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>Informações do Prato</CardTitle>
-          <CardDescription>Edite os dados do prato</CardDescription>
+          <CardDescription>
+            Atualize os dados do prato
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Label htmlFor="name">Nome do Prato</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: X-Burger, Pizza Margherita"
+                required
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+              <Label htmlFor="description">Descrição (opcional)</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descreva os ingredientes e características do prato"
+                rows={3}
+              />
             </div>
 
             <div className="space-y-2">
@@ -178,54 +268,83 @@ export default function EditDishPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="price">Preço (R$)</Label>
-                <Input id="price" type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0.00"
+                  required
+                />
               </div>
+
               <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={categoryId} onValueChange={setCategoryId} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="categories">Categorias</Label>
+                <MultiSelect
+                  options={categoryOptions}
+                  selected={selectedCategories}
+                  onSelectionChange={setSelectedCategories}
+                  placeholder="Selecione as categorias"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Selecione uma ou mais categorias para o prato
+                </p>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="imageUrl">URL da Imagem</Label>
-              <Input id="imageUrl" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+              <Input
+                id="imageUrl"
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://exemplo.com/imagem.jpg"
+                required
+              />
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Disponível</Label>
-                  <p className="text-sm text-muted-foreground">O prato está disponível para pedidos</p>
+                  <p className="text-sm text-muted-foreground">
+                    O prato está disponível para pedidos
+                  </p>
                 </div>
-                <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
+                <Switch
+                  checked={isAvailable}
+                  onCheckedChange={setIsAvailable}
+                />
               </div>
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Destaque</Label>
-                  <p className="text-sm text-muted-foreground">Marcar como prato em destaque</p>
+                  <p className="text-sm text-muted-foreground">
+                    Marcar como prato em destaque
+                  </p>
                 </div>
-                <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
+                <Switch
+                  checked={isFeatured}
+                  onCheckedChange={setIsFeatured}
+                />
               </div>
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
-              <Button type="button" variant="outline" onClick={() => navigate("/dashboard/dishes")}>Cancelar</Button>
-              {id && (
-                <Button type="button" variant="outline" onClick={() => navigate(`/dashboard/dishes/${id}/complements`)}>
-                  <ListPlus className="h-4 w-4 mr-2" />
-                  Complementos do prato
-                </Button>
-              )}
+              <Button type="submit" disabled={saving}>
+                {saving ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate("/dashboard/dishes")}
+              >
+                Cancelar
+              </Button>
             </div>
           </form>
         </CardContent>

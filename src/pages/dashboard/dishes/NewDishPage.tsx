@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,7 +22,7 @@ export default function NewDishPage() {
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -97,7 +97,8 @@ export default function NewDishPage() {
         return;
       }
 
-      const { error } = await supabase
+      // Criar o prato
+      const { data: dish, error: dishError } = await supabase
         .from("dishes")
         .insert({
           name,
@@ -105,13 +106,33 @@ export default function NewDishPage() {
           price: parseFloat(price),
           image_url: imageUrl || "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&crop=center",
           ingredients: ingredients || null,
-          category_id: categoryId,
+          category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
           restaurant_id: restaurants[0].id,
           is_available: isAvailable,
           is_featured: isFeatured,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (dishError) throw dishError;
+
+      // Adicionar múltiplas categorias se selecionadas
+      if (selectedCategories.length > 0 && dish) {
+        const dishCategories = selectedCategories.map((categoryId, index) => ({
+          dish_id: dish.id,
+          category_id: categoryId,
+          position: index,
+        }));
+
+        const { error: categoriesError } = await supabase
+          .from("dish_categories")
+          .insert(dishCategories);
+
+        if (categoriesError) {
+          console.error("Erro ao adicionar categorias:", categoriesError);
+          // Não falhar a criação do prato se houver erro nas categorias
+        }
+      }
 
       toast({
         title: "Prato criado",
@@ -129,6 +150,11 @@ export default function NewDishPage() {
       setLoading(false);
     }
   };
+
+  const categoryOptions = categories.map(cat => ({
+    value: cat.id,
+    label: cat.name,
+  }));
 
   return (
     <div className="space-y-6">
@@ -201,19 +227,17 @@ export default function NewDishPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
-                <Select value={categoryId} onValueChange={setCategoryId} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="categories">Categorias</Label>
+                <MultiSelect
+                  options={categoryOptions}
+                  selected={selectedCategories}
+                  onSelectionChange={setSelectedCategories}
+                  placeholder="Selecione as categorias"
+                  disabled={loadingCategories}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Selecione uma ou mais categorias para o prato
+                </p>
               </div>
             </div>
 
