@@ -64,6 +64,7 @@ export async function getCategoriesByRestaurant(restaurantId) {
     .from('categories')
     .select('*')
     .eq('restaurant_id', restaurantId)
+    .order('position', { ascending: true })
     .order('name', { ascending: true })
   if (error) throw error
   setCache(k, data ?? [])
@@ -75,30 +76,47 @@ export async function getFeaturedDishes(restaurantId) {
   const k = `dishes:featured:${restaurantId}`
   const cached = getCache(k)
   if (cached) return cached
+  
+  // Buscar pratos em destaque com suas categorias e posições
   const { data, error } = await supabase
-    .from('dishes')
+    .from('dish_categories')
     .select(`
-      *,
-      category:categories(*),
-      dish_categories(
-        categories(*)
+      position,
+      dishes(
+        *,
+        category:categories(*),
+        dish_categories(
+          categories(*)
+        )
+      ),
+      categories!inner(
+        id,
+        name,
+        position
       )
     `)
-    .eq('restaurant_id', restaurantId)
-    .eq('is_featured', true)
-    .eq('is_available', true)
-    .order('created_at', { ascending: false })
+    .eq('dishes.restaurant_id', restaurantId)
+    .eq('dishes.is_featured', true)
+    .eq('dishes.is_available', true)
+    .order('categories.position', { ascending: true })
+    .order('position', { ascending: true })
   if (error) throw error
   
   // Processar múltiplas categorias
-  const processedData = data?.map(dish => ({
-    ...dish,
-    categories: dish.dish_categories?.map(dc => dc.categories) || 
-                (dish.category ? [dish.category] : [])
+  const processedData = data?.map(dc => ({
+    ...dc.dishes,
+    position: dc.position,
+    categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
+                (dc.dishes.category ? [dc.dishes.category] : [])
   })) || []
   
-  setCache(k, processedData)
-  return processedData
+  // Remover duplicatas baseado no ID do prato
+  const uniqueDishes = processedData.filter((dish, index, self) => 
+    index === self.findIndex(d => d.id === dish.id)
+  )
+  
+  setCache(k, uniqueDishes)
+  return uniqueDishes
 }
 
 export async function getAllDishes(restaurantId) {
@@ -106,29 +124,46 @@ export async function getAllDishes(restaurantId) {
   const k = `dishes:all:${restaurantId}`
   const cached = getCache(k)
   if (cached) return cached
+  
+  // Buscar pratos com suas categorias e posições
   const { data, error } = await supabase
-    .from('dishes')
+    .from('dish_categories')
     .select(`
-      *,
-      category:categories(*),
-      dish_categories(
-        categories(*)
+      position,
+      dishes(
+        *,
+        category:categories(*),
+        dish_categories(
+          categories(*)
+        )
+      ),
+      categories!inner(
+        id,
+        name,
+        position
       )
     `)
-    .eq('restaurant_id', restaurantId)
-    .eq('is_available', true)
-    .order('category_id', { ascending: true })
+    .eq('dishes.restaurant_id', restaurantId)
+    .eq('dishes.is_available', true)
+    .order('categories.position', { ascending: true })
+    .order('position', { ascending: true })
   if (error) throw error
   
   // Processar múltiplas categorias
-  const processedData = data?.map(dish => ({
-    ...dish,
-    categories: dish.dish_categories?.map(dc => dc.categories) || 
-                (dish.category ? [dish.category] : [])
+  const processedData = data?.map(dc => ({
+    ...dc.dishes,
+    position: dc.position,
+    categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
+                (dc.dishes.category ? [dc.dishes.category] : [])
   })) || []
   
-  setCache(k, processedData)
-  return processedData
+  // Remover duplicatas baseado no ID do prato
+  const uniqueDishes = processedData.filter((dish, index, self) => 
+    index === self.findIndex(d => d.id === dish.id)
+  )
+  
+  setCache(k, uniqueDishes)
+  return uniqueDishes
 }
 
 export async function getDishesByCategory(categoryId) {
@@ -137,10 +172,11 @@ export async function getDishesByCategory(categoryId) {
   const cached = getCache(k)
   if (cached) return cached
   
-  // Buscar pratos que têm esta categoria nas múltiplas categorias
+  // Buscar pratos que têm esta categoria nas múltiplas categorias, ordenados por posição
   const { data, error } = await supabase
     .from('dish_categories')
     .select(`
+      position,
       dishes(
         *,
         category:categories(*),
@@ -151,17 +187,19 @@ export async function getDishesByCategory(categoryId) {
     `)
     .eq('category_id', categoryId)
     .eq('dishes.is_available', true)
+    .order('position', { ascending: true })
   if (error) throw error
   
   // Processar e remover duplicatas
   const dishes = data
-    ?.map(dc => dc.dishes)
+    ?.map(dc => ({
+      ...dc.dishes,
+      position: dc.position,
+      categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
+                  (dc.dishes.category ? [dc.dishes.category] : [])
+    }))
     ?.filter(dish => dish) // Remover nulls
-    ?.map(dish => ({
-      ...dish,
-      categories: dish.dish_categories?.map(dc => dc.categories) || 
-                  (dish.category ? [dish.category] : [])
-    })) || []
+    || []
   
   // Remover duplicatas baseado no ID do prato
   const uniqueDishes = dishes.filter((dish, index, self) => 

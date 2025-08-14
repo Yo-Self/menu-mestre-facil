@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowUpDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ interface Category {
   image_url: string;
   restaurant_id: string;
   created_at: string;
+  dishes_count?: number;
 }
 
 export default function CategoriesPage() {
@@ -40,10 +41,27 @@ export default function CategoriesPage() {
           )
         `)
         .eq("restaurants.user_id", user.id)
+        .order("position", { ascending: true })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCategories(data || []);
+      
+      // Buscar contagem de pratos para cada categoria
+      const categoriesWithCounts = await Promise.all(
+        (data || []).map(async (category) => {
+          const { count } = await supabase
+            .from("dish_categories")
+            .select("*", { count: "exact", head: true })
+            .eq("category_id", category.id);
+          
+          return {
+            ...category,
+            dishes_count: count || 0,
+          };
+        })
+      );
+      
+      setCategories(categoriesWithCounts);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar categorias",
@@ -138,6 +156,9 @@ export default function CategoriesPage() {
               </div>
               <CardHeader>
                 <CardTitle className="text-lg">{category.name}</CardTitle>
+                <CardDescription>
+                  {category.dishes_count || 0} prato{(category.dishes_count || 0) !== 1 ? "s" : ""}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
@@ -145,6 +166,18 @@ export default function CategoriesPage() {
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
+                    </Button>
+                  </Link>
+                  <Link to={`/dashboard/categories/${category.id}/preview`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Prévia
+                    </Button>
+                  </Link>
+                  <Link to={`/dashboard/categories/${category.id}/order`}>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      Ordenar
                     </Button>
                   </Link>
                   <Button
