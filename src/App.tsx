@@ -18,6 +18,7 @@ import CategoriesPage from "./pages/dashboard/categories/CategoriesPage";
 import EditCategoryPage from "./pages/dashboard/categories/EditCategoryPage";
 import CategoryDishesOrderPage from "./pages/dashboard/categories/CategoryDishesOrderPage";
 import CategoryPreviewPage from "./pages/dashboard/categories/CategoryPreviewPage";
+import CategoryDishesPage from "./pages/dashboard/categories/CategoryDishesPage";
 import DishesPage from "./pages/dashboard/dishes/DishesPage";
 import NewDishPage from "./pages/dashboard/dishes/NewDishPage";
 import EditDishPage from "./pages/dashboard/dishes/EditDishPage";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="categories/new" element={<NewCategoryPage />} />
             <Route path="categories/:id/edit" element={<EditCategoryPage />} />
+            <Route path="categories/:id/dishes" element={<CategoryDishesPage />} />
             <Route path="categories/:id/order" element={<CategoryDishesOrderPage />} />
             <Route path="categories/:id/preview" element={<CategoryPreviewPage />} />
             <Route path="dishes" element={<DishesPage />} />

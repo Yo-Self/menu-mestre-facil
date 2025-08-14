@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Edit, ToggleLeft, ToggleRight } from "lucide-react";
+import { ArrowLeft, Edit, ToggleLeft, ToggleRight, Plus, FolderOpen, Eye, ArrowUpDown, UtensilsCrossed, Menu } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,31 +18,81 @@ interface MenuRow {
   updated_at?: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  image_url: string;
+  position: number;
+  dishes_count: number;
+}
+
 export default function MenuDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [menu, setMenu] = useState<MenuRow | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    fetchMenu(id);
+    fetchMenuAndCategories(id);
   }, [id]);
 
-  const fetchMenu = async (menuId: string) => {
+  const fetchMenuAndCategories = async (menuId: string) => {
     try {
-      const { data, error } = await supabase
+      // Buscar informações do menu
+      const { data: menuData, error: menuError } = await supabase
         .from("menus")
         .select("*")
         .eq("id", menuId)
         .single();
-      if (error) throw error;
-      setMenu(data as MenuRow);
+      
+      if (menuError) throw menuError;
+      setMenu(menuData as MenuRow);
+
+      // Buscar categorias do restaurante (todas as categorias estão disponíveis para o menu)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select(`
+          id,
+          name,
+          image_url,
+          position,
+          restaurants!inner (
+            id,
+            user_id
+          )
+        `)
+        .eq("restaurants.user_id", user.id)
+        .order("position", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (categoriesError) throw categoriesError;
+
+      // Buscar contagem de pratos para cada categoria
+      const categoriesWithCounts = await Promise.all(
+        (categoriesData || []).map(async (category) => {
+          const { count } = await supabase
+            .from("dish_categories")
+            .select("*", { count: "exact", head: true })
+            .eq("category_id", category.id);
+          
+          return {
+            ...category,
+            dishes_count: count || 0,
+          };
+        })
+      );
+      
+      setCategories(categoriesWithCounts);
     } catch (error: any) {
-      toast({ title: "Erro ao carregar menu", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
       navigate("/dashboard/menus");
     } finally {
       setLoading(false);
@@ -78,13 +129,20 @@ export default function MenuDetailPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Menus", href: "/dashboard/menus", icon: Menu },
+          { label: menu.name, icon: Menu }
+        ]}
+      />
+      
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/menus")}> 
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-primary">{menu.name}</h1>
-          <p className="text-muted-foreground">Gerenciamento do menu</p>
+          <p className="text-muted-foreground">Gerenciamento do menu e suas categorias</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={toggleStatus} disabled={toggling}>
@@ -118,7 +176,91 @@ export default function MenuDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Espaço futuro: listagem de categorias/pratos do menu */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Categorias</h2>
+          <p className="text-muted-foreground">
+            Gerencie as categorias e pratos do menu
+          </p>
+        </div>
+        <Link to="/dashboard/categories/new">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Categoria
+          </Button>
+        </Link>
+      </div>
+
+      {categories.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">Nenhuma categoria cadastrada</h3>
+              <p className="text-muted-foreground mb-4">
+                Comece criando uma categoria para organizar os pratos
+              </p>
+              <Link to="/dashboard/categories/new">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Categoria
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categories.map((category) => (
+            <Card key={category.id} className="overflow-hidden">
+              <div className="aspect-square relative">
+                <img
+                  src={category.image_url}
+                  alt={category.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+                <CardDescription>
+                  {category.dishes_count} prato{(category.dishes_count !== 1 ? "s" : "")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link to={`/dashboard/categories/${category.id}/dishes`}>
+                    <Button variant="outline" size="sm">
+                      <UtensilsCrossed className="h-4 w-4 mr-2" />
+                      Gerenciar Pratos
+                    </Button>
+                  </Link>
+                  <Link to={`/dashboard/categories/${category.id}/order`}>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      Ordenar
+                    </Button>
+                  </Link>
+                  <Link to={`/dashboard/categories/${category.id}/edit`}>
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="bg-muted/50 p-4 rounded-lg">
+        <h3 className="font-semibold mb-2">Fluxo de Gerenciamento:</h3>
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p>1. <strong>Menu</strong> → Gerencie informações básicas do menu</p>
+          <p>2. <strong>Categorias</strong> → Organize os pratos em categorias</p>
+          <p>3. <strong>Pratos</strong> → Adicione e configure os pratos</p>
+          <p>4. <strong>Complementos</strong> → Configure opções e variações</p>
+        </div>
+      </div>
     </div>
   );
 }

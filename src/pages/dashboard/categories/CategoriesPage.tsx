@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2, ArrowUpDown, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowUpDown, Eye, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +166,12 @@ export default function CategoriesPage() {
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
+                    </Button>
+                  </Link>
+                  <Link to={`/dashboard/categories/${category.id}/dishes`}>
+                    <Button variant="outline" size="sm">
+                      <UtensilsCrossed className="h-4 w-4 mr-2" />
+                      Pratos
                     </Button>
                   </Link>
                   <Link to={`/dashboard/categories/${category.id}/preview`}>
