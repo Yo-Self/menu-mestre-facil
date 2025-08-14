@@ -5,13 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [accountType, setAccountType] = useState<"individual" | "organization">("individual");
+  const [organizationSlug, setOrganizationSlug] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,7 +25,7 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -31,7 +35,33 @@ export default function AuthPage() {
         },
       });
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
+      if (!user) throw new Error("Erro ao criar usuário");
+
+      // Criar perfil com slug
+      let slug = "";
+      if (accountType === "organization") {
+        if (!organizationSlug.trim()) {
+          throw new Error("Slug da organização é obrigatório");
+        }
+        slug = await generateUniqueSlug(generateSlug(organizationSlug), 'profiles');
+      } else {
+        slug = await generateUniqueSlug(generateSlug(fullName), 'profiles');
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([
+          {
+            id: user.id,
+            email,
+            full_name: fullName,
+            slug,
+            is_organization: accountType === "organization",
+          },
+        ]);
+
+      if (profileError) throw profileError;
 
       toast({
         title: "Conta criada com sucesso!",
@@ -69,6 +99,13 @@ export default function AuthPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAccountTypeChange = (value: string) => {
+    setAccountType(value as "individual" | "organization");
+    if (value === "individual") {
+      setOrganizationSlug("");
     }
   };
 
@@ -124,7 +161,9 @@ export default function AuthPage() {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
-                  <Label htmlFor="fullName">Nome Completo</Label>
+                  <Label htmlFor="fullName">
+                    {accountType === "organization" ? "Nome da Organização" : "Nome Completo"}
+                  </Label>
                   <Input
                     id="fullName"
                     type="text"
@@ -133,6 +172,36 @@ export default function AuthPage() {
                     required
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="accountType">Tipo de Conta</Label>
+                  <Select value={accountType} onValueChange={handleAccountTypeChange} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de conta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Pessoa Física</SelectItem>
+                      <SelectItem value="organization">Organização</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {accountType === "organization" && (
+                  <div>
+                    <Label htmlFor="organizationSlug">Identificador da Organização (Slug)</Label>
+                    <Input
+                      id="organizationSlug"
+                      type="text"
+                      value={organizationSlug}
+                      onChange={(e) => setOrganizationSlug(e.target.value)}
+                      placeholder="ex: minha-empresa"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Este será o identificador único da sua organização na URL
+                    </p>
+                  </div>
+                )}
                 
                 <div>
                   <Label htmlFor="email">Email</Label>

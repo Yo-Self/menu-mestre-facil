@@ -4,7 +4,9 @@ import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { UrlPreview } from "@/components/ui/url-preview";
 import { supabase } from "@/integrations/supabase/client";
+import { generateRestaurantUrl, generatePublicMenuUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 interface Restaurant {
@@ -13,7 +15,13 @@ interface Restaurant {
   cuisine_type: string;
   description: string;
   image_url: string;
+  slug: string;
   created_at: string;
+}
+
+interface Profile {
+  slug: string;
+  is_organization: boolean;
 }
 
 interface Stats {
@@ -27,6 +35,7 @@ export default function RestaurantDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<Stats>({ menus: 0, categories: 0, dishes: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -39,14 +48,28 @@ export default function RestaurantDetailPage() {
 
   const fetchRestaurant = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: restaurantData, error: restaurantError } = await supabase
         .from("restaurants")
         .select("*")
         .eq("id", id)
         .single();
 
-      if (error) throw error;
-      setRestaurant(data);
+      if (restaurantError) throw restaurantError;
+      setRestaurant(restaurantData);
+
+      // Buscar dados do perfil do usuário
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("slug, is_organization")
+          .eq("id", user.id)
+          .single();
+
+        if (!profileError) {
+          setProfile(profileData);
+        }
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -120,6 +143,8 @@ export default function RestaurantDetailPage() {
     },
   ];
 
+  const baseUrl = window.location.origin;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -175,6 +200,32 @@ export default function RestaurantDetailPage() {
 
         <div className="lg:col-span-2">
           <div className="space-y-6">
+            {/* URLs Amigáveis */}
+            {profile && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>URLs Amigáveis</CardTitle>
+                  <CardDescription>
+                    Links personalizados para acessar seu restaurante
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <UrlPreview
+                    title="Página do Restaurante"
+                    description="Link para a página administrativa do restaurante"
+                    url={`${baseUrl}${generateRestaurantUrl(profile.slug, restaurant.slug)}`}
+                    type="restaurant"
+                  />
+                  <UrlPreview
+                    title="Menu Público"
+                    description="Link para o menu público que seus clientes podem acessar"
+                    url={`${baseUrl}${generatePublicMenuUrl(profile.slug, restaurant.slug)}`}
+                    type="menu"
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Ações Rápidas</CardTitle>

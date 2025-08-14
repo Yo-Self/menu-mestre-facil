@@ -1,12 +1,122 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, User, Bell, Shield, Palette } from "lucide-react";
+import { Settings, User, Bell, Shield, Palette, Globe } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { UrlPreview } from "@/components/ui/url-preview";
+
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  slug: string;
+  is_organization: boolean | null;
+}
 
 export default function SettingsPage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    slug: "",
+  });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data);
+      setFormData({
+        full_name: data.full_name || "",
+        slug: data.slug || "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+    
+    setSaving(true);
+    try {
+      let slug = formData.slug;
+      if (slug !== profile.slug) {
+        slug = await generateUniqueSlug(generateSlug(slug), 'profiles');
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.full_name,
+          slug,
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+
+      setProfile({ ...profile, full_name: formData.full_name, slug });
+      setFormData({ ...formData, slug });
+
+      toast({
+        title: "Perfil atualizado!",
+        description: "Suas informações foram salvas com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const baseUrl = window.location.origin;
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,23 +139,76 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" placeholder="Seu nome completo" />
+                <Label htmlFor="full_name">
+                  {profile?.is_organization ? "Nome da Organização" : "Nome Completo"}
+                </Label>
+                <Input
+                  id="full_name"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  placeholder={profile?.is_organization ? "Nome da sua organização" : "Seu nome completo"}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="seu@email.com" />
+                <Input id="email" value={profile?.email || ""} disabled />
+                <p className="text-xs text-muted-foreground">
+                  O email não pode ser alterado
+                </p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" placeholder="(11) 99999-9999" />
-            </div>
-            <Button>Salvar Alterações</Button>
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </CardContent>
         </Card>
+
+        {/* Identificador da Organização */}
+        {profile?.is_organization && (
+          <>
+            <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  Identificador da Organização
+                </CardTitle>
+                <CardDescription>
+                  Gerencie o identificador único da sua organização nas URLs.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Identificador (Slug)</Label>
+                  <Input
+                    id="slug"
+                    name="slug"
+                    value={formData.slug}
+                    onChange={handleChange}
+                    placeholder="ex: minha-empresa"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Este identificador será usado nas URLs dos seus restaurantes.
+                  </p>
+                </div>
+                
+                <UrlPreview
+                  title="URL da Organização"
+                  description="Link para a página da sua organização"
+                  url={`${baseUrl}/${formData.slug}`}
+                  type="organization"
+                />
+                
+                <Button onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? "Salvando..." : "Salvar Identificador"}
+                </Button>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Separator />
 

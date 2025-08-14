@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateSlug } from "@/lib/utils";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const cuisineTypes = [
@@ -43,6 +43,7 @@ export default function NewRestaurantPage() {
     cuisine_type: "",
     description: "",
     image_url: "",
+    slug: "",
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -56,13 +57,21 @@ export default function NewRestaurantPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Gerar slug único
+      let slug = "";
+      if (formData.slug.trim()) {
+        slug = await generateUniqueSlug(generateSlug(formData.slug), 'restaurants');
+      } else {
+        slug = await generateUniqueSlug(generateSlug(formData.name), 'restaurants');
+      }
+
       const { data, error } = await supabase
         .from("restaurants")
         .insert([
           {
             ...formData,
             user_id: user.id,
-            slug: generateSlug(formData.name),
+            slug,
           },
         ])
         .select()
@@ -134,6 +143,20 @@ export default function NewRestaurantPage() {
                 placeholder="Ex: Restaurante do Chef"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">Identificador do Restaurante (Slug)</Label>
+              <Input
+                id="slug"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                placeholder="ex: restaurante-do-chef"
+              />
+              <p className="text-sm text-muted-foreground">
+                Deixe em branco para gerar automaticamente a partir do nome. Este será o identificador único do restaurante na URL.
+              </p>
             </div>
 
             <div className="space-y-2">
