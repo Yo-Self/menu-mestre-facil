@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
 const cuisineTypes = [
@@ -139,6 +140,13 @@ export default function EditRestaurantPage() {
     });
   };
 
+  const handleImageChange = (url: string) => {
+    setFormData({
+      ...formData,
+      image_url: url,
+    });
+  };
+
   if (loadingData) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -198,18 +206,14 @@ export default function EditRestaurantPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image_url">URL da Imagem</Label>
-              <Input
-                id="image_url"
-                name="image_url"
-                type="url"
-                value={formData.image_url}
-                onChange={handleChange}
-                placeholder="https://exemplo.com/imagem.jpg"
-                required
-              />
-            </div>
+            <ImageUpload
+              value={formData.image_url}
+              onChange={handleImageChange}
+              label="Imagem do Restaurante"
+              description="Escolha uma imagem do seu computador ou forneça uma URL"
+              placeholder="https://exemplo.com/imagem.jpg"
+              required
+            />
 
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewCategoryPage() {
@@ -108,19 +109,13 @@ export default function NewCategoryPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">URL da Imagem (opcional)</Label>
-              <Input
-                id="imageUrl"
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://exemplo.com/imagem.jpg"
-              />
-              <p className="text-sm text-muted-foreground">
-                Se não informar, será usada uma imagem padrão
-              </p>
-            </div>
+            <ImageUpload
+              value={imageUrl}
+              onChange={setImageUrl}
+              label="Imagem da Categoria"
+              description="Escolha uma imagem do seu computador ou forneça uma URL"
+              placeholder="https://exemplo.com/imagem.jpg"
+            />
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={loading}>

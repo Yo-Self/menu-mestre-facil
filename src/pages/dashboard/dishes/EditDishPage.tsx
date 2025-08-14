@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
 interface Category {
@@ -237,7 +238,7 @@ export default function EditDishPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Nome do Prato</Label>
               <Input
@@ -282,25 +283,26 @@ export default function EditDishPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="categories">Categorias</Label>
-                <MultiSelect
-                  options={categoryOptions}
-                  selected={selectedCategories}
-                  onSelectionChange={setSelectedCategories}
-                  placeholder="Selecione as categorias"
-                />
-                <p className="text-sm text-muted-foreground">
+                <div className="max-h-32 overflow-y-auto">
+                  <MultiSelect
+                    options={categoryOptions}
+                    selected={selectedCategories}
+                    onSelectionChange={setSelectedCategories}
+                    placeholder="Selecione as categorias"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
                   Selecione uma ou mais categorias para o prato
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">URL da Imagem</Label>
-              <Input
-                id="imageUrl"
-                type="url"
+            <div className="space-y-4">
+              <ImageUpload
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                onChange={setImageUrl}
+                label="Imagem do Prato"
+                description="Escolha uma imagem do seu computador ou forneça uma URL"
                 placeholder="https://exemplo.com/imagem.jpg"
                 required
               />

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
 interface Category {
@@ -178,7 +179,7 @@ export default function NewDishPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Nome do Prato</Label>
               <Input
@@ -200,6 +201,7 @@ export default function NewDishPage() {
                 rows={3}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="ingredients">Ingredientes (opcional)</Label>
               <Textarea
@@ -228,31 +230,29 @@ export default function NewDishPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="categories">Categorias</Label>
-                <MultiSelect
-                  options={categoryOptions}
-                  selected={selectedCategories}
-                  onSelectionChange={setSelectedCategories}
-                  placeholder="Selecione as categorias"
-                  disabled={loadingCategories}
-                />
-                <p className="text-sm text-muted-foreground">
+                <div className="max-h-32 overflow-y-auto">
+                  <MultiSelect
+                    options={categoryOptions}
+                    selected={selectedCategories}
+                    onSelectionChange={setSelectedCategories}
+                    placeholder="Selecione as categorias"
+                    disabled={loadingCategories}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
                   Selecione uma ou mais categorias para o prato
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">URL da Imagem (opcional)</Label>
-              <Input
-                id="imageUrl"
-                type="url"
+            <div className="space-y-4">
+              <ImageUpload
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                onChange={setImageUrl}
+                label="Imagem do Prato"
+                description="Escolha uma imagem do seu computador ou forneça uma URL"
                 placeholder="https://exemplo.com/imagem.jpg"
               />
-              <p className="text-sm text-muted-foreground">
-                Se não informar, será usada uma imagem padrão
-              </p>
             </div>
 
             <div className="space-y-4">

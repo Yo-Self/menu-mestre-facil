@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
 const cuisineTypes = [
@@ -110,6 +111,13 @@ export default function NewRestaurantPage() {
     });
   };
 
+  const handleImageChange = (url: string) => {
+    setFormData({
+      ...formData,
+      image_url: url,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -175,21 +183,14 @@ export default function NewRestaurantPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image_url">URL da Imagem</Label>
-              <Input
-                id="image_url"
-                name="image_url"
-                type="url"
-                value={formData.image_url}
-                onChange={handleChange}
-                placeholder="https://exemplo.com/imagem.jpg"
-                required
-              />
-              <p className="text-sm text-muted-foreground">
-                Se não informar, será usada uma imagem padrão
-              </p>
-            </div>
+            <ImageUpload
+              value={formData.image_url}
+              onChange={handleImageChange}
+              label="Imagem do Restaurante"
+              description="Escolha uma imagem do seu computador ou forneça uma URL"
+              placeholder="https://exemplo.com/imagem.jpg"
+              required
+            />
 
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
