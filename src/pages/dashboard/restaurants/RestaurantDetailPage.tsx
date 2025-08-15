@@ -8,6 +8,7 @@ import { UrlPreview } from "@/components/ui/url-preview";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRestaurantUrl, generatePublicMenuUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useRestaurant } from "@/components/providers/RestaurantProvider";
 
 interface Restaurant {
   id: string;
@@ -34,6 +35,7 @@ export default function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setCurrentRestaurantId } = useRestaurant();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<Stats>({ menus: 0, categories: 0, dishes: 0 });
@@ -41,10 +43,15 @@ export default function RestaurantDetailPage() {
 
   useEffect(() => {
     if (id) {
+      setCurrentRestaurantId(id);
       fetchRestaurant();
       fetchStats();
     }
-  }, [id]);
+    
+    return () => {
+      setCurrentRestaurantId(null);
+    };
+  }, [id, setCurrentRestaurantId]);
 
   const fetchRestaurant = async () => {
     try {

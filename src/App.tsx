@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { RestaurantProvider } from "./components/providers/RestaurantProvider";
 import AuthPage from "./pages/auth/AuthPage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import RestaurantsPage from "./pages/dashboard/restaurants/RestaurantsPage";
@@ -26,6 +27,7 @@ import ManageComplementsPage from "./pages/dashboard/dishes/ManageComplementsPag
 import NewCategoryPage from "./pages/dashboard/categories/NewCategoryPage";
 import NewMenuPage from "./pages/dashboard/menus/NewMenuPage";
 import SettingsPage from "./pages/dashboard/settings/SettingsPage";
+import WaiterCallTestPage from "./pages/dashboard/WaiterCallTestPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,14 +38,15 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/dashboard" element={
-            <AuthGuard>
-              <DashboardLayout />
-            </AuthGuard>
-          }>
+        <RestaurantProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/dashboard" element={
+              <AuthGuard>
+                <DashboardLayout />
+              </AuthGuard>
+            }>
             <Route index element={<Dashboard />} />
             <Route path="restaurants" element={<RestaurantsPage />} />
             <Route path="restaurants/new" element={<NewRestaurantPage />} />
@@ -64,9 +67,11 @@ const App = () => (
             <Route path="dishes/:id/edit" element={<EditDishPage />} />
             <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </RestaurantProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

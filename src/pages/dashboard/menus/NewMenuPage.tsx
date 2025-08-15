@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ export default function NewMenuPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -55,6 +56,7 @@ export default function NewMenuPage() {
           name,
           description: description || null,
           is_active: isActive,
+          waiter_call_enabled: waiterCallEnabled,
           restaurant_id: restaurants[0].id,
         });
 
@@ -132,6 +134,22 @@ export default function NewMenuPage() {
               <Switch
                 checked={isActive}
                 onCheckedChange={setIsActive}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Chamada de Garçom
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Permite que os clientes chamem garçons através do menu
+                </p>
+              </div>
+              <Switch
+                checked={waiterCallEnabled}
+                onCheckedChange={setWaiterCallEnabled}
               />
             </div>
 

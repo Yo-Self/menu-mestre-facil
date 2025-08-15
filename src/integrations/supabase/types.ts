@@ -260,6 +260,7 @@ export type Database = {
           name: string
           restaurant_id: string
           updated_at: string
+          waiter_call_enabled: boolean
         }
         Insert: {
           created_at?: string
@@ -269,6 +270,7 @@ export type Database = {
           name: string
           restaurant_id: string
           updated_at?: string
+          waiter_call_enabled?: boolean
         }
         Update: {
           created_at?: string
@@ -278,6 +280,7 @@ export type Database = {
           name?: string
           restaurant_id?: string
           updated_at?: string
+          waiter_call_enabled?: boolean
         }
         Relationships: [
           {
@@ -363,6 +366,54 @@ export type Database = {
           {
             foreignKeyName: "restaurants_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waiter_calls: {
+        Row: {
+          id: string
+          restaurant_id: string
+          table_number: number
+          status: string
+          created_at: string | null
+          attended_at: string | null
+          attended_by: string | null
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          table_number: number
+          status?: string
+          created_at?: string | null
+          attended_at?: string | null
+          attended_by?: string | null
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          table_number?: number
+          status?: string
+          created_at?: string | null
+          attended_at?: string | null
+          attended_by?: string | null
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_calls_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_calls_attended_by_fkey"
+            columns: ["attended_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
