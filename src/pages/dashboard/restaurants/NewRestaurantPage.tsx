@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 
 const cuisineTypes = [
   "Brasileira",
@@ -46,6 +47,7 @@ export default function NewRestaurantPage() {
     image_url: "",
     slug: "",
   });
+  const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -73,6 +75,7 @@ export default function NewRestaurantPage() {
             ...formData,
             user_id: user.id,
             slug,
+            waiter_call_enabled: waiterCallEnabled,
           },
         ])
         .select()
@@ -201,6 +204,22 @@ export default function NewRestaurantPage() {
                 onChange={handleChange}
                 placeholder="Descreva seu restaurante..."
                 rows={4}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Chamada de Garçom
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Permite que os clientes chamem garçons através do menu
+                </p>
+              </div>
+              <Switch
+                checked={waiterCallEnabled}
+                onCheckedChange={setWaiterCallEnabled}
               />
             </div>
 

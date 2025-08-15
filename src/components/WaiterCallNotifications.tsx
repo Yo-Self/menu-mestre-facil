@@ -6,20 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useWaiterCalls, type WaiterCall } from '@/hooks/useWaiterCalls';
-import { useMenuWaiterCall } from '@/hooks/useMenuWaiterCall';
+import { useRestaurantWaiterCall } from '@/hooks/useRestaurantWaiterCall';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface WaiterCallNotificationsProps {
   restaurantId: string;
-  menuId?: string;
   onCallAttended?: (call: WaiterCall) => void;
   className?: string;
 }
 
 export function WaiterCallNotifications({ 
   restaurantId, 
-  menuId,
   onCallAttended,
   className 
 }: WaiterCallNotificationsProps) {
@@ -32,8 +30,7 @@ export function WaiterCallNotifications({
     refreshInterval: 10000,
   });
 
-  const { waiterCallEnabled, loading: menuLoading } = useMenuWaiterCall({
-    menuId,
+  const { waiterCallEnabled, loading: restaurantLoading } = useRestaurantWaiterCall({
     restaurantId,
   });
 
@@ -148,8 +145,8 @@ export function WaiterCallNotifications({
     return `${diffInHours} horas atrás`;
   };
 
-  // Mostrar loading se ainda estiver carregando o status do menu
-  if (menuLoading) {
+  // Mostrar loading se ainda estiver carregando o status do restaurante
+  if (restaurantLoading) {
     return (
       <div className={cn("relative", className)}>
         <Button variant="ghost" size="icon" disabled>
@@ -200,10 +197,10 @@ export function WaiterCallNotifications({
                 </Button>
               </div>
               {waiterCallEnabled === false && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Bell className="h-4 w-4" />
-                  <span>Chamada de garçom desabilitada neste menu</span>
-                </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Bell className="h-4 w-4" />
+              <span>Chamada de garçom desabilitada neste restaurante</span>
+            </div>
               )}
               {pendingCount > 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -226,7 +223,7 @@ export function WaiterCallNotifications({
                   {waiterCallEnabled === false ? (
                     <div className="space-y-2">
                       <p>Nenhuma chamada pendente</p>
-                      <p className="text-xs">Novas chamadas estão desabilitadas neste menu</p>
+                      <p className="text-xs">Novas chamadas estão desabilitadas neste restaurante</p>
                     </div>
                   ) : (
                     <p>Nenhuma chamada pendente</p>

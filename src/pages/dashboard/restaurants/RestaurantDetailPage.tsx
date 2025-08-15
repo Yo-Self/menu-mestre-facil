@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ interface Restaurant {
   image_url: string;
   slug: string;
   created_at: string;
+  waiter_call_enabled: boolean;
 }
 
 interface Profile {
@@ -200,6 +201,14 @@ export default function RestaurantDetailPage() {
               
               <div className="text-xs text-muted-foreground">
                 Criado em: {new Date(restaurant.created_at).toLocaleDateString("pt-BR")}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Chamada de Garçom:</span>
+                <Badge variant={restaurant.waiter_call_enabled ? "default" : "secondary"} className="flex items-center gap-1">
+                  <Bell className="h-3 w-3" />
+                  {restaurant.waiter_call_enabled ? "Habilitada" : "Desabilitada"}
+                </Badge>
               </div>
             </CardContent>
           </Card>

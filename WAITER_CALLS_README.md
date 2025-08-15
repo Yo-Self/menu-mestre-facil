@@ -78,21 +78,21 @@ WHERE status = 'pending';
 
 ### Tabela `menus` (Campo Adicionado)
 ```sql
--- Campo para controlar se a chamada de garçom está habilitada no menu
-ALTER TABLE menus ADD COLUMN waiter_call_enabled BOOLEAN DEFAULT true NOT NULL;
+-- Campo para controlar se a chamada de garçom está habilitada no restaurante
+ALTER TABLE restaurants ADD COLUMN waiter_call_enabled BOOLEAN DEFAULT true NOT NULL;
 ```
 
 ### Operações Suportadas
 - **Criar chamada**: INSERT na tabela `waiter_calls`
 - **Buscar chamadas pendentes**: SELECT com filtros `restaurant_id` e `status = 'pending'`
 - **Atualizar status**: UPDATE com `status`, `attended_at` e `attended_by`
-- **Verificar habilitação**: SELECT `waiter_call_enabled` da tabela `menus`
+- **Verificar habilitação**: SELECT `waiter_call_enabled` da tabela `restaurants`
 
 ### Constraints Importantes
 - **Índice único parcial**: Apenas uma chamada pendente por mesa/restaurante
 - **Múltiplas chamadas atendidas**: Permite histórico de chamadas para a mesma mesa
 - **Status válidos**: 'pending', 'attended', 'cancelled'
-- **Controle por menu**: Cada menu pode ter a funcionalidade habilitada/desabilitada independentemente
+- **Controle por restaurante**: Cada restaurante pode ter a funcionalidade habilitada/desabilitada independentemente
 
 ## Funcionalidades
 
@@ -105,9 +105,9 @@ ALTER TABLE menus ADD COLUMN waiter_call_enabled BOOLEAN DEFAULT true NOT NULL;
 - [x] Interface responsiva
 - [x] Página de teste
 - [x] Contexto de restaurante
-- [x] Controle por menu (habilitar/desabilitar)
-- [x] Hook para verificar status do menu
-- [x] Interface de configuração nos menus
+- [x] Controle por restaurante (habilitar/desabilitar)
+- [x] Hook para verificar status do restaurante
+- [x] Interface de configuração nos restaurantes
 
 ### 🔄 Funcionalidades Opcionais (Futuras)
 - [ ] Notificações push do navegador
@@ -178,30 +178,30 @@ function MyComponent() {
 }
 ```
 
-### Verificar Status do Menu
+### Verificar Status do Restaurante
 ```tsx
-import { useMenuWaiterCall } from '@/hooks/useMenuWaiterCall';
+import { useRestaurantWaiterCall } from '@/hooks/useRestaurantWaiterCall';
 
 function MyComponent() {
-  const { waiterCallEnabled, loading } = useMenuWaiterCall({
-    menuId: 'menu-uuid', // ou restaurantId: 'restaurant-uuid'
+  const { waiterCallEnabled, loading } = useRestaurantWaiterCall({
+    restaurantId: 'restaurant-uuid',
   });
   
   if (!waiterCallEnabled) {
-    return <div>Chamada de garçom desabilitada neste menu</div>;
+    return <div>Chamada de garçom desabilitada neste restaurante</div>;
   }
   
   // Renderizar funcionalidade de chamada
 }
 ```
 
-### Configurar no Menu
-1. **Criar menu**: Acesse `/dashboard/menus/new`
-2. **Editar menu**: Acesse `/dashboard/menus/:id/edit`
+### Configurar no Restaurante
+1. **Criar restaurante**: Acesse `/dashboard/restaurants/new`
+2. **Editar restaurante**: Acesse `/dashboard/restaurants/:id/edit`
 3. **Toggle**: Use o switch "Chamada de Garçom" para habilitar/desabilitar
-4. **Visualizar**: Veja o status na página de detalhes do menu
+4. **Visualizar**: Veja o status na página de detalhes do restaurante
 
-### Comportamento do Controle por Menu
+### Comportamento do Controle por Restaurante
 
 **Quando habilitado**:
 - ✅ Ícone de notificações normal

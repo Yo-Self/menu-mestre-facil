@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Edit, ToggleLeft, ToggleRight, Plus, FolderOpen, Eye, ArrowUpDown, UtensilsCrossed, Menu, Bell } from "lucide-react";
+import { ArrowLeft, Edit, ToggleLeft, ToggleRight, Plus, FolderOpen, Eye, ArrowUpDown, UtensilsCrossed, Menu } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,6 @@ interface MenuRow {
   name: string;
   description: string | null;
   is_active: boolean;
-  waiter_call_enabled: boolean;
   restaurant_id: string;
   created_at?: string;
   updated_at?: string;
@@ -172,13 +171,7 @@ export default function MenuDetailPage() {
             </Badge>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Chamada de Garçom:</span>
-            <Badge variant={menu.waiter_call_enabled ? "default" : "secondary"} className="flex items-center gap-1">
-              <Bell className="h-3 w-3" />
-              {menu.waiter_call_enabled ? "Habilitada" : "Desabilitada"}
-            </Badge>
-          </div>
+
           
           {menu.description && (
             <p className="text-sm text-muted-foreground">{menu.description}</p>

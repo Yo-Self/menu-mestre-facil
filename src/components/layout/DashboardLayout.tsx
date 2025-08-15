@@ -21,14 +21,7 @@ export function DashboardLayout() {
     return match ? match[1] : null;
   };
 
-  // Extrair o ID do menu da URL quando estiver em uma página de menu
-  const getMenuIdFromUrl = () => {
-    const match = location.pathname.match(/\/menus\/([^\/]+)/);
-    return match ? match[1] : null;
-  };
-
   const restaurantId = currentRestaurantId || getRestaurantIdFromUrl();
-  const menuId = getMenuIdFromUrl();
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -59,7 +52,6 @@ export function DashboardLayout() {
               {restaurantId && (
                 <WaiterCallNotifications 
                   restaurantId={restaurantId}
-                  menuId={menuId}
                   onCallAttended={(call) => {
                     toast({
                       title: "Chamada atendida!",

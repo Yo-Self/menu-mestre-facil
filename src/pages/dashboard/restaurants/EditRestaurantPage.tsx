@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 
 const cuisineTypes = [
   "Brasileira",
@@ -43,6 +44,7 @@ interface Restaurant {
   cuisine_type: string;
   description: string;
   image_url: string;
+  waiter_call_enabled: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -57,6 +59,7 @@ export default function EditRestaurantPage() {
     description: "",
     image_url: "",
   });
+  const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
 
   useEffect(() => {
     if (id) {
@@ -80,6 +83,7 @@ export default function EditRestaurantPage() {
         description: data.description || "",
         image_url: data.image_url,
       });
+      setWaiterCallEnabled(data.waiter_call_enabled);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -104,6 +108,7 @@ export default function EditRestaurantPage() {
           cuisine_type: formData.cuisine_type,
           description: formData.description || null,
           image_url: formData.image_url,
+          waiter_call_enabled: waiterCallEnabled,
         })
         .eq("id", id);
 
@@ -224,6 +229,22 @@ export default function EditRestaurantPage() {
                 onChange={handleChange}
                 placeholder="Descreva seu restaurante..."
                 rows={4}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Chamada de Garçom
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Permite que os clientes chamem garçons através do menu
+                </p>
+              </div>
+              <Switch
+                checked={waiterCallEnabled}
+                onCheckedChange={setWaiterCallEnabled}
               />
             </div>
 

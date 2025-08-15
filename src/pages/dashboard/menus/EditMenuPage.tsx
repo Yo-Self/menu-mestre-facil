@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bell } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,6 @@ interface MenuRow {
   name: string;
   description: string | null;
   is_active: boolean;
-  waiter_call_enabled: boolean;
 }
 
 export default function EditMenuPage() {
@@ -27,7 +26,7 @@ export default function EditMenuPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
+
 
   useEffect(() => {
     if (!id) return;
@@ -45,7 +44,7 @@ export default function EditMenuPage() {
       const menu = data as MenuRow;
       setName(menu.name);
       setDescription(menu.description || "");
-      setWaiterCallEnabled(menu.waiter_call_enabled);
+
     } catch (error: any) {
       toast({ title: "Erro ao carregar menu", description: error.message, variant: "destructive" });
       navigate("/dashboard/menus");
@@ -64,7 +63,7 @@ export default function EditMenuPage() {
         .update({
           name,
           description: description || null,
-          waiter_call_enabled: waiterCallEnabled,
+
         })
         .eq("id", id);
       if (error) throw error;
@@ -114,21 +113,7 @@ export default function EditMenuPage() {
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  Chamada de Garçom
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Permite que os clientes chamem garçons através do menu
-                </p>
-              </div>
-              <Switch
-                checked={waiterCallEnabled}
-                onCheckedChange={setWaiterCallEnabled}
-              />
-            </div>
+
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>

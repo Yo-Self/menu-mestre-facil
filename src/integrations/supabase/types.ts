@@ -260,7 +260,6 @@ export type Database = {
           name: string
           restaurant_id: string
           updated_at: string
-          waiter_call_enabled: boolean
         }
         Insert: {
           created_at?: string
@@ -270,7 +269,6 @@ export type Database = {
           name: string
           restaurant_id: string
           updated_at?: string
-          waiter_call_enabled?: boolean
         }
         Update: {
           created_at?: string
@@ -280,7 +278,6 @@ export type Database = {
           name?: string
           restaurant_id?: string
           updated_at?: string
-          waiter_call_enabled?: boolean
         }
         Relationships: [
           {
@@ -337,6 +334,7 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
           welcome_message: string | null
+          waiter_call_enabled: boolean
         }
         Insert: {
           created_at?: string | null
@@ -349,6 +347,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           welcome_message?: string | null
+          waiter_call_enabled?: boolean
         }
         Update: {
           created_at?: string | null
@@ -361,6 +360,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           welcome_message?: string | null
+          waiter_call_enabled?: boolean
         }
         Relationships: [
           {

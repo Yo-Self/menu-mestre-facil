@@ -1,44 +1,35 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface UseMenuWaiterCallProps {
-  menuId?: string;
+interface UseRestaurantWaiterCallProps {
   restaurantId?: string;
 }
 
-export function useMenuWaiterCall({ menuId, restaurantId }: UseMenuWaiterCallProps) {
+export function useRestaurantWaiterCall({ restaurantId }: UseRestaurantWaiterCallProps) {
   const [waiterCallEnabled, setWaiterCallEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!menuId && !restaurantId) {
+    if (!restaurantId) {
       setWaiterCallEnabled(null);
       setLoading(false);
       return;
     }
 
     fetchWaiterCallStatus();
-  }, [menuId, restaurantId]);
+  }, [restaurantId]);
 
   const fetchWaiterCallStatus = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from('menus')
-        .select('waiter_call_enabled, id, name');
-
-      if (menuId) {
-        // Se temos um menuId específico, buscar esse menu
-        query = query.eq('id', menuId);
-      } else if (restaurantId) {
-        // Se temos apenas restaurantId, buscar qualquer menu do restaurante (priorizando ativos)
-        query = query.eq('restaurant_id', restaurantId).order('is_active', { ascending: false }).limit(1);
-      }
-
-      const { data, error: fetchError } = await query.single();
+      const { data, error: fetchError } = await supabase
+        .from('restaurants')
+        .select('waiter_call_enabled, id, name')
+        .eq('id', restaurantId)
+        .single();
 
       if (fetchError) {
         throw fetchError;
