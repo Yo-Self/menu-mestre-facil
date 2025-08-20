@@ -25,6 +25,8 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Restaurantes", url: "/dashboard/restaurants", icon: Store },
   { title: "Menus", url: "/dashboard/menus", icon: Menu },
+  { title: "Categorias", url: "/dashboard/categories", icon: FolderOpen },
+  { title: "Pratos", url: "/dashboard/dishes", icon: UtensilsCrossed },
   { title: "Configurações", url: "/dashboard/settings", icon: Settings },
 ];
 

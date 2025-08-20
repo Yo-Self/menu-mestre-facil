@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Store, Menu, UtensilsCrossed, FolderOpen } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Stats {
@@ -11,6 +12,7 @@ interface Stats {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     restaurants: 0,
     menus: 0,
@@ -80,6 +82,7 @@ export default function Dashboard() {
       description: "Total de restaurantes cadastrados",
       icon: Store,
       color: "text-primary",
+      route: "/dashboard/restaurants",
     },
     {
       title: "Menus",
@@ -87,6 +90,7 @@ export default function Dashboard() {
       description: "Menus criados",
       icon: Menu,
       color: "text-accent",
+      route: "/dashboard/menus",
     },
     {
       title: "Categorias",
@@ -94,6 +98,7 @@ export default function Dashboard() {
       description: "Categorias de pratos",
       icon: FolderOpen,
       color: "text-secondary",
+      route: "/dashboard/categories",
     },
     {
       title: "Pratos",
@@ -101,8 +106,13 @@ export default function Dashboard() {
       description: "Pratos cadastrados",
       icon: UtensilsCrossed,
       color: "text-muted-foreground",
+      route: "/dashboard/dishes",
     },
   ];
+
+  const handleCardClick = (route: string) => {
+    navigate(route);
+  };
 
   return (
     <div className="space-y-6">
@@ -115,7 +125,11 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => (
-          <Card key={stat.title}>
+          <Card 
+            key={stat.title}
+            className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 hover:border-primary/50"
+            onClick={() => handleCardClick(stat.route)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {stat.title}
