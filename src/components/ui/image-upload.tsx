@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Link, X, Image as ImageIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Upload, Link, X, Image as ImageIcon, Settings, Zap, Info } from "lucide-react";
+import { useImageUpload, ImageUploadOptions } from "@/hooks/useImageUpload";
+import { useTinyPNGSettings } from "@/hooks/useTinyPNGSettings";
 import { useToast } from "@/hooks/use-toast";
 
 interface ImageUploadProps {
@@ -15,6 +16,8 @@ interface ImageUploadProps {
   description?: string;
   placeholder?: string;
   required?: boolean;
+  uploadOptions?: ImageUploadOptions;
+  showAdvancedOptions?: boolean;
 }
 
 export function ImageUpload({
@@ -24,70 +27,28 @@ export function ImageUpload({
   description = "Escolha uma imagem do seu computador ou forneça uma URL",
   placeholder = "https://exemplo.com/imagem.jpg",
   required = false,
+  uploadOptions = {},
+  showAdvancedOptions = false,
 }: ImageUploadProps) {
-  const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(value || null);
+  const [showOptions, setShowOptions] = useState(showAdvancedOptions);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { settings: tinypngSettings, isOptimizationEnabled } = useTinyPNGSettings();
+
+  // Usar o hook de upload com as configurações salvas
+  const { uploadImage, uploading, compressing, isProcessing, options } = useImageUpload(uploadOptions);
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    // Validar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Tipo de arquivo inválido",
-        description: "Por favor, selecione apenas arquivos de imagem.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validar tamanho (máximo 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Arquivo muito grande",
-        description: "A imagem deve ter no máximo 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploading(true);
-
     try {
-      // Gerar nome único para o arquivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${Date.now()}_${fileName}`;
-
-      // Upload para Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('images')
-        .upload(filePath, file);
-
-      if (error) throw error;
-
-      // Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      onChange(publicUrl);
-      setPreview(publicUrl);
-
-      toast({
-        title: "Imagem enviada com sucesso!",
-        description: "A imagem foi salva e está pronta para uso.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao enviar imagem",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
+      const result = await uploadImage(file);
+      onChange(result.url);
+      setPreview(result.url);
+    } catch (error) {
+      // Erro já tratado no hook
+      console.error('Erro no upload:', error);
     }
   };
 
@@ -124,6 +85,14 @@ export function ImageUpload({
     e.preventDefault();
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -132,6 +101,102 @@ export function ImageUpload({
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
+
+      {/* Opções avançadas */}
+      {showAdvancedOptions && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Opções de Otimização
+              </CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowOptions(!showOptions)}
+                className="h-8 px-2"
+              >
+                {showOptions ? "Ocultar" : "Mostrar"}
+              </Button>
+            </div>
+          </CardHeader>
+          {showOptions && (
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="font-medium">Compressão:</p>
+                  <p className="text-muted-foreground">
+                    {options.enableCompression ? "Habilitada" : "Desabilitada"}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium">Redimensionamento:</p>
+                  <p className="text-muted-foreground">
+                    {options.enableResize ? "Habilitado" : "Desabilitado"}
+                  </p>
+                </div>
+                {options.enableResize && (
+                  <>
+                    <div>
+                      <p className="font-medium">Dimensões:</p>
+                      <p className="text-muted-foreground">
+                        {options.targetWidth} × {options.targetHeight}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Método:</p>
+                      <p className="text-muted-foreground capitalize">
+                        {options.resizeMethod}
+                      </p>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <p className="font-medium">Converter para WebP:</p>
+                  <p className="text-muted-foreground">
+                    {options.convertToWebP ? "Sim" : "Não"}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium">Tamanho máximo:</p>
+                  <p className="text-muted-foreground">
+                    {formatFileSize(options.maxSize || 10 * 1024 * 1024)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Status da otimização */}
+      {!isOptimizationEnabled() && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-800">
+                  Otimização de imagens desabilitada
+                </p>
+                <p className="text-xs text-amber-700">
+                  Configure sua API Key do TinyPNG nas configurações para ativar a otimização automática de imagens.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => window.location.href = '/dashboard/settings'}
+                >
+                  Ir para Configurações
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="upload" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -144,7 +209,7 @@ export function ImageUpload({
             <CardContent className="p-6">
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  uploading ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+                  isProcessing ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
                 }`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -155,20 +220,32 @@ export function ImageUpload({
                   accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
-                  disabled={uploading}
+                  disabled={isProcessing}
                 />
                 
                 <div className="space-y-4">
                   <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    {isProcessing ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    ) : (
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                    )}
                   </div>
                   
                   <div>
                     <p className="text-sm font-medium">
-                      {uploading ? "Enviando imagem..." : "Arraste uma imagem aqui ou clique para selecionar"}
+                      {isProcessing 
+                        ? (compressing ? "Otimizando imagem..." : "Enviando imagem...")
+                        : "Arraste uma imagem aqui ou clique para selecionar"
+                      }
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG, GIF até 5MB
+                      PNG, JPG, GIF até {formatFileSize(options.maxSize || 10 * 1024 * 1024)}
+                      {options.enableCompression && (
+                        <span className="ml-1 text-primary">
+                          • Otimização automática com TinyPNG
+                        </span>
+                      )}
                     </p>
                   </div>
                   
@@ -176,9 +253,9 @@ export function ImageUpload({
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
+                    disabled={isProcessing}
                   >
-                    <Upload className="w-4 h-4 mr-2" />
+                    <Upload className="w-4 w-4 mr-2" />
                     Selecionar Arquivo
                   </Button>
                 </div>
@@ -243,10 +320,12 @@ export function ImageUpload({
       )}
 
       {/* Indicador de carregamento */}
-      {uploading && (
+      {isProcessing && (
         <div className="flex items-center justify-center p-4 bg-muted rounded-lg">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
-          <span className="text-sm">Enviando imagem...</span>
+          <span className="text-sm">
+            {compressing ? "Otimizando imagem..." : "Enviando imagem..."}
+          </span>
         </div>
       )}
     </div>

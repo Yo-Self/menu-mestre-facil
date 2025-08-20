@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .cursor
+.env
+.env.local
+.env.local.backup
+.env.production
