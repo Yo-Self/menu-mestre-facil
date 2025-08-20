@@ -27,3 +27,6 @@ dist-ssr
 .env.local
 .env.local.backup
 .env.production
+
+# Generated configuration files
+public/js/config.js

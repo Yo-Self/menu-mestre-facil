@@ -4,16 +4,16 @@ export const config = {
     apiUrl: 'https://api.tinify.com',
   },
   supabase: {
-    url: import.meta.env.VITE_SUPABASE_URL || '',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    url: import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    anonKey: import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   },
 };
 
 export const validateConfig = () => {
   const requiredVars = [
     'TINYPNG_API_KEY',
-    'VITE_SUPABASE_URL',
-    'VITE_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   ];
 
   const missingVars = requiredVars.filter(
