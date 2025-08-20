@@ -1,11 +1,13 @@
+import { globalConfig } from './global-config';
+
 export const config = {
   tinypng: {
-    apiKey: import.meta.env.TINYPNG_API_KEY || '',
+    apiKey: globalConfig.tinypng.apiKey,
     apiUrl: 'https://api.tinify.com',
   },
   supabase: {
-    url: import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    anonKey: import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    url: globalConfig.supabase.url,
+    anonKey: globalConfig.supabase.anonKey,
   },
 };
 
@@ -19,9 +21,9 @@ export const validateConfig = () => {
   const missingVars = requiredVars.filter(
     (varName) => {
       if (varName === 'TINYPNG_API_KEY') {
-        return !import.meta.env.TINYPNG_API_KEY;
+        return !globalConfig.tinypng.apiKey;
       }
-      return !import.meta.env[varName];
+      return !globalConfig.supabase.url || !globalConfig.supabase.anonKey;
     }
   );
 

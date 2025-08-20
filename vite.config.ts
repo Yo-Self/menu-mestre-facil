@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
     });
   }
   
+  // Garantir que as variáveis tenham valores padrão se não estiverem definidas
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || 'https://wulazaggdihidadkhilg.supabase.co';
+  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
+  const tinypngKey = env.TINYPNG_API_KEY || '';
+  
   return {
     server: {
       host: "::",
@@ -43,10 +48,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Expor variáveis de ambiente específicas
-      'import.meta.env.TINYPNG_API_KEY': JSON.stringify(env.TINYPNG_API_KEY),
-      'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL),
-      'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      // Expor variáveis de ambiente específicas com valores padrão
+      'import.meta.env.TINYPNG_API_KEY': JSON.stringify(tinypngKey),
+      'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
+      'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
     },
   };
 });
