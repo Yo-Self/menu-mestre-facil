@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => {
   // Carregar variáveis de ambiente baseado no modo
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Log das variáveis carregadas (apenas em desenvolvimento)
+  if (mode === 'development') {
+    console.log('🔧 Modo de desenvolvimento detectado');
+    console.log('📋 Variáveis carregadas:', {
+      SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
+      SUPABASE_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
+      TINYPNG: env.TINYPNG_API_KEY ? '✓' : '✗'
+    });
+  }
+  
   return {
     server: {
       host: "::",

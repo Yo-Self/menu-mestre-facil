@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "npm run generate-config && vite build",
     "build:dev": "npm run generate-config && vite build --mode development",
+    "build:prod": "npm run generate-config && vite build --mode production",
     "generate-config": "node scripts/generate-public-config.js",
     "lint": "eslint .",
     "preview": "vite preview"
