@@ -13,15 +13,17 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: '.env.local' });
 
 // Para GitHub Actions, as variáveis vêm do ambiente do sistema
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Usar fallback para desenvolvimento local
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                    'https://wulazaggdihidadkhilg.supabase.co';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ Variáveis de ambiente não encontradas:');
-  console.error('- NEXT_PUBLIC_SUPABASE_URL:', SUPABASE_URL ? '✓' : '✗');
-  console.error('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? '✓' : '✗');
-  process.exit(1);
-}
+console.log('🔧 Modo de execução:', process.env.NODE_ENV || 'development');
+console.log('📋 Variáveis carregadas:', {
+  SUPABASE_URL: SUPABASE_URL ? '✓' : '✗',
+  SUPABASE_KEY: SUPABASE_ANON_KEY ? '✓' : '✗'
+});
 
 const configContent = `// Configuração pública para os arquivos JavaScript estáticos
 // Este arquivo é gerado automaticamente pelo build process
@@ -33,7 +35,4 @@ const outputPath = path.join(__dirname, '../public/js/config.js');
 
 fs.writeFileSync(outputPath, configContent);
 console.log('✅ Arquivo de configuração público gerado:', outputPath);
-console.log('📋 Configurações:', {
-  url: SUPABASE_URL,
-  key: SUPABASE_ANON_KEY ? '***' : 'NÃO DEFINIDA'
-});
+console.log('📁 Caminho:', outputPath);
