@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Bell } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -48,6 +48,8 @@ export default function NewRestaurantPage() {
     slug: "",
   });
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -76,6 +78,8 @@ export default function NewRestaurantPage() {
             user_id: user.id,
             slug,
             waiter_call_enabled: waiterCallEnabled,
+            whatsapp_phone: whatsappPhone.trim() || null,
+            whatsapp_enabled: whatsappEnabled,
           },
         ])
         .select()
@@ -221,6 +225,40 @@ export default function NewRestaurantPage() {
                 checked={waiterCallEnabled}
                 onCheckedChange={setWaiterCallEnabled}
               />
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Pedidos pelo WhatsApp
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite que os clientes façam pedidos diretamente pelo WhatsApp
+                  </p>
+                </div>
+                <Switch
+                  checked={whatsappEnabled}
+                  onCheckedChange={setWhatsappEnabled}
+                />
+              </div>
+
+              {whatsappEnabled && (
+                <div className="space-y-2 pl-6">
+                  <Label htmlFor="whatsapp_phone">Número do WhatsApp</Label>
+                  <Input
+                    id="whatsapp_phone"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="Ex: 5511999999999"
+                    className="max-w-xs"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Digite o número completo com código do país e DDD (ex: 5511999999999)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

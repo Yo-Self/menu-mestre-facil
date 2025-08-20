@@ -333,8 +333,11 @@ export type Database = {
           slug: string
           updated_at: string | null
           user_id: string | null
+          waiter_call_enabled: boolean | null
           welcome_message: string | null
-          waiter_call_enabled: boolean
+          whatsapp_custom_message: string | null
+          whatsapp_enabled: boolean | null
+          whatsapp_phone: string | null
         }
         Insert: {
           created_at?: string | null
@@ -346,8 +349,11 @@ export type Database = {
           slug: string
           updated_at?: string | null
           user_id?: string | null
+          waiter_call_enabled?: boolean | null
           welcome_message?: string | null
-          waiter_call_enabled?: boolean
+          whatsapp_custom_message?: string | null
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone?: string | null
         }
         Update: {
           created_at?: string | null
@@ -359,8 +365,11 @@ export type Database = {
           slug?: string
           updated_at?: string | null
           user_id?: string | null
+          waiter_call_enabled?: boolean | null
           welcome_message?: string | null
-          waiter_call_enabled?: boolean
+          whatsapp_custom_message?: string | null
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {
@@ -374,48 +383,48 @@ export type Database = {
       }
       waiter_calls: {
         Row: {
-          id: string
-          restaurant_id: string
-          table_number: number
-          status: string
-          created_at: string | null
           attended_at: string | null
           attended_by: string | null
+          created_at: string | null
+          id: string
           notes: string | null
+          restaurant_id: string
+          status: string
+          table_number: number
         }
         Insert: {
-          id?: string
-          restaurant_id: string
-          table_number: number
-          status?: string
-          created_at?: string | null
           attended_at?: string | null
           attended_by?: string | null
+          created_at?: string | null
+          id?: string
           notes?: string | null
+          restaurant_id: string
+          status?: string
+          table_number: number
         }
         Update: {
-          id?: string
-          restaurant_id?: string
-          table_number?: number
-          status?: string
-          created_at?: string | null
           attended_at?: string | null
           attended_by?: string | null
+          created_at?: string | null
+          id?: string
           notes?: string | null
+          restaurant_id?: string
+          status?: string
+          table_number?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "waiter_calls_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "waiter_calls_attended_by_fkey"
             columns: ["attended_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiter_calls_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
@@ -597,8 +606,10 @@ export type TablesUpdate<
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -624,17 +635,16 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"],
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

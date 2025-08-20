@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ interface Restaurant {
   slug: string;
   created_at: string;
   waiter_call_enabled: boolean;
+  whatsapp_phone: string | null;
+  whatsapp_enabled: boolean;
 }
 
 interface Profile {
@@ -210,6 +212,23 @@ export default function RestaurantDetailPage() {
                   {restaurant.waiter_call_enabled ? "Habilitada" : "Desabilitada"}
                 </Badge>
               </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Pedidos pelo WhatsApp:</span>
+                <Badge variant={restaurant.whatsapp_enabled ? "default" : "secondary"} className="flex items-center gap-1">
+                  <MessageCircle className="h-3 w-3" />
+                  {restaurant.whatsapp_enabled ? "Habilitado" : "Desabilitado"}
+                </Badge>
+              </div>
+              
+              {restaurant.whatsapp_enabled && restaurant.whatsapp_phone && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">WhatsApp:</span>
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {restaurant.whatsapp_phone}
+                  </Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

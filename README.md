@@ -1,105 +1,80 @@
-# Menu Mestre Fácil - Sistema de Gestão de Restaurantes
+# Menu Mestre Fácil
 
-Sistema completo de gestão de restaurantes desenvolvido com React, TypeScript e Supabase.
+Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, categorias, menus e funcionalidades avançadas como chamadas de garçom e pedidos pelo WhatsApp.
 
-## 🚀 Funcionalidades
+## Funcionalidades Principais
 
-- **Gestão de Restaurantes**: Cadastro e gerenciamento de restaurantes
-- **Menus Digitais**: Criação e personalização de menus
-- **Categorias de Pratos**: Organização por categorias
-- **Gestão de Pratos**: Cadastro completo de pratos com preços e descrições
-- **Dashboard Interativo**: Visão geral das estatísticas
-- **Sistema de Autenticação**: Login seguro com Supabase
-- **Interface Responsiva**: Funciona em desktop e mobile
+### 🏪 Gestão de Restaurantes
+- Cadastro e edição de restaurantes
+- Configuração de tipo de culinária
+- Upload de imagens
+- URLs personalizadas para cada restaurante
 
-## 🛠️ Tecnologias Utilizadas
+### 🍽️ Gestão de Cardápio
+- Criação de categorias de pratos
+- Cadastro de pratos com preços e descrições
+- Sistema de complementos e ingredientes
+- Menus ativos e inativos
 
-- **Frontend**: React 18 + TypeScript
-- **UI Components**: shadcn/ui + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth)
-- **Build Tool**: Vite
-- **Roteamento**: React Router DOM
-- **Ícones**: Lucide React
-- **Estado**: TanStack Query
+### 🔔 Chamadas de Garçom
+- Sistema integrado para clientes chamarem garçons
+- Notificações em tempo real
+- Gestão de status das chamadas
+- Atendimento por mesa
 
-## 📦 Instalação
+### 📱 Pedidos pelo WhatsApp
+- **NOVO**: Integração direta com WhatsApp para pedidos
+- Campo para número de telefone do restaurante
+- Chave para ativar/desativar a funcionalidade
+- Mensagens personalizadas para pedidos
 
-```bash
-# Clone o repositório
-git clone <URL_DO_REPOSITORIO>
+## Configuração do WhatsApp
 
-# Entre no diretório
-cd menu-mestre-facil
+### Para Restaurantes
+1. Acesse a página de edição do seu restaurante
+2. Ative a funcionalidade "Pedidos pelo WhatsApp"
+3. Digite o número completo (código do país + DDD + número)
+   - Exemplo: `5511999999999` (Brasil: 55, São Paulo: 11, número: 999999999)
+4. Salve as configurações
 
-# Instale as dependências
-npm install
+### Para Clientes
+- Quando a funcionalidade estiver ativa, os clientes verão um botão de WhatsApp no menu
+- Ao clicar, será redirecionado para o WhatsApp com uma mensagem pré-formatada
+- A mensagem incluirá os itens selecionados e informações do pedido
 
-# Configure as variáveis de ambiente
-# Crie um arquivo .env.local com suas credenciais do Supabase
+## Tecnologias Utilizadas
 
-# Inicie o servidor de desenvolvimento
-npm run dev
-```
+- **Frontend**: React + TypeScript + Vite
+- **UI Components**: Shadcn/ui + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
+- **Deploy**: Vercel (Frontend) + Supabase (Backend)
 
-## 🔧 Configuração do Supabase
-
-1. Crie uma conta no [Supabase](https://supabase.com)
-2. Crie um novo projeto
-3. Configure as tabelas necessárias (restaurants, menus, categories, dishes)
-4. Copie as credenciais para o arquivo de configuração
-
-## 📱 Como Usar
-
-1. **Cadastro**: Crie sua conta no sistema
-2. **Restaurantes**: Adicione seus restaurantes
-3. **Categorias**: Crie categorias para organizar os pratos
-4. **Pratos**: Cadastre os pratos com preços e descrições
-5. **Menus**: Crie menus personalizados para cada restaurante
-
-## 🎨 Interface
-
-O sistema possui uma interface moderna e intuitiva com:
-- Barra lateral responsiva com navegação
-- Dashboard com estatísticas em tempo real
-- Formulários intuitivos para cadastro
-- Design adaptativo para diferentes dispositivos
-
-## 🔒 Segurança
-
-- Autenticação segura com Supabase Auth
-- Proteção de rotas com AuthGuard
-- Validação de dados com Zod
-- Sessões persistentes
-
-## 📊 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 src/
 ├── components/          # Componentes reutilizáveis
-│   ├── auth/           # Componentes de autenticação
-│   ├── layout/         # Componentes de layout
-│   └── ui/             # Componentes de interface
 ├── pages/              # Páginas da aplicação
-│   ├── auth/           # Páginas de autenticação
-│   └── dashboard/      # Páginas do dashboard
 ├── hooks/              # Hooks customizados
 ├── integrations/       # Integrações externas
-│   └── supabase/       # Configuração do Supabase
-└── lib/                # Utilitários e configurações
+└── lib/               # Utilitários e helpers
 ```
 
-## 🚀 Deploy
+## Como Executar
 
-O projeto pode ser facilmente deployado em:
-- Vercel
-- Netlify
-- Railway
-- Qualquer plataforma que suporte aplicações React
+1. Clone o repositório
+2. Instale as dependências: `npm install`
+3. Configure as variáveis de ambiente do Supabase
+4. Execute: `npm run dev`
 
-## 📝 Licença
+## Contribuição
+
+1. Fork o projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
+
+## Licença
 
 Este projeto está sob a licença MIT.
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests.

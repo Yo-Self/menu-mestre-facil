@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,8 @@ interface Restaurant {
   description: string;
   image_url: string;
   waiter_call_enabled: boolean;
+  whatsapp_phone: string | null;
+  whatsapp_enabled: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -60,6 +62,8 @@ export default function EditRestaurantPage() {
     image_url: "",
   });
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -84,6 +88,8 @@ export default function EditRestaurantPage() {
         image_url: data.image_url,
       });
       setWaiterCallEnabled(data.waiter_call_enabled);
+      setWhatsappPhone(data.whatsapp_phone || "");
+      setWhatsappEnabled(data.whatsapp_enabled);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -109,6 +115,8 @@ export default function EditRestaurantPage() {
           description: formData.description || null,
           image_url: formData.image_url,
           waiter_call_enabled: waiterCallEnabled,
+          whatsapp_phone: whatsappPhone.trim() || null,
+          whatsapp_enabled: whatsappEnabled,
         })
         .eq("id", id);
 
@@ -246,6 +254,40 @@ export default function EditRestaurantPage() {
                 checked={waiterCallEnabled}
                 onCheckedChange={setWaiterCallEnabled}
               />
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Pedidos pelo WhatsApp
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite que os clientes façam pedidos diretamente pelo WhatsApp
+                  </p>
+                </div>
+                <Switch
+                  checked={whatsappEnabled}
+                  onCheckedChange={setWhatsappEnabled}
+                />
+              </div>
+
+              {whatsappEnabled && (
+                <div className="space-y-2 pl-6">
+                  <Label htmlFor="whatsapp_phone">Número do WhatsApp</Label>
+                  <Input
+                    id="whatsapp_phone"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="Ex: 5511999999999"
+                    className="max-w-xs"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Digite o número completo com código do país e DDD (ex: 5511999999999)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">
