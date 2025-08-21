@@ -14,6 +14,11 @@ interface Menu {
   is_active: boolean;
   created_at: string;
   restaurant_id: string;
+  restaurants: {
+    id: string;
+    name: string;
+    user_id: string;
+  };
 }
 
 export default function MenusPage() {
@@ -181,6 +186,11 @@ export default function MenusPage() {
                     {menu.description}
                   </CardDescription>
                 )}
+                <div className="mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {menu.restaurants.name}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">

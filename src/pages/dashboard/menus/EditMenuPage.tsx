@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +16,12 @@ interface MenuRow {
   name: string;
   description: string | null;
   is_active: boolean;
+  restaurant_id: string;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
 }
 
 export default function EditMenuPage() {
@@ -26,12 +33,40 @@ export default function EditMenuPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [restaurantId, setRestaurantId] = useState("");
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
 
 
   useEffect(() => {
     if (!id) return;
+    fetchRestaurants();
     fetchMenu(id);
   }, [id]);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+      setRestaurants(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar restaurantes",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRestaurants(false);
+    }
+  };
 
   const fetchMenu = async (menuId: string) => {
     try {
@@ -44,6 +79,7 @@ export default function EditMenuPage() {
       const menu = data as MenuRow;
       setName(menu.name);
       setDescription(menu.description || "");
+      setRestaurantId(menu.restaurant_id);
 
     } catch (error: any) {
       toast({ title: "Erro ao carregar menu", description: error.message, variant: "destructive" });
@@ -56,6 +92,16 @@ export default function EditMenuPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    
+    if (!restaurantId) {
+      toast({
+        title: "Erro",
+        description: "Selecione um restaurante para o menu",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -63,7 +109,7 @@ export default function EditMenuPage() {
         .update({
           name,
           description: description || null,
-
+          restaurant_id: restaurantId,
         })
         .eq("id", id);
       if (error) throw error;
@@ -113,6 +159,21 @@ export default function EditMenuPage() {
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="restaurant">Restaurante</Label>
+              <Select onValueChange={setRestaurantId} value={restaurantId} defaultValue={restaurantId}>
+                <SelectTrigger id="restaurant">
+                  <SelectValue placeholder="Selecione um restaurante" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((restaurant) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
 
             <div className="flex gap-4 pt-4">

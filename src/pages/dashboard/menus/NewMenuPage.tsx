@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,59 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface Restaurant {
+  id: string;
+  name: string;
+}
 
 export default function NewMenuPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [restaurantId, setRestaurantId] = useState("");
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (error) throw error;
+      setRestaurants(data || []);
+      
+      // Selecionar o primeiro restaurante por padrão
+      if (data && data.length > 0) {
+        setRestaurantId(data[0].id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar restaurantes",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRestaurants(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,17 +76,10 @@ export default function NewMenuPage() {
         return;
       }
 
-      // Buscar o primeiro restaurante do usuário
-      const { data: restaurants, error: restaurantError } = await supabase
-        .from("restaurants")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (restaurantError || !restaurants || restaurants.length === 0) {
+      if (!restaurantId) {
         toast({
           title: "Erro",
-          description: "Você precisa ter um restaurante cadastrado primeiro",
+          description: "Selecione um restaurante para o menu",
           variant: "destructive",
         });
         return;
@@ -56,8 +91,7 @@ export default function NewMenuPage() {
           name,
           description: description || null,
           is_active: isActive,
-
-          restaurant_id: restaurants[0].id,
+          restaurant_id: restaurantId,
         });
 
       if (error) throw error;
@@ -102,6 +136,25 @@ export default function NewMenuPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="restaurant">Restaurante</Label>
+              <Select value={restaurantId} onValueChange={setRestaurantId} disabled={loadingRestaurants}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um restaurante" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((restaurant) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {loadingRestaurants && (
+                <p className="text-sm text-muted-foreground">Carregando restaurantes...</p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome do Menu</Label>
               <Input

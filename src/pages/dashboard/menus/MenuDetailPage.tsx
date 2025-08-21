@@ -1,12 +1,31 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Edit, ToggleLeft, ToggleRight, Plus, FolderOpen, Eye, ArrowUpDown, UtensilsCrossed, Menu } from "lucide-react";
+import { ArrowLeft, Edit, ToggleLeft, ToggleRight, Plus, FolderOpen, Eye, ArrowUpDown, UtensilsCrossed, Menu, GripVertical, Save, X, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface MenuRow {
   id: string;
@@ -16,6 +35,10 @@ interface MenuRow {
   restaurant_id: string;
   created_at?: string;
   updated_at?: string;
+  restaurants: {
+    id: string;
+    name: string;
+  };
 }
 
 interface Category {
@@ -24,6 +47,93 @@ interface Category {
   image_url: string;
   position: number;
   dishes_count: number;
+}
+
+interface SortableCategoryProps {
+  category: Category;
+  isEditing: boolean;
+  onDelete: (categoryId: string, categoryName: string) => void;
+}
+
+function SortableCategory({ category, isEditing, onDelete }: SortableCategoryProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card 
+      ref={setNodeRef} 
+      style={style} 
+      className={`overflow-hidden ${isDragging ? 'shadow-lg' : ''}`}
+    >
+      <div className="aspect-square relative">
+        <img
+          src={category.image_url}
+          alt={category.name}
+          className="w-full h-full object-cover"
+        />
+        {isEditing && (
+          <div className="absolute top-2 left-2">
+            <div
+              {...attributes}
+              {...listeners}
+              className="bg-white/90 rounded p-1 cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical className="h-4 w-4 text-gray-600" />
+            </div>
+          </div>
+        )}
+      </div>
+      <CardHeader>
+        <CardTitle className="text-lg">{category.name}</CardTitle>
+        <CardDescription>
+          {category.dishes_count} prato{(category.dishes_count !== 1 ? "s" : "")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to={`/dashboard/categories/${category.id}/dishes`}>
+            <Button variant="outline" size="sm">
+              <UtensilsCrossed className="h-4 w-4 mr-2" />
+              Gerenciar Pratos
+            </Button>
+          </Link>
+          <Link to={`/dashboard/categories/${category.id}/order`}>
+            <Button variant="outline" size="sm">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Ordenar
+            </Button>
+          </Link>
+          <Link to={`/dashboard/categories/${category.id}/edit`}>
+            <Button variant="outline" size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </Link>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onDelete(category.id, category.name)}
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Excluir
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function MenuDetailPage() {
@@ -35,6 +145,16 @@ export default function MenuDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [orderedCategories, setOrderedCategories] = useState<Category[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -46,17 +166,20 @@ export default function MenuDetailPage() {
       // Buscar informações do menu
       const { data: menuData, error: menuError } = await supabase
         .from("menus")
-        .select("*")
+        .select(`
+          *,
+          restaurants (
+            id,
+            name
+          )
+        `)
         .eq("id", menuId)
         .single();
       
       if (menuError) throw menuError;
       setMenu(menuData as MenuRow);
 
-      // Buscar categorias do restaurante (todas as categorias estão disponíveis para o menu)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      // Buscar categorias do restaurante específico do menu
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("categories")
         .select(`
@@ -64,12 +187,9 @@ export default function MenuDetailPage() {
           name,
           image_url,
           position,
-          restaurants!inner (
-            id,
-            user_id
-          )
+          restaurant_id
         `)
-        .eq("restaurants.user_id", user.id)
+        .eq("restaurant_id", menuData.restaurant_id)
         .order("position", { ascending: true })
         .order("name", { ascending: true });
 
@@ -114,6 +234,103 @@ export default function MenuDetailPage() {
       toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
     } finally {
       setToggling(false);
+    }
+  };
+
+  const startEditingOrder = () => {
+    setOrderedCategories([...categories]);
+    setIsEditingOrder(true);
+  };
+
+  const cancelEditingOrder = () => {
+    setIsEditingOrder(false);
+    setOrderedCategories([]);
+  };
+
+  const saveOrder = async () => {
+    if (!menu) return;
+    setSavingOrder(true);
+    
+    try {
+      // Atualizar a posição de cada categoria individualmente
+      for (let i = 0; i < orderedCategories.length; i++) {
+        const category = orderedCategories[i];
+        const { error } = await supabase
+          .from("categories")
+          .update({ position: i + 1 })
+          .eq("id", category.id);
+
+        if (error) {
+          console.error("Erro ao atualizar categoria:", category.name, error);
+          throw error;
+        }
+      }
+
+      // Atualizar o estado local
+      setCategories(orderedCategories.map((cat, index) => ({ ...cat, position: index + 1 })));
+      setIsEditingOrder(false);
+      setOrderedCategories([]);
+
+      toast({
+        title: "Ordem salva",
+        description: "A ordem das categorias foi atualizada com sucesso.",
+      });
+    } catch (error: any) {
+      console.error("Erro completo:", error);
+      toast({
+        title: "Erro ao salvar ordem",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setOrderedCategories((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a categoria "${categoryName}"? Esta ação não pode ser desfeita e todos os pratos desta categoria também serão excluídos.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", categoryId);
+
+      if (error) {
+        console.error("Erro ao excluir categoria:", error);
+        throw error;
+      }
+
+      // Atualizar o estado local removendo a categoria excluída
+      setCategories(categories.filter(cat => cat.id !== categoryId));
+      setOrderedCategories(orderedCategories.filter(cat => cat.id !== categoryId));
+
+      toast({
+        title: "Categoria excluída",
+        description: `${categoryName} foi excluída com sucesso.`,
+      });
+    } catch (error: any) {
+      console.error("Erro completo:", error);
+      toast({
+        title: "Erro ao excluir categoria",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -171,7 +388,10 @@ export default function MenuDetailPage() {
             </Badge>
           </div>
           
-
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Restaurante:</span>
+            <Badge variant="outline">{menu.restaurants.name}</Badge>
+          </div>
           
           {menu.description && (
             <p className="text-sm text-muted-foreground">{menu.description}</p>
@@ -186,12 +406,33 @@ export default function MenuDetailPage() {
             Gerencie as categorias e pratos do menu
           </p>
         </div>
-        <Link to="/dashboard/categories/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Categoria
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {isEditingOrder ? (
+            <>
+              <Button onClick={saveOrder} disabled={savingOrder}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingOrder ? "Salvando..." : "Salvar Ordem"}
+              </Button>
+              <Button variant="outline" onClick={cancelEditingOrder}>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={startEditingOrder}>
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                Reordenar Categorias
+              </Button>
+              <Link to="/dashboard/categories/new">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Categoria
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       {categories.length === 0 ? (
@@ -212,47 +453,42 @@ export default function MenuDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category) => (
-            <Card key={category.id} className="overflow-hidden">
-              <div className="aspect-square relative">
-                <img
-                  src={category.image_url}
-                  alt={category.name}
-                  className="w-full h-full object-cover"
+        <>
+          {isEditingOrder ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedCategories.map(cat => cat.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {orderedCategories.map((category) => (
+                     <SortableCategory 
+                       key={category.id} 
+                       category={category} 
+                       isEditing={true}
+                       onDelete={handleDeleteCategory}
+                     />
+                   ))}
+                 </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map((category) => (
+                <SortableCategory 
+                  key={category.id} 
+                  category={category} 
+                  isEditing={false}
+                  onDelete={handleDeleteCategory}
                 />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-lg">{category.name}</CardTitle>
-                <CardDescription>
-                  {category.dishes_count} prato{(category.dishes_count !== 1 ? "s" : "")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link to={`/dashboard/categories/${category.id}/dishes`}>
-                    <Button variant="outline" size="sm">
-                      <UtensilsCrossed className="h-4 w-4 mr-2" />
-                      Gerenciar Pratos
-                    </Button>
-                  </Link>
-                  <Link to={`/dashboard/categories/${category.id}/order`}>
-                    <Button variant="outline" size="sm">
-                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                      Ordenar
-                    </Button>
-                  </Link>
-                  <Link to={`/dashboard/categories/${category.id}/edit`}>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <div className="bg-muted/50 p-4 rounded-lg">
