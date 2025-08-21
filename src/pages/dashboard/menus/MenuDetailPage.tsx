@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { CategoryImage } from "@/components/ui/category-image";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -78,8 +79,9 @@ function SortableCategory({ category, isEditing, onDelete }: SortableCategoryPro
       className={`overflow-hidden ${isDragging ? 'shadow-lg' : ''}`}
     >
       <div className="aspect-square relative">
-        <img
-          src={category.image_url}
+        <CategoryImage
+          categoryId={category.id}
+          categoryImageUrl={category.image_url}
           alt={category.name}
           className="w-full h-full object-cover"
         />

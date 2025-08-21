@@ -4,6 +4,7 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CategoryImage } from "@/components/ui/category-image";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -143,8 +144,9 @@ export default function CategoryPreviewPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
-            <img
-              src={category.image_url}
+            <CategoryImage
+              categoryId={category.id}
+              categoryImageUrl={category.image_url}
               alt={category.name}
               className="w-12 h-12 object-cover rounded-md"
             />

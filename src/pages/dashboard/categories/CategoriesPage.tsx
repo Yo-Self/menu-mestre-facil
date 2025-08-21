@@ -4,6 +4,7 @@ import { Plus, Edit, Trash2, ArrowUpDown, Eye, UtensilsCrossed } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CategoryImage } from "@/components/ui/category-image";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -148,8 +149,9 @@ export default function CategoriesPage() {
           {categories.map((category) => (
             <Card key={category.id} className="overflow-hidden">
               <div className="aspect-square relative">
-                <img
-                  src={category.image_url}
+                <CategoryImage
+                  categoryId={category.id}
+                  categoryImageUrl={category.image_url}
                   alt={category.name}
                   className="w-full h-full object-cover"
                 />
