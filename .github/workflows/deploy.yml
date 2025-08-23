@@ -18,12 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # Definir variáveis de ambiente globalmente para todo o job
-    # Usar o contexto secrets corretamente conforme a documentação
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
       NODE_ENV: production
       GITHUB_ACTIONS: true
     
@@ -37,8 +32,16 @@ jobs:
         node-version: '18'
         cache: 'npm'
         
+    - name: Cache node_modules
+      uses: actions/cache@v3
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+        
     - name: Install dependencies
-      run: npm ci
+      run: npm install
       
     - name: Test environment variables
       run: node scripts/test-github-actions.js
