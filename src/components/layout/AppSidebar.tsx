@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Home,
   Settings,
+  Download,
 } from "lucide-react";
 
 import {
@@ -27,6 +28,7 @@ const menuItems = [
   { title: "Menus", url: "/dashboard/menus", icon: Menu },
   { title: "Categorias", url: "/dashboard/categories", icon: FolderOpen },
   { title: "Pratos", url: "/dashboard/dishes", icon: UtensilsCrossed },
+  { title: "Importar Menu", url: "/dashboard/import-menu", icon: Download },
   { title: "Configurações", url: "/dashboard/settings", icon: Settings },
 ];
 

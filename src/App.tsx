@@ -28,6 +28,7 @@ import NewCategoryPage from "./pages/dashboard/categories/NewCategoryPage";
 import NewMenuPage from "./pages/dashboard/menus/NewMenuPage";
 import SettingsPage from "./pages/dashboard/settings/SettingsPage";
 import WaiterCallTestPage from "./pages/dashboard/WaiterCallTestPage";
+import MenuImportPage from "./pages/dashboard/MenuImportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,12 +66,13 @@ const App = () => (
             <Route path="dishes" element={<DishesPage />} />
             <Route path="dishes/new" element={<NewDishPage />} />
             <Route path="dishes/:id/edit" element={<EditDishPage />} />
-            <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
+                        <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="import-menu" element={<MenuImportPage />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </RestaurantProvider>
       </BrowserRouter>
     </TooltipProvider>
