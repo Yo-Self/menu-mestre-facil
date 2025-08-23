@@ -13,6 +13,7 @@ ALTER TABLE public.profiles ALTER COLUMN id SET DEFAULT gen_random_uuid();
 ALTER TABLE public.waiter_calls ENABLE ROW LEVEL SECURITY;
 
 -- 3. Create comprehensive RLS policies for waiter_calls
+DROP POLICY IF EXISTS "Restaurant staff can view waiter calls for their restaurants" ON public.waiter_calls;
 CREATE POLICY "Restaurant staff can view waiter calls for their restaurants"
 ON public.waiter_calls
 FOR SELECT
@@ -24,6 +25,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Restaurant staff can update waiter calls for their restaurants" ON public.waiter_calls;
 CREATE POLICY "Restaurant staff can update waiter calls for their restaurants"
 ON public.waiter_calls
 FOR UPDATE
@@ -42,6 +44,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Restaurant staff can insert waiter calls for their restaurants" ON public.waiter_calls;
 CREATE POLICY "Restaurant staff can insert waiter calls for their restaurants"
 ON public.waiter_calls
 FOR INSERT
@@ -53,6 +56,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Restaurant staff can delete waiter calls for their restaurants" ON public.waiter_calls;
 CREATE POLICY "Restaurant staff can delete waiter calls for their restaurants"
 ON public.waiter_calls
 FOR DELETE
@@ -66,16 +70,19 @@ USING (
 
 -- 4. Add public read policies for public-facing data (restaurants, categories, dishes)
 -- These are needed for the public menu display
+DROP POLICY IF EXISTS "Public can view active restaurants" ON public.restaurants;
 CREATE POLICY "Public can view active restaurants"
 ON public.restaurants
 FOR SELECT
 USING (true);
 
+DROP POLICY IF EXISTS "Public can view categories" ON public.categories;
 CREATE POLICY "Public can view categories"
 ON public.categories
 FOR SELECT
 USING (true);
 
+DROP POLICY IF EXISTS "Public can view available dishes" ON public.dishes;
 CREATE POLICY "Public can view available dishes"
 ON public.dishes
 FOR SELECT

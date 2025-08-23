@@ -1,9 +1,11 @@
--- Criar trigger para atualizar updated_at automaticamente nas tabelas
+-- Criar trigger para atualizar updated_at automaticamente nas tabelas (se não existir)
+DROP TRIGGER IF EXISTS update_restaurants_updated_at ON public.restaurants;
 CREATE TRIGGER update_restaurants_updated_at
   BEFORE UPDATE ON public.restaurants
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_dishes_updated_at ON public.dishes;
 CREATE TRIGGER update_dishes_updated_at
   BEFORE UPDATE ON public.dishes
   FOR EACH ROW
@@ -13,6 +15,7 @@ CREATE TRIGGER update_dishes_updated_at
 DROP POLICY IF EXISTS "Permitir inserção para usuários autenticados" ON public.restaurants;
 DROP POLICY IF EXISTS "Permitir atualização para usuários autenticados" ON public.restaurants;
 DROP POLICY IF EXISTS "Permitir exclusão para usuários autenticados" ON public.restaurants;
+DROP POLICY IF EXISTS "Users can manage their own restaurants" ON public.restaurants;
 
 CREATE POLICY "Users can manage their own restaurants" 
 ON public.restaurants 
@@ -23,6 +26,7 @@ USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Permitir inserção para usuários autenticados" ON public.categories;
 DROP POLICY IF EXISTS "Permitir atualização para usuários autenticados" ON public.categories;
 DROP POLICY IF EXISTS "Permitir exclusão para usuários autenticados" ON public.categories;
+DROP POLICY IF EXISTS "Users can manage categories of their restaurants" ON public.categories;
 
 CREATE POLICY "Users can manage categories of their restaurants" 
 ON public.categories 
@@ -37,6 +41,7 @@ USING (EXISTS (
 DROP POLICY IF EXISTS "Permitir inserção para usuários autenticados" ON public.dishes;
 DROP POLICY IF EXISTS "Permitir atualização para usuários autenticados" ON public.dishes;
 DROP POLICY IF EXISTS "Permitir exclusão para usuários autenticados" ON public.dishes;
+DROP POLICY IF EXISTS "Users can manage dishes of their restaurants" ON public.dishes;
 
 CREATE POLICY "Users can manage dishes of their restaurants" 
 ON public.dishes 

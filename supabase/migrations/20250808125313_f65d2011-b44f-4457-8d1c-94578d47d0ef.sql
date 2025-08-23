@@ -51,10 +51,10 @@ ALTER TABLE public.complements ENABLE ROW LEVEL SECURITY;
 
 -- 3) Policies (drop and recreate to keep deterministic)
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complement_groups' AND polname='Public can view complement groups') THEN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complement_groups' AND policyname='Public can view complement groups') THEN
     DROP POLICY "Public can view complement groups" ON public.complement_groups;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complement_groups' AND polname='Restaurant owners can manage their complement groups') THEN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complement_groups' AND policyname='Restaurant owners can manage their complement groups') THEN
     DROP POLICY "Restaurant owners can manage their complement groups" ON public.complement_groups;
   END IF;
 END $$;
@@ -87,10 +87,10 @@ WITH CHECK (
 );
 
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complements' AND polname='Public can view complements') THEN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complements' AND policyname='Public can view complements') THEN
     DROP POLICY "Public can view complements" ON public.complements;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complements' AND polname='Restaurant owners can manage their complements') THEN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='complements' AND policyname='Restaurant owners can manage their complements') THEN
     DROP POLICY "Restaurant owners can manage their complements" ON public.complements;
   END IF;
 END $$;

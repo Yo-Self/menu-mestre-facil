@@ -3,31 +3,45 @@
 
 -- 1. Add data validation constraints
 ALTER TABLE public.restaurants 
+DROP CONSTRAINT IF EXISTS check_restaurant_name_length;
+ALTER TABLE public.restaurants 
 ADD CONSTRAINT check_restaurant_name_length 
 CHECK (char_length(name) >= 1 AND char_length(name) <= 100);
 
 ALTER TABLE public.dishes 
+DROP CONSTRAINT IF EXISTS check_dish_name_length;
+ALTER TABLE public.dishes 
 ADD CONSTRAINT check_dish_name_length 
 CHECK (char_length(name) >= 1 AND char_length(name) <= 100);
 
+ALTER TABLE public.categories 
+DROP CONSTRAINT IF EXISTS check_category_name_length;
 ALTER TABLE public.categories 
 ADD CONSTRAINT check_category_name_length 
 CHECK (char_length(name) >= 1 AND char_length(name) <= 50);
 
 -- 2. Add URL validation constraints
 ALTER TABLE public.restaurants 
+DROP CONSTRAINT IF EXISTS check_valid_image_url;
+ALTER TABLE public.restaurants 
 ADD CONSTRAINT check_valid_image_url 
 CHECK (image_url IS NULL OR image_url ~ '^https?://');
 
+ALTER TABLE public.dishes 
+DROP CONSTRAINT IF EXISTS check_valid_dish_image_url;
 ALTER TABLE public.dishes 
 ADD CONSTRAINT check_valid_dish_image_url 
 CHECK (image_url IS NULL OR image_url ~ '^https?://');
 
 ALTER TABLE public.categories 
+DROP CONSTRAINT IF EXISTS check_valid_category_image_url;
+ALTER TABLE public.categories 
 ADD CONSTRAINT check_valid_category_image_url 
 CHECK (image_url IS NULL OR image_url ~ '^https?://');
 
 -- 3. Add phone number validation for WhatsApp
+ALTER TABLE public.restaurants 
+DROP CONSTRAINT IF EXISTS check_valid_whatsapp_phone;
 ALTER TABLE public.restaurants 
 ADD CONSTRAINT check_valid_whatsapp_phone 
 CHECK (whatsapp_phone IS NULL OR whatsapp_phone ~ '^\+[1-9]\d{1,14}$');
@@ -59,6 +73,7 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Only allow users to see their own audit entries
+DROP POLICY IF EXISTS "Users can view their own audit entries" ON public.audit_log;
 CREATE POLICY "Users can view their own audit entries"
 ON public.audit_log
 FOR SELECT
