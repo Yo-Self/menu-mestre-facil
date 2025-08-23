@@ -92,7 +92,7 @@ export default function NewRestaurantPage() {
         description: `${formData.name} foi adicionado aos seus restaurantes.`,
       });
 
-      navigate(`/gestor/dashboard/restaurants/${data.id}`);
+      navigate(`/dashboard/restaurants/${data.id}`);
     } catch (error: any) {
       toast({
         title: "Erro ao criar restaurante",

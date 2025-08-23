@@ -96,7 +96,7 @@ export default function EditRestaurantPage() {
         description: error.message,
         variant: "destructive",
       });
-      navigate("/gestor/dashboard/restaurants");
+      navigate("/dashboard/restaurants");
     } finally {
       setLoadingData(false);
     }
@@ -127,7 +127,7 @@ export default function EditRestaurantPage() {
         description: `${formData.name} foi atualizado.`,
       });
 
-      navigate(`/gestor/dashboard/restaurants/${id}`);
+      navigate(`/dashboard/restaurants/${id}`);
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar restaurante",

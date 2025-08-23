@@ -86,7 +86,7 @@ export default function CategoryDishesPage() {
         description: error.message,
         variant: "destructive",
       });
-      navigate("/gestor/dashboard/categories");
+      navigate("/dashboard/categories");
     } finally {
       setLoading(false);
     }
@@ -176,7 +176,7 @@ export default function CategoryDishesPage() {
     return (
       <div className="text-center py-8">
         <h2 className="text-xl font-semibold mb-2">Categoria não encontrada</h2>
-        <Button variant="outline" onClick={() => navigate("/gestor/dashboard/categories")}>
+        <Button variant="outline" onClick={() => navigate("/dashboard/categories")}>
           Voltar às Categorias
         </Button>
       </div>
@@ -187,15 +187,15 @@ export default function CategoryDishesPage() {
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Menus", href: "/gestor/dashboard/menus", icon: Menu },
-          { label: "Categorias", href: "/gestor/dashboard/categories", icon: FolderOpen },
+          { label: "Menus", href: "/dashboard/menus", icon: Menu },
+          { label: "Categorias", href: "/dashboard/categories", icon: FolderOpen },
           { label: category.name, icon: UtensilsCrossed }
         ]}
       />
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/categories")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/categories")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -207,7 +207,7 @@ export default function CategoryDishesPage() {
         </div>
         
         <div className="flex gap-2">
-          <Link to="/gestor/dashboard/dishes/new">
+          <Link to="/dashboard/dishes/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Novo Prato
@@ -237,7 +237,7 @@ export default function CategoryDishesPage() {
               <p className="text-muted-foreground mb-4">
                 Nenhum prato cadastrado nesta categoria.
               </p>
-              <Link to="/gestor/dashboard/dishes/new">
+              <Link to="/dashboard/dishes/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Primeiro Prato
@@ -294,13 +294,13 @@ export default function CategoryDishesPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link to={`/gestor/dashboard/dishes/${dish.id}/edit`}>
+                      <Link to={`/dashboard/dishes/${dish.id}/edit`}>
                         <Button variant="outline" size="sm">
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
                         </Button>
                       </Link>
-                      <Link to={`/gestor/dashboard/dishes/${dish.id}/complements`}>
+                      <Link to={`/dashboard/dishes/${dish.id}/complements`}>
                         <Button variant="outline" size="sm">
                           <ListPlus className="h-4 w-4 mr-2" />
                           Complementos
@@ -339,13 +339,13 @@ export default function CategoryDishesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link to={`/gestor/dashboard/categories/${categoryId}/preview`}>
+          <Link to={`/dashboard/categories/${categoryId}/preview`}>
             <Button variant="outline">
               <Eye className="h-4 w-4 mr-2" />
               Prévia da Categoria
             </Button>
           </Link>
-          <Link to={`/gestor/dashboard/categories/${categoryId}/order`}>
+          <Link to={`/dashboard/categories/${categoryId}/order`}>
             <Button variant="outline">
               <ArrowUpDown className="h-4 w-4 mr-2" />
               Ordenar Pratos

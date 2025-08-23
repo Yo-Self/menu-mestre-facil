@@ -90,7 +90,7 @@ export default function AuthPage() {
 
       if (error) throw error;
 
-      navigate("/gestor/dashboard");
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Erro ao fazer login",

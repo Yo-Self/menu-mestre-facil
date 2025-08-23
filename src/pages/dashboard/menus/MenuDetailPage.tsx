@@ -105,19 +105,19 @@ function SortableCategory({ category, isEditing, onDelete }: SortableCategoryPro
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to={`/gestor/dashboard/categories/${category.id}/dishes`}>
+          <Link to={`/dashboard/categories/${category.id}/dishes`}>
             <Button variant="outline" size="sm">
               <UtensilsCrossed className="h-4 w-4 mr-2" />
               Gerenciar Pratos
             </Button>
           </Link>
-          <Link to={`/gestor/dashboard/categories/${category.id}/order`}>
+          <Link to={`/dashboard/categories/${category.id}/order`}>
             <Button variant="outline" size="sm">
               <ArrowUpDown className="h-4 w-4 mr-2" />
               Ordenar
             </Button>
           </Link>
-          <Link to={`/gestor/dashboard/categories/${category.id}/edit`}>
+          <Link to={`/dashboard/categories/${category.id}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="h-4 w-4 mr-2" />
               Editar
@@ -215,7 +215,7 @@ export default function MenuDetailPage() {
       setCategories(categoriesWithCounts);
     } catch (error: any) {
       toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
-      navigate("/gestor/dashboard/menus");
+      navigate("/dashboard/menus");
     } finally {
       setLoading(false);
     }
@@ -350,13 +350,13 @@ export default function MenuDetailPage() {
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Menus", href: "/gestor/dashboard/menus", icon: Menu },
+          { label: "Menus", href: "/dashboard/menus", icon: Menu },
           { label: menu.name, icon: Menu }
         ]}
       />
       
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/menus")}> 
+        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/menus")}> 
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -368,7 +368,7 @@ export default function MenuDetailPage() {
             {menu.is_active ? <ToggleRight className="h-4 w-4 mr-2 text-primary" /> : <ToggleLeft className="h-4 w-4 mr-2" />}
             {menu.is_active ? "Desativar" : "Ativar"}
           </Button>
-          <Link to={`/gestor/dashboard/menus/${menu.id}/edit`}>
+          <Link to={`/dashboard/menus/${menu.id}/edit`}>
             <Button>
               <Edit className="h-4 w-4 mr-2" />
               Editar Menu
@@ -426,7 +426,7 @@ export default function MenuDetailPage() {
                 <ArrowUpDown className="h-4 w-4 mr-2" />
                 Reordenar Categorias
               </Button>
-              <Link to="/gestor/dashboard/categories/new">
+              <Link to="/dashboard/categories/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Nova Categoria
@@ -445,7 +445,7 @@ export default function MenuDetailPage() {
               <p className="text-muted-foreground mb-4">
                 Comece criando uma categoria para organizar os pratos
               </p>
-              <Link to="/gestor/dashboard/categories/new">
+              <Link to="/dashboard/categories/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeira Categoria

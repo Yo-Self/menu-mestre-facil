@@ -68,7 +68,7 @@ export default function ManageComplementsPage() {
         await loadGroupsAndComplements();
       } catch (error: any) {
         toast({ title: "Erro", description: error.message || "Falha ao carregar complementos", variant: "destructive" });
-        navigate("/gestor/dashboard/dishes");
+        navigate("/dashboard/dishes");
       } finally {
         setLoading(false);
       }
@@ -212,7 +212,7 @@ export default function ManageComplementsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/dishes")} aria-label="Voltar">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/dishes")} aria-label="Voltar">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

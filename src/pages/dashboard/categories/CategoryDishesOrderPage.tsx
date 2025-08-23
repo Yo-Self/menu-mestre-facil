@@ -187,7 +187,7 @@ export default function CategoryDishesOrderPage() {
         description: error.message,
         variant: "destructive",
       });
-      navigate("/gestor/dashboard/categories");
+      navigate("/dashboard/categories");
     } finally {
       setLoading(false);
     }
@@ -253,7 +253,7 @@ export default function CategoryDishesOrderPage() {
     return (
       <div className="text-center py-8">
         <h2 className="text-xl font-semibold mb-2">Categoria não encontrada</h2>
-        <Button variant="outline" onClick={() => navigate("/gestor/dashboard/categories")}>
+        <Button variant="outline" onClick={() => navigate("/dashboard/categories")}>
           Voltar às Categorias
         </Button>
       </div>
@@ -264,7 +264,7 @@ export default function CategoryDishesOrderPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/categories")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/categories")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

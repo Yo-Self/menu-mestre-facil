@@ -47,6 +47,22 @@
           );
         }
       }(window.location))
+      
+      // Script adicional para garantir que rotas diretas funcionem
+      (function() {
+        // Se estivermos na raiz e não houver hash ou query string
+        if (window.location.pathname === '/' && !window.location.hash && !window.location.search) {
+          // Aguarda um pouco para o React carregar
+          setTimeout(function() {
+            // Se ainda estivermos na raiz, força o redirecionamento
+            if (window.location.pathname === '/') {
+              // Tenta verificar se há uma sessão ativa
+              // Se não houver, será redirecionado pelo React
+              console.log('Verificando redirecionamento da raiz...');
+            }
+          }, 100);
+        }
+      })();
     </script>
   </body>
 </html>

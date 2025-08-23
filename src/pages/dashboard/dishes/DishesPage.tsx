@@ -159,7 +159,7 @@ export default function DishesPage() {
             Gerencie os pratos dos seus restaurantes
           </p>
         </div>
-        <Link to="/gestor/dashboard/dishes/new">
+        <Link to="/dashboard/dishes/new">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Novo Prato
@@ -175,7 +175,7 @@ export default function DishesPage() {
               <p className="text-muted-foreground mb-4">
                 Comece criando seu primeiro prato
               </p>
-              <Link to="/gestor/dashboard/dishes/new">
+              <Link to="/dashboard/dishes/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeiro Prato
@@ -249,13 +249,13 @@ export default function DishesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2">
-                    <Link to={`/gestor/dashboard/dishes/${dish.id}/edit`}>
+                    <Link to={`/dashboard/dishes/${dish.id}/edit`}>
                       <Button variant="outline" size="sm">
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
                       </Button>
                     </Link>
-                    <Link to={`/gestor/dashboard/dishes/${dish.id}/complements`}>
+                    <Link to={`/dashboard/dishes/${dish.id}/complements`}>
                       <Button variant="outline" size="sm">
                         <ListPlus className="h-4 w-4 mr-2" />
                         Complementos

@@ -23,13 +23,13 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "Dashboard", url: "/gestor/dashboard", icon: Home },
-  { title: "Restaurantes", url: "/gestor/dashboard/restaurants", icon: Store },
-  { title: "Menus", url: "/gestor/dashboard/menus", icon: Menu },
-  { title: "Categorias", url: "/gestor/dashboard/categories", icon: FolderOpen },
-  { title: "Pratos", url: "/gestor/dashboard/dishes", icon: UtensilsCrossed },
-  { title: "Importar Menu", url: "/gestor/dashboard/import-menu", icon: Download },
-  { title: "Configurações", url: "/gestor/dashboard/settings", icon: Settings },
+  { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Restaurantes", url: "/dashboard/restaurants", icon: Store },
+  { title: "Menus", url: "/dashboard/menus", icon: Menu },
+  { title: "Categorias", url: "/dashboard/categories", icon: FolderOpen },
+  { title: "Pratos", url: "/dashboard/dishes", icon: UtensilsCrossed },
+  { title: "Importar Menu", url: "/dashboard/import-menu", icon: Download },
+  { title: "Configurações", url: "/dashboard/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

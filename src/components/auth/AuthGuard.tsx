@@ -18,11 +18,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
         if (session) {
           setAuthenticated(true);
         } else {
-          navigate("/gestor/auth");
+          navigate("/auth");
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
-        navigate("/gestor/auth");
+        navigate("/auth");
       } finally {
         setLoading(false);
       }
@@ -37,7 +37,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
           navigate("/dashboard");
         } else if (event === "SIGNED_OUT") {
           setAuthenticated(false);
-          navigate("/gestor/auth");
+          navigate("/auth");
         }
       }
     );
