@@ -57,6 +57,14 @@ if (fs.existsSync(path.join(__dirname, '../.env.local'))) {
   console.log('🔍 Debug - Arquivo .env.local: ✗ (não encontrado)');
 }
 
+// Debug: Verificar se estamos no GitHub Actions
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+console.log('🔍 Debug - Ambiente:', {
+  'GitHub Actions': isGitHubActions ? '✓' : '✗',
+  'NODE_ENV': process.env.NODE_ENV || 'não definido',
+  'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido'
+});
+
 const configContent = `// Configuração para arquivos HTML estáticos
 // Este arquivo é gerado automaticamente pelo build process
 window.SUPABASE_URL = '${SUPABASE_URL}';

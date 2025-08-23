@@ -18,6 +18,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
+    # Definir variáveis de ambiente globalmente para todo o job
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
+      NODE_ENV: production
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -33,36 +40,16 @@ jobs:
       
     - name: Test environment variables
       run: node scripts/test-github-actions.js
-      env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
-        NODE_ENV: production
-        
+      
     - name: Generate configuration
       run: npm run generate-config
-      env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
-        NODE_ENV: production
-        
+      
     - name: Generate HTML configuration
       run: npm run generate-html-config
-      env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
-        NODE_ENV: production
-        
+      
     - name: Build with base path
       run: npm run build:gh-pages
-      env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
-        NODE_ENV: production
-        
+      
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
