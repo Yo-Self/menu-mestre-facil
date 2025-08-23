@@ -12,19 +12,27 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setAuthenticated(true);
-        } else {
-          navigate("/auth");
+        if (mounted) {
+          if (session) {
+            setAuthenticated(true);
+          } else {
+            navigate("/auth");
+          }
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
-        navigate("/auth");
+        if (mounted) {
+          navigate("/auth");
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -32,17 +40,23 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          setAuthenticated(true);
-          navigate("/dashboard");
-        } else if (event === "SIGNED_OUT") {
-          setAuthenticated(false);
-          navigate("/auth");
+        if (mounted) {
+          if (event === "SIGNED_IN" && session) {
+            setAuthenticated(true);
+            // Não redirecionar automaticamente para dashboard
+            // navigate("/dashboard");
+          } else if (event === "SIGNED_OUT") {
+            setAuthenticated(false);
+            navigate("/auth");
+          }
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (loading) {

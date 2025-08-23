@@ -7,27 +7,40 @@ export function RootRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuthAndRedirect = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session) {
-          // Se estiver logado, vai para o dashboard
-          navigate("/dashboard", { replace: true });
-        } else {
-          // Se não estiver logado, vai para o login
-          navigate("/auth", { replace: true });
+        if (mounted) {
+          if (session) {
+            // Se estiver logado, não redirecionar automaticamente
+            // navigate("/dashboard", { replace: true });
+          } else {
+            // Se não estiver logado, vai para o login
+            navigate("/auth", { replace: true });
+          }
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
-        // Em caso de erro, vai para o login
-        navigate("/auth", { replace: true });
+        // Em caso de erro, não redirecionar
+        if (mounted) {
+          setLoading(false);
+        }
+        return;
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuthAndRedirect();
+
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   if (loading) {

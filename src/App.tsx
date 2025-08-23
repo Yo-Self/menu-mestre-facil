@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
-import { RootRedirect } from "./components/auth/RootRedirect";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { RestaurantProvider } from "./components/providers/RestaurantProvider";
 import AuthPage from "./pages/auth/AuthPage";
@@ -42,7 +41,7 @@ const App = () => (
       <BrowserRouter basename="/">
         <RestaurantProvider>
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={
               <AuthGuard>
