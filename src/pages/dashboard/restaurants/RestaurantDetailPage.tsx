@@ -248,7 +248,7 @@ export default function RestaurantDetailPage() {
                   <UrlPreview
                     title="Link do Restaurante"
                     description="Link para acessar seu restaurante"
-                    url={`yo-self.com/restaurant/${restaurant.slug}`}
+                    url={`https://yo-self.com/restaurant/${restaurant.slug}`}
                     type="restaurant"
                   />
                 </CardContent>
