@@ -19,11 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     
     # Definir variáveis de ambiente globalmente para todo o job
+    # Usar o contexto secrets corretamente conforme a documentação
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       TINYPNG_API_KEY: ${{ secrets.TINYPNG_API_KEY }}
       NODE_ENV: production
+      GITHUB_ACTIONS: true
     
     steps:
     - name: Checkout

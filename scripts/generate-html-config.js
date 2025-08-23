@@ -11,10 +11,23 @@ const __dirname = path.dirname(__filename);
 
 console.log('🔧 Gerando configuração para HTML estático');
 
-// Carregar variáveis de ambiente do arquivo .env.local (desenvolvimento local)
-// Mas dar prioridade às variáveis do sistema (GitHub Actions)
-const envResult = dotenv.config({ path: '.env.local' });
-console.log('📁 Arquivo .env.local carregado:', envResult.error ? '✗' : '✓');
+// Verificar se estamos no GitHub Actions
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+console.log('🔍 Debug - Ambiente:', {
+  'GitHub Actions': isGitHubActions ? '✓' : '✗',
+  'NODE_ENV': process.env.NODE_ENV || 'não definido',
+  'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido'
+});
+
+// Carregar variáveis de ambiente do arquivo .env.local (apenas em desenvolvimento local)
+// No GitHub Actions, as variáveis vêm do ambiente do sistema
+let envResult = { error: null };
+if (!isGitHubActions) {
+  envResult = dotenv.config({ path: '.env.local' });
+  console.log('📁 Arquivo .env.local carregado:', envResult.error ? '✗' : '✓');
+} else {
+  console.log('📁 GitHub Actions detectado - pulando arquivo .env.local');
+}
 
 // Para GitHub Actions, as variáveis vêm do ambiente do sistema
 // Priorizar process.env sobre os arquivos .env
@@ -44,8 +57,8 @@ console.log('🔍 Debug - Valores das variáveis:', {
   'TINYPNG_API_KEY': TINYPNG_API_KEY ? '***' : '✗',
 });
 
-// Debug: Verificar se o arquivo .env.local foi carregado corretamente
-if (fs.existsSync(path.join(__dirname, '../.env.local'))) {
+// Debug: Verificar se o arquivo .env.local foi carregado corretamente (apenas em desenvolvimento)
+if (!isGitHubActions && fs.existsSync(path.join(__dirname, '../.env.local'))) {
   const envContent = fs.readFileSync(path.join(__dirname, '../.env.local'), 'utf8');
   const hasTinyPNG = envContent.includes('TINYPNG_API_KEY');
   console.log('🔍 Debug - Arquivo .env.local:', {
@@ -53,17 +66,9 @@ if (fs.existsSync(path.join(__dirname, '../.env.local'))) {
     'contém TINYPNG_API_KEY': hasTinyPNG ? '✓' : '✗',
     'tamanho': envContent.length + ' chars'
   });
-} else {
+} else if (!isGitHubActions) {
   console.log('🔍 Debug - Arquivo .env.local: ✗ (não encontrado)');
 }
-
-// Debug: Verificar se estamos no GitHub Actions
-const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
-console.log('🔍 Debug - Ambiente:', {
-  'GitHub Actions': isGitHubActions ? '✓' : '✗',
-  'NODE_ENV': process.env.NODE_ENV || 'não definido',
-  'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido'
-});
 
 const configContent = `// Configuração para arquivos HTML estáticos
 // Este arquivo é gerado automaticamente pelo build process
