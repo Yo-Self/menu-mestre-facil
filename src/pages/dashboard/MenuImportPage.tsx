@@ -652,8 +652,8 @@ export default function MenuImportPage() {
                 <p className="text-muted-foreground">Web Scraping com fetch API</p>
               </div>
               <div>
-                <span className="font-semibold">Fallback:</span>
-                <p className="text-muted-foreground">Dados de exemplo por URL</p>
+                <span className="font-semibold">Dados:</span>
+                <p className="text-muted-foreground">Sempre extração real, nunca exemplos</p>
               </div>
               <div>
                 <span className="font-semibold">Banco:</span>

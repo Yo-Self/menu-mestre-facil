@@ -194,7 +194,7 @@ O importador de menus MenuDino está **100% implementado, testado e funcional**.
 
 ### ✅ **Scraper Real Implementado**
 - **Web Scraping:** Fetch API com headers apropriados
-- **Fallback Inteligente:** Dados de exemplo quando scraping real falha
+- **Dados Reais Apenas:** NUNCA usa dados de exemplo, sempre extração real
 - **Extração Automática:** Nome, endereço, telefone, categorias, pratos
 - **Sistema de Complementos:** Suporte completo a adicionais
 
