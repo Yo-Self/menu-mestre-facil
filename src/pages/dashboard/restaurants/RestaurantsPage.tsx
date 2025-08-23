@@ -94,7 +94,7 @@ export default function RestaurantsPage() {
             Gerencie seus restaurantes cadastrados
           </p>
         </div>
-        <Link to="/dashboard/restaurants/new">
+        <Link to="/gestor/dashboard/restaurants/new">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Novo Restaurante
@@ -110,7 +110,7 @@ export default function RestaurantsPage() {
               <p className="text-muted-foreground mb-4">
                 Comece criando seu primeiro restaurante
               </p>
-              <Link to="/dashboard/restaurants/new">
+              <Link to="/gestor/dashboard/restaurants/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeiro Restaurante
@@ -147,13 +147,13 @@ export default function RestaurantsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Link to={`/dashboard/restaurants/${restaurant.id}`}>
+                  <Link to={`/gestor/dashboard/restaurants/${restaurant.id}`}>
                     <Button variant="outline" size="sm">
                       <Settings className="h-4 w-4 mr-2" />
                       Gerenciar
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/restaurants/${restaurant.id}/edit`}>
+                  <Link to={`/gestor/dashboard/restaurants/${restaurant.id}/edit`}>
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
                       Editar

@@ -63,7 +63,7 @@ export default function NewCategoryPage() {
         description: `${name} foi criada com sucesso.`,
       });
 
-      navigate("/dashboard/categories");
+      navigate("/gestor/dashboard/categories");
     } catch (error: any) {
       toast({
         title: "Erro ao criar categoria",
@@ -78,7 +78,7 @@ export default function NewCategoryPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/categories")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/categories")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -124,7 +124,7 @@ export default function NewCategoryPage() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate("/dashboard/categories")}
+                onClick={() => navigate("/gestor/dashboard/categories")}
               >
                 Cancelar
               </Button>

@@ -101,7 +101,7 @@ export default function NewMenuPage() {
         description: `${name} foi criado com sucesso.`,
       });
 
-      navigate("/dashboard/menus");
+      navigate("/gestor/dashboard/menus");
     } catch (error: any) {
       toast({
         title: "Erro ao criar menu",
@@ -116,7 +116,7 @@ export default function NewMenuPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/menus")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/menus")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -199,7 +199,7 @@ export default function NewMenuPage() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate("/dashboard/menus")}
+                onClick={() => navigate("/gestor/dashboard/menus")}
               >
                 Cancelar
               </Button>

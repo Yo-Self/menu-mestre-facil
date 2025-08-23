@@ -82,7 +82,7 @@ export default function Dashboard() {
       description: "Total de restaurantes cadastrados",
       icon: Store,
       color: "text-primary",
-      route: "/dashboard/restaurants",
+      route: "/gestor/dashboard/restaurants",
     },
     {
       title: "Menus",
@@ -90,7 +90,7 @@ export default function Dashboard() {
       description: "Menus criados",
       icon: Menu,
       color: "text-accent",
-      route: "/dashboard/menus",
+      route: "/gestor/dashboard/menus",
     },
     {
       title: "Categorias",
@@ -98,7 +98,7 @@ export default function Dashboard() {
       description: "Categorias de pratos",
       icon: FolderOpen,
       color: "text-secondary",
-      route: "/dashboard/categories",
+      route: "/gestor/dashboard/categories",
     },
     {
       title: "Pratos",
@@ -106,7 +106,7 @@ export default function Dashboard() {
       description: "Pratos cadastrados",
       icon: UtensilsCrossed,
       color: "text-muted-foreground",
-      route: "/dashboard/dishes",
+      route: "/gestor/dashboard/dishes",
     },
   ];
 

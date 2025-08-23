@@ -41,9 +41,9 @@ const App = () => (
       <BrowserRouter>
         <RestaurantProvider>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={
+            <Route path="/" element={<Navigate to="/gestor/dashboard" replace />} />
+            <Route path="/gestor/auth" element={<AuthPage />} />
+            <Route path="/gestor/dashboard" element={
               <AuthGuard>
                 <DashboardLayout />
               </AuthGuard>

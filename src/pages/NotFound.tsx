@@ -32,7 +32,7 @@ const NotFound = () => {
             A página que você está procurando não existe ou foi movida.
           </p>
           <Button asChild className="w-full">
-            <Link to="/dashboard">
+            <Link to="/gestor/dashboard">
               <Home className="mr-2 h-4 w-4" />
               Voltar ao Dashboard
             </Link>

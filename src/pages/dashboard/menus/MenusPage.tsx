@@ -130,7 +130,7 @@ export default function MenusPage() {
             Gerencie os menus dos seus restaurantes
           </p>
         </div>
-        <Link to="/dashboard/menus/new">
+        <Link to="/gestor/dashboard/menus/new">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Novo Menu
@@ -146,7 +146,7 @@ export default function MenusPage() {
               <p className="text-muted-foreground mb-4">
                 Comece criando seu primeiro menu
               </p>
-              <Link to="/dashboard/menus/new">
+              <Link to="/gestor/dashboard/menus/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeiro Menu
@@ -194,12 +194,12 @@ export default function MenusPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Link to={`/dashboard/menus/${menu.id}`}>
+                  <Link to={`/gestor/dashboard/menus/${menu.id}`}>
                     <Button variant="outline" size="sm">
                       Gerenciar
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/menus/${menu.id}/edit`}>
+                  <Link to={`/gestor/dashboard/menus/${menu.id}/edit`}>
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
                       Editar

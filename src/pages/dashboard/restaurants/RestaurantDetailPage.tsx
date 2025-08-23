@@ -86,7 +86,7 @@ export default function RestaurantDetailPage() {
         description: error.message,
         variant: "destructive",
       });
-      navigate("/dashboard/restaurants");
+      navigate("/gestor/dashboard/restaurants");
     } finally {
       setLoading(false);
     }
@@ -122,7 +122,7 @@ export default function RestaurantDetailPage() {
     return (
       <div className="text-center py-8">
         <h2 className="text-xl font-semibold mb-2">Restaurante não encontrado</h2>
-        <Link to="/dashboard/restaurants">
+        <Link to="/gestor/dashboard/restaurants">
           <Button variant="outline">Voltar aos Restaurantes</Button>
         </Link>
       </div>
@@ -134,21 +134,21 @@ export default function RestaurantDetailPage() {
       title: "Gerenciar Menus",
       description: `${stats.menus} menus cadastrados`,
       icon: Menu,
-      href: "/dashboard/menus",
+      href: "/gestor/dashboard/menus",
       color: "text-primary",
     },
     {
       title: "Gerenciar Categorias",
       description: `${stats.categories} categorias cadastradas`,
       icon: FolderOpen,
-      href: "/dashboard/categories",
+      href: "/gestor/dashboard/categories",
       color: "text-accent",
     },
     {
       title: "Gerenciar Pratos",
       description: `${stats.dishes} pratos cadastrados`,
       icon: UtensilsCrossed,
-      href: "/dashboard/dishes",
+      href: "/gestor/dashboard/dishes",
       color: "text-secondary",
     },
   ];
@@ -158,14 +158,14 @@ export default function RestaurantDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => navigate("/dashboard/restaurants")}>
+        <Button variant="outline" size="icon" onClick={() => navigate("/gestor/dashboard/restaurants")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-primary">{restaurant.name}</h1>
           <p className="text-muted-foreground">Gestão do restaurante</p>
         </div>
-        <Link to={`/dashboard/restaurants/${id}/edit`}>
+        <Link to={`/gestor/dashboard/restaurants/${id}/edit`}>
           <Button>
             <Edit className="h-4 w-4 mr-2" />
             Editar Restaurante
@@ -294,7 +294,7 @@ export default function RestaurantDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link to="/dashboard/menus/new">
+                  <Link to="/gestor/dashboard/menus/new">
                     <Button className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Menu
@@ -311,7 +311,7 @@ export default function RestaurantDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link to="/dashboard/categories/new">
+                  <Link to="/gestor/dashboard/categories/new">
                     <Button className="w-full" variant="outline">
                       <Plus className="h-4 w-4 mr-2" />
                       Nova Categoria

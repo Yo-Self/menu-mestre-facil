@@ -42,7 +42,7 @@ export default function EditCategoryPage() {
       setImageUrl(cat.image_url);
     } catch (error: any) {
       toast({ title: "Erro ao carregar categoria", description: error.message, variant: "destructive" });
-      navigate("/dashboard/categories");
+      navigate("/gestor/dashboard/categories");
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function EditCategoryPage() {
         .eq("id", id);
       if (error) throw error;
       toast({ title: "Categoria atualizada", description: `${name} foi atualizada com sucesso.` });
-      navigate("/dashboard/categories");
+      navigate("/gestor/dashboard/categories");
     } catch (error: any) {
       toast({ title: "Erro ao atualizar categoria", description: error.message, variant: "destructive" });
     } finally {
@@ -78,7 +78,7 @@ export default function EditCategoryPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/categories")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/gestor/dashboard/categories")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -104,7 +104,7 @@ export default function EditCategoryPage() {
             </div>
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
-              <Button type="button" variant="outline" onClick={() => navigate("/dashboard/categories")}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => navigate("/gestor/dashboard/categories")}>Cancelar</Button>
             </div>
           </form>
         </CardContent>

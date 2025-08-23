@@ -83,7 +83,7 @@ export default function EditMenuPage() {
 
     } catch (error: any) {
       toast({ title: "Erro ao carregar menu", description: error.message, variant: "destructive" });
-      navigate("/dashboard/menus");
+      navigate("/gestor/dashboard/menus");
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ export default function EditMenuPage() {
         .eq("id", id);
       if (error) throw error;
       toast({ title: "Menu atualizado", description: `${name} foi atualizado com sucesso.` });
-      navigate(`/dashboard/menus/${id}`);
+      navigate(`/gestor/dashboard/menus/${id}`);
     } catch (error: any) {
       toast({ title: "Erro ao atualizar menu", description: error.message, variant: "destructive" });
     } finally {
@@ -133,7 +133,7 @@ export default function EditMenuPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/dashboard/menus/${id}`)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(`/gestor/dashboard/menus/${id}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -178,7 +178,7 @@ export default function EditMenuPage() {
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
-              <Button type="button" variant="outline" onClick={() => navigate(`/dashboard/menus/${id}`)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => navigate(`/gestor/dashboard/menus/${id}`)}>Cancelar</Button>
             </div>
           </form>
         </CardContent>

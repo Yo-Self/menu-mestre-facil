@@ -119,7 +119,7 @@ export default function CategoriesPage() {
             Gerencie as categorias dos seus restaurantes
           </p>
         </div>
-        <Link to="/dashboard/categories/new">
+        <Link to="/gestor/dashboard/categories/new">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Nova Categoria
@@ -135,7 +135,7 @@ export default function CategoriesPage() {
               <p className="text-muted-foreground mb-4">
                 Comece criando sua primeira categoria
               </p>
-              <Link to="/dashboard/categories/new">
+              <Link to="/gestor/dashboard/categories/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeira Categoria
@@ -164,25 +164,25 @@ export default function CategoriesPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Link to={`/dashboard/categories/${category.id}/edit`}>
+                  <Link to={`/gestor/dashboard/categories/${category.id}/edit`}>
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/categories/${category.id}/dishes`}>
+                  <Link to={`/gestor/dashboard/categories/${category.id}/dishes`}>
                     <Button variant="outline" size="sm">
                       <UtensilsCrossed className="h-4 w-4 mr-2" />
                       Pratos
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/categories/${category.id}/preview`}>
+                  <Link to={`/gestor/dashboard/categories/${category.id}/preview`}>
                     <Button variant="outline" size="sm">
                       <Eye className="h-4 w-4 mr-2" />
                       Prévia
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/categories/${category.id}/order`}>
+                  <Link to={`/gestor/dashboard/categories/${category.id}/order`}>
                     <Button variant="outline" size="sm">
                       <ArrowUpDown className="h-4 w-4 mr-2" />
                       Ordenar

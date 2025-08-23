@@ -32,7 +32,7 @@ export function DashboardLayout() {
         variant: "destructive",
       });
     } else {
-      navigate("/auth");
+      navigate("/gestor/auth");
     }
   };
 
