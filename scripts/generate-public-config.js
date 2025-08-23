@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: '.env.local' });
 
 // Para GitHub Actions, as variáveis vêm do ambiente do sistema
-// Usar fallback para desenvolvimento local
+// Priorizar process.env sobre os arquivos .env
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 
                     'https://wulazaggdihidadkhilg.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
@@ -33,6 +33,13 @@ console.log('🔍 Debug - Origem das variáveis:', {
   'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
   'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
   'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? '✓' : '✗',
+});
+
+// Debug: Verificar valores das variáveis (sem expor dados sensíveis)
+console.log('🔍 Debug - Valores das variáveis:', {
+  'SUPABASE_URL': SUPABASE_URL ? '✓' : '✗',
+  'SUPABASE_KEY': SUPABASE_ANON_KEY ? '***' : '✗',
+  'TINYPNG_API_KEY': TINYPNG_API_KEY ? '***' : '✗',
 });
 
 const configContent = `// Configuração pública para os arquivos JavaScript estáticos

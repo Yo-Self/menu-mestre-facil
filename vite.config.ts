@@ -19,9 +19,10 @@ export default defineConfig(({ mode }) => {
   }
   
   // Garantir que as variáveis tenham valores padrão se não estiverem definidas
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || 'https://wulazaggdihidadkhilg.supabase.co';
-  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
-  const tinypngKey = env.TINYPNG_API_KEY || '';
+  // Priorizar process.env (GitHub Actions) sobre env (arquivos .env)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || 'https://wulazaggdihidadkhilg.supabase.co';
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
+  const tinypngKey = process.env.TINYPNG_API_KEY || env.TINYPNG_API_KEY || '';
   
   // Log das variáveis que serão expostas (em todos os modos)
   console.log('🔧 Configuração Vite para modo:', mode);
@@ -39,6 +40,13 @@ export default defineConfig(({ mode }) => {
     'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
     'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
     'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? '✓' : '✗',
+  });
+  
+  // Log adicional para debug das variáveis finais
+  console.log('🔍 Debug - Variáveis finais selecionadas:', {
+    'supabaseUrl': supabaseUrl ? '✓' : '✗',
+    'supabaseKey': supabaseKey ? '***' : '✗',
+    'tinypngKey': tinypngKey ? '***' : '✗',
   });
   
   return {
