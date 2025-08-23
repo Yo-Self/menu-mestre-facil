@@ -49,6 +49,14 @@ export default defineConfig(({ mode }) => {
     'tinypngKey': tinypngKey ? '***' : '✗',
   });
   
+  // Log adicional para debug do carregamento
+  console.log('🔍 Debug - Carregamento de variáveis:', {
+    'process.env carregado': typeof process !== 'undefined' && process.env ? '✓' : '✗',
+    'env carregado': env ? '✓' : '✗',
+    'modo': mode,
+    'cwd': process.cwd(),
+  });
+  
   return {
     server: {
       host: "::",

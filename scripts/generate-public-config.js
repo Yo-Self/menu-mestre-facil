@@ -9,9 +9,12 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+console.log('🔧 Modo de execução:', process.env.NODE_ENV || 'development');
+
 // Carregar variáveis de ambiente do arquivo .env.local (desenvolvimento local)
 // Mas dar prioridade às variáveis do sistema (GitHub Actions)
-dotenv.config({ path: '.env.local' });
+const envResult = dotenv.config({ path: '.env.local' });
+console.log('📁 Arquivo .env.local carregado:', envResult.error ? '✗' : '✓');
 
 // Para GitHub Actions, as variáveis vêm do ambiente do sistema
 // Priorizar process.env sobre os arquivos .env
@@ -21,7 +24,6 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
                           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
 const TINYPNG_API_KEY = process.env.TINYPNG_API_KEY || '';
 
-console.log('🔧 Modo de execução:', process.env.NODE_ENV || 'development');
 console.log('📋 Variáveis carregadas:', {
   SUPABASE_URL: SUPABASE_URL ? '✓' : '✗',
   SUPABASE_KEY: SUPABASE_ANON_KEY ? '✓' : '✗',
@@ -41,6 +43,19 @@ console.log('🔍 Debug - Valores das variáveis:', {
   'SUPABASE_KEY': SUPABASE_ANON_KEY ? '***' : '✗',
   'TINYPNG_API_KEY': TINYPNG_API_KEY ? '***' : '✗',
 });
+
+// Debug: Verificar se o arquivo .env.local foi carregado corretamente
+if (fs.existsSync(path.join(__dirname, '../.env.local'))) {
+  const envContent = fs.readFileSync(path.join(__dirname, '../.env.local'), 'utf8');
+  const hasTinyPNG = envContent.includes('TINYPNG_API_KEY');
+  console.log('🔍 Debug - Arquivo .env.local:', {
+    'existe': '✓',
+    'contém TINYPNG_API_KEY': hasTinyPNG ? '✓' : '✗',
+    'tamanho': envContent.length + ' chars'
+  });
+} else {
+  console.log('🔍 Debug - Arquivo .env.local: ✗ (não encontrado)');
+}
 
 const configContent = `// Configuração pública para os arquivos JavaScript estáticos
 // Este arquivo é gerado automaticamente pelo build process
