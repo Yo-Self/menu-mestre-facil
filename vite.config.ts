@@ -66,6 +66,24 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      // Optimize bundle splitting for better loading performance
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor libraries into separate chunks
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs'],
+            'vendor-form': ['react-hook-form', '@hookform/resolvers', 'zod'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-utils': ['clsx', 'tailwind-merge', 'class-variance-authority', 'lucide-react'],
+          },
+        },
+      },
+      // Increase chunk size warning limit to 1MB since we're optimizing chunks
+      chunkSizeWarningLimit: 1000,
+    },
     define: {
       // Expor variáveis de ambiente específicas com valores padrão
       'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),

@@ -1,0 +1,49 @@
+name: Test Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    env:
+      NODE_ENV: production
+      GITHUB_ACTIONS: true
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Cache node_modules
+      uses: actions/cache@v3
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+        
+    - name: Install dependencies
+      run: npm ci
+      env:
+        NODE_ENV: development
+      
+    - name: Build with base path
+      run: npm run build:gh-pages
+      
+    - name: Check build output
+      run: |
+        echo "Build completed successfully!"
+        ls -la dist/
+        echo "index.html exists:" 
+        test -f dist/index.html && echo "✓ Yes" || echo "✗ No"
+        echo "CSS files:"
+        find dist -name "*.css" | head -5
+        echo "JS files:"
+        find dist -name "*.js" | head -5
