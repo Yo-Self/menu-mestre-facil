@@ -11,18 +11,22 @@ const __dirname = path.dirname(__filename);
 
 console.log('🔧 Modo de execução:', process.env.NODE_ENV || 'development');
 
-// Verificar se estamos no GitHub Actions
-const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+// Verificar se estamos no GitHub Actions de forma mais robusta
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_WORKFLOW;
+const isLocal = !isGitHubActions;
+
 console.log('🔍 Debug - Ambiente:', {
   'GitHub Actions': isGitHubActions ? '✓' : '✗',
+  'Local': isLocal ? '✓' : '✗',
   'NODE_ENV': process.env.NODE_ENV || 'não definido',
-  'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido'
+  'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido',
+  'GITHUB_WORKFLOW': process.env.GITHUB_WORKFLOW || 'não definido'
 });
 
 // Carregar variáveis de ambiente do arquivo .env.local (apenas em desenvolvimento local)
 // No GitHub Actions, as variáveis vêm do ambiente do sistema
 let envResult = { error: null };
-if (!isGitHubActions) {
+if (isLocal) {
   envResult = dotenv.config({ path: '.env.local' });
   console.log('📁 Arquivo .env.local carregado:', envResult.error ? '✗' : '✓');
 } else {
@@ -58,7 +62,7 @@ console.log('🔍 Debug - Valores das variáveis:', {
 });
 
 // Debug: Verificar se o arquivo .env.local foi carregado corretamente (apenas em desenvolvimento)
-if (!isGitHubActions && fs.existsSync(path.join(__dirname, '../.env.local'))) {
+if (isLocal && fs.existsSync(path.join(__dirname, '../.env.local'))) {
   const envContent = fs.readFileSync(path.join(__dirname, '../.env.local'), 'utf8');
   const hasTinyPNG = envContent.includes('TINYPNG_API_KEY');
   console.log('🔍 Debug - Arquivo .env.local:', {
@@ -66,7 +70,7 @@ if (!isGitHubActions && fs.existsSync(path.join(__dirname, '../.env.local'))) {
     'contém TINYPNG_API_KEY': hasTinyPNG ? '✓' : '✗',
     'tamanho': envContent.length + ' chars'
   });
-} else if (!isGitHubActions) {
+} else if (isLocal) {
   console.log('🔍 Debug - Arquivo .env.local: ✗ (não encontrado)');
 }
 
