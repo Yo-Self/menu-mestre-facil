@@ -83,6 +83,8 @@ export default defineConfig(({ mode }) => {
       },
       // Increase chunk size warning limit to 1MB since we're optimizing chunks
       chunkSizeWarningLimit: 1000,
+      // Garantir que arquivos estáticos sejam copiados (importante para o CNAME)
+      copyPublicDir: true,
     },
     define: {
       // Expor variáveis de ambiente específicas com valores padrão
