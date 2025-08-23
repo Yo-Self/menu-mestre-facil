@@ -20,9 +20,9 @@ dotenv.config({ path: '.env.production' });
 // Verificar variáveis do sistema
 console.log('📋 Variáveis do sistema (process.env):', {
   NODE_ENV: process.env.NODE_ENV || 'não definido',
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
-  TINYPNG_API_KEY: process.env.TINYPNG_API_KEY ? '✓' : '✗',
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+  TINYPNG_API_KEY: process.env.TINYPNG_API_KEY ? 'true' : 'false',
 });
 
 // Verificar se os arquivos de configuração existem
@@ -34,7 +34,7 @@ const envFiles = [
 
 console.log('📁 Arquivos de configuração:', envFiles.map(file => {
   const exists = fs.existsSync(path.join(__dirname, '..', file));
-  return `${file}: ${exists ? '✓' : '✗'}`;
+  return `${file}: ${exists ? 'true' : 'false'}`;
 }));
 
 // Verificar conteúdo dos arquivos
@@ -43,7 +43,7 @@ envFiles.forEach(file => {
   if (fs.existsSync(filePath)) {
     const content = fs.readFileSync(filePath, 'utf8');
     const hasTinyPNG = content.includes('TINYPNG_API_KEY');
-    console.log(`📄 ${file} - TINYPNG_API_KEY: ${hasTinyPNG ? '✓' : '✗'}`);
+    console.log(`📄 ${file} - TINYPNG_API_KEY: ${hasTinyPNG ? 'true' : 'false'}`);
   }
 });
 

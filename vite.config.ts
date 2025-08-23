@@ -12,9 +12,9 @@ export default defineConfig(({ mode }) => {
   if (mode === 'development') {
     console.log('🔧 Modo de desenvolvimento detectado');
     console.log('📋 Variáveis carregadas:', {
-      SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
-      SUPABASE_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
-      TINYPNG: env.TINYPNG_API_KEY ? '✓' : '✗'
+      SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+      SUPABASE_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+      TINYPNG: env.TINYPNG_API_KEY ? 'true' : 'false'
     });
   }
   
@@ -27,32 +27,32 @@ export default defineConfig(({ mode }) => {
   // Log das variáveis que serão expostas (em todos os modos)
   console.log('🔧 Configuração Vite para modo:', mode);
   console.log('📋 Variáveis expostas:', {
-    SUPABASE_URL: supabaseUrl ? '✓' : '✗',
-    SUPABASE_KEY: supabaseKey ? '***' : '✗',
-    TINYPNG: tinypngKey ? '***' : '✗'
+    SUPABASE_URL: supabaseUrl ? 'true' : 'false',
+    SUPABASE_KEY: supabaseKey ? 'true' : 'false',
+    TINYPNG: tinypngKey ? 'true' : 'false'
   });
   
   // Log adicional para debug
   console.log('🔍 Debug - Variáveis de ambiente disponíveis:', {
-    'env.NEXT_PUBLIC_SUPABASE_URL': env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
-    'env.NEXT_PUBLIC_SUPABASE_ANON_KEY': env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
-    'env.TINYPNG_API_KEY': env.TINYPNG_API_KEY ? '✓' : '✗',
-    'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
-    'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
-    'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? '✓' : '✗',
+    'env.NEXT_PUBLIC_SUPABASE_URL': env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+    'env.NEXT_PUBLIC_SUPABASE_ANON_KEY': env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+    'env.TINYPNG_API_KEY': env.TINYPNG_API_KEY ? 'true' : 'false',
+    'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+    'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+    'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? 'true' : 'false',
   });
   
   // Log adicional para debug das variáveis finais
   console.log('🔍 Debug - Variáveis finais selecionadas:', {
-    'supabaseUrl': supabaseUrl ? '✓' : '✗',
-    'supabaseKey': supabaseKey ? '***' : '✗',
-    'tinypngKey': tinypngKey ? '***' : '✗',
+    'supabaseUrl': supabaseUrl ? 'true' : 'false',
+    'supabaseKey': supabaseKey ? 'true' : 'false',
+    'tinypngKey': tinypngKey ? 'true' : 'false',
   });
   
   // Log adicional para debug do carregamento
   console.log('🔍 Debug - Carregamento de variáveis:', {
-    'process.env carregado': typeof process !== 'undefined' && process.env ? '✓' : '✗',
-    'env carregado': env ? '✓' : '✗',
+    'process.env carregado': typeof process !== 'undefined' && process.env ? 'true' : 'false',
+    'env carregado': env ? 'true' : 'false',
     'modo': mode,
     'cwd': process.cwd(),
   });

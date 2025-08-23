@@ -16,8 +16,8 @@ const isGitHubActions = process.env.GITHUB_ACTIONS === 'true' && process.env.GIT
 const isLocal = !isGitHubActions;
 
 console.log('🔍 Debug - Ambiente:', {
-  'GitHub Actions': isGitHubActions ? '✓' : '✗',
-  'Local': isLocal ? '✓' : '✗',
+  'GitHub Actions': isGitHubActions ? 'true' : 'false',
+  'Local': isLocal ? 'true' : 'false',
   'NODE_ENV': process.env.NODE_ENV || 'não definido',
   'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS || 'não definido',
   'GITHUB_WORKFLOW': process.env.GITHUB_WORKFLOW || 'não definido'
@@ -28,7 +28,7 @@ console.log('🔍 Debug - Ambiente:', {
 let envResult = { error: null };
 if (isLocal) {
   envResult = dotenv.config({ path: '.env.local' });
-  console.log('📁 Arquivo .env.local carregado:', envResult.error ? '✗' : '✓');
+  console.log('📁 Arquivo .env.local carregado:', envResult.error ? 'false' : 'true');
 } else {
   console.log('📁 GitHub Actions detectado - pulando arquivo .env.local');
 }
@@ -42,23 +42,23 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
 const TINYPNG_API_KEY = process.env.TINYPNG_API_KEY || '';
 
 console.log('📋 Variáveis carregadas:', {
-  SUPABASE_URL: SUPABASE_URL ? '✓' : '✗',
-  SUPABASE_KEY: SUPABASE_ANON_KEY ? '✓' : '✗',
-  TINYPNG_API_KEY: TINYPNG_API_KEY ? '✓' : '✗'
+  SUPABASE_URL: SUPABASE_URL ? 'true' : 'false',
+  SUPABASE_KEY: SUPABASE_ANON_KEY ? 'true' : 'false',
+  TINYPNG_API_KEY: TINYPNG_API_KEY ? 'true' : 'false'
 });
 
 // Debug: Verificar de onde as variáveis estão vindo
 console.log('🔍 Debug - Origem das variáveis:', {
-  'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
-  'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
-  'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? '✓' : '✗',
+  'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+  'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+  'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? 'true' : 'false',
 });
 
 // Debug: Verificar valores das variáveis (sem expor dados sensíveis)
 console.log('🔍 Debug - Valores das variáveis:', {
-  'SUPABASE_URL': SUPABASE_URL ? '✓' : '✗',
-  'SUPABASE_KEY': SUPABASE_ANON_KEY ? '***' : '✗',
-  'TINYPNG_API_KEY': TINYPNG_API_KEY ? '***' : '✗',
+  'SUPABASE_URL': SUPABASE_URL ? 'true' : 'false',
+  'SUPABASE_KEY': SUPABASE_ANON_KEY ? '***' : 'false',
+  'TINYPNG_API_KEY': TINYPNG_API_KEY ? '***' : 'false',
 });
 
 // Debug: Verificar se o arquivo .env.local foi carregado corretamente (apenas em desenvolvimento)
@@ -66,12 +66,12 @@ if (isLocal && fs.existsSync(path.join(__dirname, '../.env.local'))) {
   const envContent = fs.readFileSync(path.join(__dirname, '../.env.local'), 'utf8');
   const hasTinyPNG = envContent.includes('TINYPNG_API_KEY');
   console.log('🔍 Debug - Arquivo .env.local:', {
-    'existe': '✓',
-    'contém TINYPNG_API_KEY': hasTinyPNG ? '✓' : '✗',
+    'existe': 'true',
+    'contém TINYPNG_API_KEY': hasTinyPNG ? 'true' : 'false',
     'tamanho': envContent.length + ' chars'
   });
 } else if (isLocal) {
-  console.log('🔍 Debug - Arquivo .env.local: ✗ (não encontrado)');
+  console.log('🔍 Debug - Arquivo .env.local: false (não encontrado)');
 }
 
 const configContent = `// Configuração pública para os arquivos JavaScript estáticos

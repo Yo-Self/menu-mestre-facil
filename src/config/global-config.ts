@@ -16,14 +16,14 @@ export const globalConfig = {
 
 // Debug: Log detalhado de como as variáveis estão sendo carregadas
 console.log('🔍 Debug - Variáveis de ambiente:', {
-  'import.meta.env.TINYPNG_API_KEY': import.meta.env.TINYPNG_API_KEY ? '✓' : '✗',
-  'globalThis.TINYPNG_API_KEY': globalThis.TINYPNG_API_KEY ? '✓' : '✗',
-  'process.env.TINYPNG_API_KEY': typeof process !== 'undefined' && process.env?.TINYPNG_API_KEY ? '✓' : '✗',
-  'window.TINYPNG_API_KEY': typeof window !== 'undefined' && window.TINYPNG_API_KEY ? '✓' : '✗',
+  'import.meta.env.TINYPNG_API_KEY': import.meta.env.TINYPNG_API_KEY ? 'true' : 'false',
+  'globalThis.TINYPNG_API_KEY': globalThis.TINYPNG_API_KEY ? 'true' : 'false',
+  'process.env.TINYPNG_API_KEY': typeof process !== 'undefined' && process.env?.TINYPNG_API_KEY ? 'true' : 'false',
+  'window.TINYPNG_API_KEY': typeof window !== 'undefined' && window.TINYPNG_API_KEY ? 'true' : 'false',
 });
 
 console.log('🔍 Debug - Valores finais:', {
-  'globalConfig.tinypng.apiKey': globalConfig.tinypng.apiKey ? '***' : '✗',
+  'globalConfig.tinypng.apiKey': globalConfig.tinypng.apiKey ? '***' : 'false',
   'globalConfig.tinypng.apiKey.length': globalConfig.tinypng.apiKey.length,
 });
 
@@ -51,11 +51,11 @@ export function getTinyPNGConfig() {
 if (import.meta.env.DEV) {
   console.log('🔧 Configuração Global:', {
     supabase: {
-      url: globalConfig.supabase.url ? '✓' : '✗',
-      key: globalConfig.supabase.anonKey ? '***' : '✗',
+      url: globalConfig.supabase.url ? 'true' : 'false',
+      key: globalConfig.supabase.anonKey ? '***' : 'false',
     },
     tinypng: {
-      key: globalConfig.tinypng.apiKey ? '***' : '✗',
+      key: globalConfig.tinypng.apiKey ? '***' : 'false',
     },
     app: {
       baseUrl: globalConfig.app.baseUrl,
@@ -69,11 +69,11 @@ if (import.meta.env.DEV) {
 if (import.meta.env.PROD) {
   console.log('🔧 Configuração Global (Produção):', {
     supabase: {
-      url: globalConfig.supabase.url ? '✓' : '✗',
-      key: globalConfig.supabase.anonKey ? '***' : '✗',
+      url: globalConfig.supabase.url ? 'true' : 'false',
+      key: globalConfig.supabase.anonKey ? '***' : 'false',
     },
     tinypng: {
-      key: globalConfig.tinypng.apiKey ? '***' : '✗',
+      key: globalConfig.tinypng.apiKey ? '***' : 'false',
     },
     app: {
       baseUrl: globalConfig.app.baseUrl,

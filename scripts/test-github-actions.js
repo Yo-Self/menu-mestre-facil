@@ -14,7 +14,7 @@ console.log('📋 Variáveis específicas necessárias:');
 requiredVars.forEach(varName => {
   const value = process.env[varName];
   if (varName.includes('KEY') || varName.includes('URL')) {
-    console.log(`  ${varName}: ${value ? '✓' : '✗'}`);
+    console.log(`  ${varName}: ${value ? 'true' : 'false'}`);
   } else {
     console.log(`  ${varName}: ${value || 'não definido'}`);
   }
