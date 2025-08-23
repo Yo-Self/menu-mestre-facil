@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { UrlPreview } from "@/components/ui/url-preview";
-import { TinyPNGSettings, TinyPNGSettings as TinyPNGSettingsType } from "@/components/ui/tinypng-settings";
+
 
 interface Profile {
   id: string;
@@ -287,27 +287,7 @@ export default function SettingsPage() {
 
         <Separator />
 
-        {/* Otimização de Imagens */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-orange-500" />
-              Otimização de Imagens
-            </CardTitle>
-            <CardDescription>
-              Configure a otimização automática de imagens para melhorar o desempenho.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TinyPNGSettings
-              onSave={(settings: TinyPNGSettingsType) => {
-                console.log('Configurações TinyPNG salvas:', settings);
-              }}
-            />
-          </CardContent>
-        </Card>
 
-        <Separator />
 
         {/* Aparência */}
         <Card>
