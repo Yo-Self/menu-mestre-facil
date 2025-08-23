@@ -1,5 +1,3 @@
-import Pica from 'pica';
-
 export interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
@@ -20,13 +18,35 @@ export interface CompressionResult {
 }
 
 class ImageCompressionService {
-  private pica: Pica;
+  private pica: any = null;
+  private picaPromise: Promise<any> | null = null;
 
   constructor() {
-    this.pica = new Pica({
-      features: ['js', 'wasm', 'ww'], // JavaScript, WebAssembly, WebWorkers
-      idle: 2000, // Cache timeout em ms
-    });
+    // pica será carregado dinamicamente quando necessário
+  }
+
+  /**
+   * Carrega e inicializa o pica dinamicamente
+   */
+  private async initializePica(): Promise<any> {
+    if (this.pica) {
+      return this.pica;
+    }
+
+    if (this.picaPromise) {
+      return this.picaPromise;
+    }
+
+    this.picaPromise = (async () => {
+      const { default: Pica } = await import('pica');
+      this.pica = new Pica({
+        features: ['js', 'wasm', 'ww'], // JavaScript, WebAssembly, WebWorkers
+        idle: 2000, // Cache timeout em ms
+      });
+      return this.pica;
+    })();
+
+    return this.picaPromise;
   }
 
   /**
@@ -47,6 +67,9 @@ class ImageCompressionService {
     } = options;
 
     try {
+      // Inicializar pica dinamicamente
+      const pica = await this.initializePica();
+
       // Criar canvas source a partir do arquivo
       const sourceCanvas = await this.createCanvasFromFile(file);
       
@@ -64,7 +87,7 @@ class ImageCompressionService {
       targetCanvas.height = newHeight;
 
       // Redimensionar usando pica
-      await this.pica.resize(sourceCanvas, targetCanvas, {
+      await pica.resize(sourceCanvas, targetCanvas, {
         filter: 'mks2013', // Filtro otimizado que já faz sharpening
         unsharpAmount,
         unsharpRadius,
@@ -75,7 +98,7 @@ class ImageCompressionService {
       const mimeType = format === 'jpeg' ? 'image/jpeg' : 
                      format === 'webp' ? 'image/webp' : 'image/png';
       
-      const blob = await this.pica.toBlob(targetCanvas, mimeType, quality);
+      const blob = await pica.toBlob(targetCanvas, mimeType, quality);
 
       // Criar novo arquivo
       const compressedFile = new File(
