@@ -10,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Carregar variáveis de ambiente do arquivo .env.local (desenvolvimento local)
+// Mas dar prioridade às variáveis do sistema (GitHub Actions)
 dotenv.config({ path: '.env.local' });
 
 // Para GitHub Actions, as variáveis vêm do ambiente do sistema
@@ -25,6 +26,13 @@ console.log('📋 Variáveis carregadas:', {
   SUPABASE_URL: SUPABASE_URL ? '✓' : '✗',
   SUPABASE_KEY: SUPABASE_ANON_KEY ? '✓' : '✗',
   TINYPNG_API_KEY: TINYPNG_API_KEY ? '✓' : '✗'
+});
+
+// Debug: Verificar de onde as variáveis estão vindo
+console.log('🔍 Debug - Origem das variáveis:', {
+  'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗',
+  'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓' : '✗',
+  'process.env.TINYPNG_API_KEY': process.env.TINYPNG_API_KEY ? '✓' : '✗',
 });
 
 const configContent = `// Configuração para arquivos HTML estáticos

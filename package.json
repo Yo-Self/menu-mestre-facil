@@ -8,7 +8,7 @@
     "build": "npm run generate-config && npm run generate-html-config && vite build",
     "build:dev": "npm run generate-config && npm run generate-html-config && vite build --mode development",
     "build:prod": "npm run generate-config && npm run generate-html-config && vite build --mode production",
-    "build:gh-pages": "npm run generate-config && npm run generate-html-config && vite build --base=/menu-mestre-facil/",
+    "build:gh-pages": "npm run generate-config && npm run generate-html-config && vite build --mode production --base=/menu-mestre-facil/",
     "generate-config": "node scripts/generate-public-config.js",
     "generate-html-config": "node scripts/generate-html-config.js",
     "lint": "eslint .",
