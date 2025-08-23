@@ -70,7 +70,7 @@ export default function SettingsPage() {
     try {
       let slug = formData.slug;
       if (slug !== profile.slug) {
-        slug = await generateUniqueSlug(generateSlug(slug), 'profiles');
+        slug = await generateUniqueSlug(generateSlug(slug), 'profiles', profile.id);
       }
 
       const { error } = await supabase

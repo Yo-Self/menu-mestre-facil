@@ -235,27 +235,21 @@ export default function RestaurantDetailPage() {
 
         <div className="lg:col-span-2">
           <div className="space-y-6">
-            {/* URLs Amigáveis */}
+            {/* Link do Restaurante */}
             {profile && (
               <Card>
                 <CardHeader>
-                  <CardTitle>URLs Amigáveis</CardTitle>
+                  <CardTitle>Link do Restaurante</CardTitle>
                   <CardDescription>
-                    Links personalizados para acessar seu restaurante
+                    Link para acessar seu restaurante
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <UrlPreview
-                    title="Página do Restaurante"
-                    description="Link para a página administrativa do restaurante"
-                    url={`${baseUrl}${generateRestaurantUrl(profile.slug, restaurant.slug)}`}
+                    title="Link do Restaurante"
+                    description="Link para acessar seu restaurante"
+                    url={`yo-self.com/restaurant/${restaurant.slug}`}
                     type="restaurant"
-                  />
-                  <UrlPreview
-                    title="Menu Público"
-                    description="Link para o menu público que seus clientes podem acessar"
-                    url={`${baseUrl}${generatePublicMenuUrl(profile.slug, restaurant.slug)}`}
-                    type="menu"
                   />
                 </CardContent>
               </Card>

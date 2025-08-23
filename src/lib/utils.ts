@@ -20,13 +20,18 @@ export function generateSlug(input: string): string {
   return lowerKebab || "item";
 }
 
-export async function checkSlugExists(slug: string, table: 'profiles' | 'restaurants'): Promise<boolean> {
+export async function checkSlugExists(slug: string, table: 'profiles' | 'restaurants', excludeId?: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from(table)
       .select('slug')
-      .eq('slug', slug)
-      .single();
+      .eq('slug', slug);
+    
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+    
+    const { data, error } = await query.single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
       throw error;
@@ -39,11 +44,11 @@ export async function checkSlugExists(slug: string, table: 'profiles' | 'restaur
   }
 }
 
-export async function generateUniqueSlug(baseSlug: string, table: 'profiles' | 'restaurants'): Promise<string> {
+export async function generateUniqueSlug(baseSlug: string, table: 'profiles' | 'restaurants', excludeId?: string): Promise<string> {
   let slug = baseSlug;
   let counter = 1;
 
-  while (await checkSlugExists(slug, table)) {
+  while (await checkSlugExists(slug, table, excludeId)) {
     slug = `${baseSlug}-${counter}`;
     counter++;
   }

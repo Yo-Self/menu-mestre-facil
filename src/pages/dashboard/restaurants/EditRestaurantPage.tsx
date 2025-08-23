@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 
 const cuisineTypes = [
   "Brasileira",
@@ -44,6 +45,7 @@ interface Restaurant {
   cuisine_type: string;
   description: string;
   image_url: string;
+  slug: string;
   waiter_call_enabled: boolean;
   whatsapp_phone: string | null;
   whatsapp_enabled: boolean;
@@ -60,6 +62,7 @@ export default function EditRestaurantPage() {
     cuisine_type: "",
     description: "",
     image_url: "",
+    slug: "",
   });
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
@@ -86,6 +89,7 @@ export default function EditRestaurantPage() {
         cuisine_type: data.cuisine_type,
         description: data.description || "",
         image_url: data.image_url,
+        slug: data.slug,
       });
       setWaiterCallEnabled(data.waiter_call_enabled);
       setWhatsappPhone(data.whatsapp_phone || "");
@@ -107,6 +111,14 @@ export default function EditRestaurantPage() {
     setLoading(true);
 
     try {
+      // Gerar slug único se foi alterado
+      let slug = formData.slug;
+      if (formData.slug.trim()) {
+        slug = await generateUniqueSlug(generateSlug(formData.slug), 'restaurants', id);
+      } else {
+        slug = await generateUniqueSlug(generateSlug(formData.name), 'restaurants', id);
+      }
+
       const { error } = await supabase
         .from("restaurants")
         .update({
@@ -114,6 +126,7 @@ export default function EditRestaurantPage() {
           cuisine_type: formData.cuisine_type,
           description: formData.description || null,
           image_url: formData.image_url,
+          slug,
           waiter_call_enabled: waiterCallEnabled,
           whatsapp_phone: whatsappPhone.trim() || null,
           whatsapp_enabled: whatsappEnabled,
@@ -201,6 +214,21 @@ export default function EditRestaurantPage() {
                 placeholder="Ex: Restaurante do Chef"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">Link do Restaurante</Label>
+              <Input
+                id="slug"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                placeholder="ex: restaurante-do-chef"
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                Seu restaurante será acessível em: yo-self.com/restaurant/{formData.slug || '[slug-atual]'}
+              </p>
             </div>
 
             <div className="space-y-2">

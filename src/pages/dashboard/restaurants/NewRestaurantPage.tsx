@@ -161,7 +161,7 @@ export default function NewRestaurantPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">Identificador do Restaurante (Slug)</Label>
+              <Label htmlFor="slug">Link do Restaurante</Label>
               <Input
                 id="slug"
                 name="slug"
@@ -170,7 +170,7 @@ export default function NewRestaurantPage() {
                 placeholder="ex: restaurante-do-chef"
               />
               <p className="text-sm text-muted-foreground">
-                Deixe em branco para gerar automaticamente a partir do nome. Este será o identificador único do restaurante na URL.
+                Deixe em branco para gerar automaticamente a partir do nome. Seu restaurante será acessível em: yo-self.com/restaurant/{formData.slug || '[slug-gerado]'}
               </p>
             </div>
 
