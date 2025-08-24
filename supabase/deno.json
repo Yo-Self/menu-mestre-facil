@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "std/": "https://deno.land/std@0.220.1/",
+    "hono": "https://deno.land/x/hono@v4.0.5/mod.ts",
+    "supabase": "https://deno.land/x/supabase_js@2.39.3/mod.ts",
+    "drizzle-orm": "https://esm.sh/drizzle-orm@0.30.2",
+    "postgres": "https://esm.sh/postgres@3.4.3",
+    "drizzle-orm/postgres-js": "https://esm.sh/drizzle-orm@0.30.2/postgres-js"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  }
+}

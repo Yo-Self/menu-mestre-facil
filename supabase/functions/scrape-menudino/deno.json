@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "hono": "jsr:@hono/hono@4",
+    "drizzle-orm": "npm:drizzle-orm@0.30.10",
+    "drizzle-orm/pg-core": "npm:drizzle-orm@0.30.10/pg-core",
+    "drizzle-orm/postgres-js": "npm:drizzle-orm@0.30.10/postgres-js",
+    "postgres": "npm:postgres@3.4.4",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
+  }
+}
