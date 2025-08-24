@@ -10,7 +10,12 @@
     "build:prod": "vite build --mode production",
     "build:gh-pages": "vite build --mode production --base=/",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:start": "./scripts/supabase-local.sh start",
+    "supabase:stop": "./scripts/supabase-local.sh stop",
+    "supabase:status": "./scripts/supabase-local.sh status",
+    "supabase:logs": "./scripts/supabase-local.sh logs",
+    "supabase:reset": "./scripts/supabase-local.sh reset"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
