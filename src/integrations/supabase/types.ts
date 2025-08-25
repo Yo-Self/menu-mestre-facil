@@ -324,6 +324,8 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          background_light: string | null
+          background_night: string | null
           created_at: string | null
           cuisine_type: string
           description: string | null
@@ -340,6 +342,8 @@ export type Database = {
           whatsapp_phone: string | null
         }
         Insert: {
+          background_light?: string | null
+          background_night?: string | null
           created_at?: string | null
           cuisine_type: string
           description?: string | null
@@ -356,6 +360,8 @@ export type Database = {
           whatsapp_phone?: string | null
         }
         Update: {
+          background_light?: string | null
+          background_night?: string | null
           created_at?: string | null
           cuisine_type?: string
           description?: string | null

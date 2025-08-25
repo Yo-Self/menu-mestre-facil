@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Bell, MessageCircle } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -46,6 +46,8 @@ export default function NewRestaurantPage() {
     description: "",
     image_url: "",
     slug: "",
+    background_light: "#ffffff",
+    background_night: "#1a1a1a",
   });
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
@@ -80,6 +82,8 @@ export default function NewRestaurantPage() {
             waiter_call_enabled: waiterCallEnabled,
             whatsapp_phone: whatsappPhone.trim() || null,
             whatsapp_enabled: whatsappEnabled,
+            background_light: formData.background_light || "#ffffff",
+            background_night: formData.background_night || "#1a1a1a",
           },
         ])
         .select()
@@ -259,6 +263,48 @@ export default function NewRestaurantPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Personalização de Fundo
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Configure os fundos de tela para o menu do seu restaurante
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="background_light">Fundo para Tema Claro</Label>
+                  <Input
+                    id="background_light"
+                    name="background_light"
+                    value={formData.background_light}
+                    onChange={handleChange}
+                    placeholder="Ex: #ffffff ou URL da imagem"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Digite um código de cor (ex: #ffffff) ou URL de uma imagem
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="background_night">Fundo para Tema Escuro</Label>
+                  <Input
+                    id="background_night"
+                    name="background_night"
+                    value={formData.background_night}
+                    onChange={handleChange}
+                    placeholder="Ex: #1a1a1a ou URL da imagem"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Digite um código de cor (ex: #1a1a1a) ou URL de uma imagem
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">

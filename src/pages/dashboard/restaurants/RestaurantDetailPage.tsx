@@ -21,6 +21,8 @@ interface Restaurant {
   waiter_call_enabled: boolean;
   whatsapp_phone: string | null;
   whatsapp_enabled: boolean;
+  background_light: string | null;
+  background_night: string | null;
 }
 
 interface Profile {
@@ -229,6 +231,44 @@ export default function RestaurantDetailPage() {
                   </Badge>
                 </div>
               )}
+
+              <div className="space-y-2 pt-4 border-t">
+                <h4 className="text-sm font-medium text-muted-foreground">Configurações de Fundo</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Tema Claro:</span>
+                    <div className="flex items-center gap-2">
+                      {restaurant.background_light?.startsWith('#') ? (
+                        <div 
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: restaurant.background_light }}
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded border bg-muted" />
+                      )}
+                      <span className="text-xs font-mono">
+                        {restaurant.background_light || 'Padrão'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Tema Escuro:</span>
+                    <div className="flex items-center gap-2">
+                      {restaurant.background_night?.startsWith('#') ? (
+                        <div 
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: restaurant.background_night }}
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded border bg-muted" />
+                      )}
+                      <span className="text-xs font-mono">
+                        {restaurant.background_night || 'Padrão'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

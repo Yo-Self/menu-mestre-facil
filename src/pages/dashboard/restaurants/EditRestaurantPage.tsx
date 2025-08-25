@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, MessageCircle } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,8 @@ interface Restaurant {
   waiter_call_enabled: boolean;
   whatsapp_phone: string | null;
   whatsapp_enabled: boolean;
+  background_light: string | null;
+  background_night: string | null;
 }
 
 export default function EditRestaurantPage() {
@@ -63,6 +65,8 @@ export default function EditRestaurantPage() {
     description: "",
     image_url: "",
     slug: "",
+    background_light: "",
+    background_night: "",
   });
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
@@ -90,6 +94,8 @@ export default function EditRestaurantPage() {
         description: data.description || "",
         image_url: data.image_url,
         slug: data.slug,
+        background_light: data.background_light || "",
+        background_night: data.background_night || "",
       });
       setWaiterCallEnabled(data.waiter_call_enabled);
       setWhatsappPhone(data.whatsapp_phone || "");
@@ -130,6 +136,8 @@ export default function EditRestaurantPage() {
           waiter_call_enabled: waiterCallEnabled,
           whatsapp_phone: whatsappPhone.trim() || null,
           whatsapp_enabled: whatsappEnabled,
+          background_light: formData.background_light || null,
+          background_night: formData.background_night || null,
         })
         .eq("id", id);
 
@@ -316,6 +324,48 @@ export default function EditRestaurantPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Personalização de Fundo
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Configure os fundos de tela para o menu do seu restaurante
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="background_light">Fundo para Tema Claro</Label>
+                  <Input
+                    id="background_light"
+                    name="background_light"
+                    value={formData.background_light}
+                    onChange={handleChange}
+                    placeholder="Ex: #ffffff ou URL da imagem"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Digite um código de cor (ex: #ffffff) ou URL de uma imagem
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="background_night">Fundo para Tema Escuro</Label>
+                  <Input
+                    id="background_night"
+                    name="background_night"
+                    value={formData.background_night}
+                    onChange={handleChange}
+                    placeholder="Ex: #1a1a1a ou URL da imagem"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Digite um código de cor (ex: #1a1a1a) ou URL de uma imagem
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">
