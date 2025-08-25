@@ -27,6 +27,7 @@ interface DishRow {
   is_available: boolean | null;
   restaurant_id: string;
   category_id: string | null;
+  ingredients?: string | null;
 }
 
 interface DishCategory {
@@ -94,10 +95,11 @@ export default function EditDishPage() {
         const categoryIds = dishCategories.map((dc: DishCategory) => dc.category_id);
         setSelectedCategories(categoryIds);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: "Erro ao carregar prato",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       navigate("/dashboard/dishes");
@@ -121,11 +123,12 @@ export default function EditDishPage() {
         .eq("restaurants.user_id", user.id)
         .order("name");
       if (error) throw error;
-      setCategories((data as any[]) || []);
-    } catch (error: any) {
+      setCategories((data as Category[]) || []);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: "Erro ao carregar categorias",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -189,10 +192,11 @@ export default function EditDishPage() {
       });
 
       navigate("/dashboard/dishes");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: "Erro ao atualizar prato",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
