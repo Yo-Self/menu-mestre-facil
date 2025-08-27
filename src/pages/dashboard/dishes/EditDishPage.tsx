@@ -8,9 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
+import { DishComplementGroupsManager } from "@/components/dashboard/DishComplementGroupsManager";
 
 interface Category {
   id: string;
@@ -54,6 +56,7 @@ export default function EditDishPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [dishData, setDishData] = useState<DishRow | null>(null);
 
   useEffect(() => {
     if (!id) return;

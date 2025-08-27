@@ -129,7 +129,7 @@ INSERT INTO public.complement_groups (
   description,
   required,
   max_selections,
-  dish_id,
+  restaurant_id,
   created_at,
   updated_at
 ) VALUES (
@@ -138,7 +138,7 @@ INSERT INTO public.complement_groups (
   'Escolha seus acompanhamentos favoritos',
   false,
   3,
-  (SELECT id FROM public.dishes LIMIT 1),
+  (SELECT id FROM public.restaurants LIMIT 1),
   now(),
   now()
 );
@@ -156,6 +156,21 @@ INSERT INTO public.complements (
   (gen_random_uuid(), 'Arroz', 'Arroz branco soltinho', 0.00, (SELECT id FROM public.complement_groups LIMIT 1), now(), now()),
   (gen_random_uuid(), 'Farofa', 'Farofa de bacon crocante', 3.50, (SELECT id FROM public.complement_groups LIMIT 1), now(), now()),
   (gen_random_uuid(), 'Couve', 'Couve refogada', 2.50, (SELECT id FROM public.complement_groups LIMIT 1), now(), now());
+
+-- Associar grupo de complementos ao prato
+INSERT INTO public.dish_complement_groups (
+  id,
+  dish_id,
+  complement_group_id,
+  position,
+  created_at
+) VALUES (
+  gen_random_uuid(),
+  (SELECT id FROM public.dishes LIMIT 1),
+  (SELECT id FROM public.complement_groups LIMIT 1),
+  1,
+  now()
+);
 
 -- Inserir menu de exemplo
 INSERT INTO public.menus (

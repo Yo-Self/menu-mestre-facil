@@ -24,6 +24,7 @@ import DishesPage from "./pages/dashboard/dishes/DishesPage";
 import NewDishPage from "./pages/dashboard/dishes/NewDishPage";
 import EditDishPage from "./pages/dashboard/dishes/EditDishPage";
 import ManageComplementsPage from "./pages/dashboard/dishes/ManageComplementsPage";
+import ComplementsPage from "./pages/dashboard/complements/ComplementsPage";
 import NewCategoryPage from "./pages/dashboard/categories/NewCategoryPage";
 import NewMenuPage from "./pages/dashboard/menus/NewMenuPage";
 import SettingsPage from "./pages/dashboard/settings/SettingsPage";
@@ -66,7 +67,8 @@ const App = () => (
             <Route path="dishes" element={<DishesPage />} />
             <Route path="dishes/new" element={<NewDishPage />} />
             <Route path="dishes/:id/edit" element={<EditDishPage />} />
-                        <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
+            <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
+            <Route path="complements" element={<ComplementsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
             <Route path="import-menu" element={<MenuImportPage />} />

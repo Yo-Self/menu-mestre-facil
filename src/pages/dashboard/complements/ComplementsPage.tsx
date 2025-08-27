@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,12 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type Dish = {
-  id: string;
-  name: string;
-  restaurant_id: string;
-};
-
 type ComplementGroup = {
   id: string;
   title: string;
@@ -25,7 +17,8 @@ type ComplementGroup = {
   required: boolean;
   max_selections: number;
   restaurant_id: string;
-  position?: number | null;
+  created_at: string;
+  linked_dishes?: { id: string; name: string }[];
 };
 
 type Complement = {
@@ -39,167 +32,163 @@ type Complement = {
   position: number | null;
 };
 
-export default function ManageComplementsPage() {
-  const { id: dishId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+export default function ComplementsPage() {
   const { toast } = useToast();
-
+  
   const [loading, setLoading] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
   const [savingComplementByGroup, setSavingComplementByGroup] = useState<Record<string, boolean>>({});
-
-  const [dish, setDish] = useState<Dish | null>(null);
+  
   const [groups, setGroups] = useState<ComplementGroup[]>([]);
-  const [availableGroups, setAvailableGroups] = useState<ComplementGroup[]>([]);
   const [complementsByGroup, setComplementsByGroup] = useState<Record<string, Complement[]>>({});
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-
-  const hasDishAndId = useMemo(() => Boolean(dishId), [dishId]);
+  
+  // New group form state
+  const [newGroupTitle, setNewGroupTitle] = useState("");
+  const [newGroupDescription, setNewGroupDescription] = useState("");
+  const [newGroupRequired, setNewGroupRequired] = useState(false);
+  const [newGroupMaxSelections, setNewGroupMaxSelections] = useState<number | "">(1);
 
   useEffect(() => {
-    if (!hasDishAndId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        await ensureOwnershipAndLoadDish();
-      } catch (error: any) {
-        toast({ title: "Erro", description: error.message || "Falha ao carregar complementos", variant: "destructive" });
-        navigate("/dashboard/dishes");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dishId]);
-
-  // Carregar complementos após dish ser carregado
-  useEffect(() => {
-    if (!dish) return;
-    (async () => {
-      try {
-        await loadGroupsAndComplements();
-        await loadAvailableGroups();
-      } catch (error: any) {
-        toast({ title: "Erro", description: error.message || "Falha ao carregar complementos", variant: "destructive" });
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dish]);
-
-  const ensureOwnershipAndLoadDish = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado");
-    const { data, error } = await supabase
-      .from("dishes")
-      .select(`id, name, restaurant_id, restaurants!inner(id, user_id)`) // verify ownership
-      .eq("id", dishId)
-      .eq("restaurants.user_id", user.id)
-      .single();
-    if (error || !data) throw error || new Error("Prato não encontrado");
-    setDish({ id: data.id, name: (data as any).name, restaurant_id: (data as any).restaurant_id });
-  };
+    loadGroupsAndComplements();
+  }, []);
 
   const loadGroupsAndComplements = async () => {
-    console.log("🔍 Loading complements for dishId:", dishId, "dish:", dish);
-    if (!dishId || !dish) {
-      console.log("❌ Missing dishId or dish data");
-      return;
-    }
-    
-    // Buscar grupos de complemento através da tabela de relacionamento
-    const { data: groupsData, error: groupsError } = await supabase
-      .from("dish_complement_groups")
-      .select(`
-        complement_groups (
-          id,
-          title,
-          description,
-          required,
-          max_selections,
-          restaurant_id,
-          created_at
-        ),
-        position
-      `)
-      .eq("dish_id", dishId)
-      .order("position", { ascending: true, nullsFirst: true });
-    
-    console.log("🔍 Groups query result:", { groupsData, groupsError });
-    
-    if (groupsError) throw groupsError;
-    
-    // Transformar os dados para o formato esperado
-    const list: ComplementGroup[] = (groupsData || []).map((item: any) => ({
-      ...item.complement_groups,
-      position: item.position
-    }));
-    console.log("🔍 Processed groups:", list);
-    setGroups(list);
-
-    // Load complements for these groups
-    const groupIds = list.map((g) => g.id);
-    console.log("🔍 Group IDs:", groupIds);
-    if (groupIds.length === 0) {
-      setComplementsByGroup({});
-      return;
-    }
-    const { data: compsData, error: compsError } = await supabase
-      .from("complements")
-      .select("*")
-      .in("group_id", groupIds)
-      .order("position", { ascending: true, nullsFirst: true })
-      .order("created_at", { ascending: true });
-    console.log("🔍 Complements query result:", { compsData, compsError });
-    if (compsError) throw compsError;
-    const byGroup: Record<string, Complement[]> = {};
-    (compsData || []).forEach((c) => {
-      const key = (c as any).group_id as string;
-      if (!byGroup[key]) byGroup[key] = [];
-      byGroup[key].push(c as any as Complement);
-    });
-    console.log("🔍 Complements by group:", byGroup);
-    setComplementsByGroup(byGroup);
-  };
-
-  const loadAvailableGroups = async () => {
-    if (!dish) return;
+    setLoading(true);
     try {
-      // Buscar todos os grupos do restaurante
-      const { data: allGroups, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Buscar restaurantes do usuário para filtrar grupos
+      const { data: restaurants } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (!restaurants || restaurants.length === 0) {
+        setGroups([]);
+        setComplementsByGroup({});
+        return;
+      }
+
+      const restaurantIds = restaurants.map(r => r.id);
+
+      // Buscar grupos de complemento do usuário
+      const { data: groupsData, error: groupsError } = await supabase
         .from("complement_groups")
         .select("*")
-        .eq("restaurant_id", dish.restaurant_id);
-        
-      if (error) throw error;
+        .in("restaurant_id", restaurantIds)
+        .order("created_at", { ascending: false });
+
+      if (groupsError) throw groupsError;
+
+      const groupsList = (groupsData || []) as ComplementGroup[];
       
-      // Filtrar grupos que não estão já associados ao prato
-      const currentGroupIds = groups.map(g => g.id);
-      const available = (allGroups || []).filter(group => !currentGroupIds.includes(group.id));
-      setAvailableGroups(available);
+      // Buscar pratos vinculados para cada grupo
+      if (groupsList.length > 0) {
+        const groupIds = groupsList.map(g => g.id);
+        const { data: linkedDishesData, error: linkedError } = await supabase
+          .from("dish_complement_groups")
+          .select(`
+            complement_group_id,
+            dishes!inner(id, name)
+          `)
+          .in("complement_group_id", groupIds);
+
+        if (linkedError) {
+          console.error("Erro ao buscar pratos vinculados:", linkedError);
+        } else {
+          // Organizar pratos por grupo
+          const dishesByGroup: Record<string, { id: string; name: string }[]> = {};
+          (linkedDishesData || []).forEach((item: any) => {
+            const groupId = item.complement_group_id;
+            if (!dishesByGroup[groupId]) {
+              dishesByGroup[groupId] = [];
+            }
+            dishesByGroup[groupId].push({
+              id: item.dishes.id,
+              name: item.dishes.name
+            });
+          });
+
+          // Adicionar pratos vinculados aos grupos
+          groupsList.forEach(group => {
+            group.linked_dishes = dishesByGroup[group.id] || [];
+          });
+        }
+      }
+      
+      setGroups(groupsList);
+
+      // Load complements for these groups
+      const groupIds = groupsList.map((g) => g.id);
+      if (groupIds.length === 0) {
+        setComplementsByGroup({});
+        return;
+      }
+
+      const { data: compsData, error: compsError } = await supabase
+        .from("complements")
+        .select("*")
+        .in("group_id", groupIds)
+        .order("position", { ascending: true, nullsFirst: true })
+        .order("created_at", { ascending: true });
+
+      if (compsError) throw compsError;
+
+      const byGroup: Record<string, Complement[]> = {};
+      (compsData || []).forEach((c) => {
+        const key = (c as any).group_id as string;
+        if (!byGroup[key]) byGroup[key] = [];
+        byGroup[key].push(c as any as Complement);
+      });
+      setComplementsByGroup(byGroup);
     } catch (error: any) {
-      console.error("Erro ao carregar grupos disponíveis:", error);
+      toast({ title: "Erro ao carregar complementos", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddExistingGroup = async () => {
-    if (!selectedGroupId || !dishId) return;
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSavingGroup(true);
     try {
-      const { error } = await supabase
-        .from("dish_complement_groups")
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Pegar o primeiro restaurante do usuário como padrão
+      const { data: restaurants } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      if (!restaurants || restaurants.length === 0) {
+        throw new Error("Você precisa ter pelo menos um restaurante cadastrado");
+      }
+
+      const maxSel = newGroupMaxSelections === "" ? 1 : Number(newGroupMaxSelections);
+      
+      const { error: groupError } = await supabase
+        .from("complement_groups")
         .insert({
-          dish_id: dishId,
-          complement_group_id: selectedGroupId,
+          title: newGroupTitle.trim(),
+          description: newGroupDescription.trim() || null,
+          required: newGroupRequired,
+          max_selections: Number.isFinite(maxSel) && maxSel > 0 ? maxSel : 1,
+          restaurant_id: restaurants[0].id,
         });
       
-      if (error) throw error;
+      if (groupError) throw groupError;
       
-      toast({ title: "Grupo adicionado", description: "Grupo de complementos associado ao prato." });
-      setSelectedGroupId("");
+      toast({ title: "Grupo criado", description: "Novo grupo de complementos adicionado." });
+      setNewGroupTitle("");
+      setNewGroupDescription("");  
+      setNewGroupRequired(false);
+      setNewGroupMaxSelections(1);
       await loadGroupsAndComplements();
-      await loadAvailableGroups();
     } catch (error: any) {
-      toast({ title: "Erro ao adicionar grupo", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao criar grupo", description: error.message, variant: "destructive" });
     } finally {
       setSavingGroup(false);
     }
@@ -212,12 +201,11 @@ export default function ManageComplementsPage() {
       const { error: delCompErr } = await supabase.from("complements").delete().eq("group_id", groupId);
       if (delCompErr) throw delCompErr;
       
-      // 2. Delete relationship from dish_complement_groups
+      // 2. Delete relationships from dish_complement_groups
       const { error: delRelErr } = await supabase
         .from("dish_complement_groups")
         .delete()
-        .eq("complement_group_id", groupId)
-        .eq("dish_id", dishId);
+        .eq("complement_group_id", groupId);
       if (delRelErr) throw delRelErr;
       
       // 3. Delete the group itself
@@ -277,58 +265,70 @@ export default function ManageComplementsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/dishes")} aria-label="Voltar">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-primary">Complementos do Prato</h1>
-          <p className="text-muted-foreground">Gerencie grupos de complementos e adicionais do prato{dish ? ` "${dish.name}"` : ""}</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold text-primary">Complementos</h1>
+        <p className="text-muted-foreground">
+          Gerencie grupos de complementos que podem ser reutilizados em múltiplos pratos
+        </p>
       </div>
 
       <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle>Adicionar Grupo de Complementos</CardTitle>
-          <CardDescription>Selecione um grupo existente ou crie um novo na página de complementos</CardDescription>
+          <CardTitle>Novo Grupo de Complementos</CardTitle>
+          <CardDescription>Crie grupos como "Molhos", "Adicionais", "Pontos da carne" etc.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="group-select">Selecionar Grupo Existente</Label>
-            <div className="flex gap-2">
-              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Escolha um grupo de complementos" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableGroups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.title} ({group.required ? "Obrigatório" : "Opcional"})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button 
-                onClick={handleAddExistingGroup} 
-                disabled={!selectedGroupId || savingGroup}
-              >
-                {savingGroup ? "Adicionando..." : "Adicionar"}
+        <CardContent>
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="group-title">Título do Grupo</Label>
+              <Input 
+                id="group-title" 
+                value={newGroupTitle} 
+                onChange={(e) => setNewGroupTitle(e.target.value)} 
+                placeholder="Ex: Adicionais" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group-description">Descrição (opcional)</Label>
+              <Textarea 
+                id="group-description" 
+                value={newGroupDescription} 
+                onChange={(e) => setNewGroupDescription(e.target.value)} 
+                rows={2} 
+                placeholder="Ex: Escolha até 2 adicionais" 
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Obrigatório</Label>
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <span className="text-sm text-muted-foreground">Usuário deve selecionar pelo menos 1</span>
+                  <Switch checked={newGroupRequired} onCheckedChange={setNewGroupRequired} />
+                </div>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="group-max">Máximo de seleções</Label>
+                <Input
+                  id="group-max"
+                  type="number"
+                  min={1}
+                  value={newGroupMaxSelections}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNewGroupMaxSelections(v === "" ? "" : Number(v));
+                  }}
+                  placeholder="1"
+                  required
+                />
+              </div>
+            </div>
+            <div className="pt-2">
+              <Button type="submit" disabled={savingGroup}>
+                {savingGroup ? "Criando..." : "Criar Grupo"}
               </Button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/dashboard/complements")}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Criar Novo Grupo
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Crie e gerencie grupos na página de complementos
-            </span>
-          </div>
+          </form>
         </CardContent>
       </Card>
 
@@ -350,6 +350,19 @@ export default function ManageComplementsPage() {
                   <CardDescription>
                     {group.description || "Sem descrição"} • {group.required ? "Obrigatório" : "Opcional"} • Máximo de {group.max_selections}
                   </CardDescription>
+                  {group.linked_dishes && group.linked_dishes.length > 0 && (
+                    <div className="mt-2 text-sm">
+                      <span className="text-muted-foreground">Vinculado aos pratos: </span>
+                      <span className="font-medium text-primary">
+                        {group.linked_dishes.map(dish => dish.name).join(", ")}
+                      </span>
+                    </div>
+                  )}
+                  {(!group.linked_dishes || group.linked_dishes.length === 0) && (
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Não vinculado a nenhum prato
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleDeleteGroup(group.id)}>
@@ -463,5 +476,3 @@ function NewComplementForm({
     </form>
   );
 }
-
-

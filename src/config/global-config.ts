@@ -28,7 +28,9 @@ export function getSupabaseConfig() {
 if (import.meta.env.DEV) {
   console.log('🔧 Configuração Global:', {
     supabase: {
-      url: globalConfig.supabase.url ? 'true' : 'false',
+      url: globalConfig.supabase.url,
+      isRemote: globalConfig.supabase.url.includes('supabase.co'),
+      isLocal: globalConfig.supabase.url.includes('localhost') || globalConfig.supabase.url.includes('127.0.0.1'),
       key: globalConfig.supabase.anonKey ? '***' : 'false',
     },
     app: {

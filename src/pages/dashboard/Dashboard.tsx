@@ -24,7 +24,27 @@ export default function Dashboard() {
     const fetchStats = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        console.log("🔍 Dashboard - Usuário:", user);
+        if (!user) {
+          console.log("❌ Dashboard - Usuário não encontrado");
+          return;
+        }
+
+        console.log("🔍 Dashboard - ID do usuário:", user.id);
+        
+        // Verificar se o usuário existe na tabela profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", user.id)
+          .single();
+          
+        if (!profile) {
+          console.log("❌ Dashboard - Usuário não encontrado na tabela profiles, limpando sessão...");
+          await supabase.auth.signOut();
+          window.location.reload();
+          return;
+        }
 
         // Buscar estatísticas dos restaurantes do usuário
         const [restaurantsRes, menusRes, categoriesRes, dishesRes] = await Promise.all([
@@ -60,6 +80,12 @@ export default function Dashboard() {
             `, { count: "exact" })
             .eq("restaurants.user_id", user.id)
         ]);
+
+        console.log("🔍 Dashboard - Resultados das queries:");
+        console.log("- Restaurantes:", restaurantsRes);
+        console.log("- Menus:", menusRes);
+        console.log("- Categorias:", categoriesRes);
+        console.log("- Pratos:", dishesRes);
 
         setStats({
           restaurants: restaurantsRes.count || 0,
