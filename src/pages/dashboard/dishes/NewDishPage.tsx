@@ -230,15 +230,13 @@ export default function NewDishPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="categories">Categorias</Label>
-                <div className="max-h-32 overflow-y-auto">
-                  <MultiSelect
-                    options={categoryOptions}
-                    selected={selectedCategories}
-                    onSelectionChange={setSelectedCategories}
-                    placeholder="Selecione as categorias"
-                    disabled={loadingCategories}
-                  />
-                </div>
+                <MultiSelect
+                  options={categoryOptions}
+                  selected={selectedCategories}
+                  onSelectionChange={setSelectedCategories}
+                  placeholder="Selecione as categorias"
+                  disabled={loadingCategories}
+                />
                 <p className="text-xs text-muted-foreground">
                   Selecione uma ou mais categorias para o prato
                 </p>

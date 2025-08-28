@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -459,8 +460,23 @@ function NewComplementForm({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="comp-image">URL da imagem (opcional)</Label>
-          <Input id="comp-image" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+          <ImageUpload
+            label="Imagem do complemento (opcional)"
+            description="Adicione uma foto do complemento"
+            value={imageUrl}
+            onChange={setImageUrl}
+            placeholder="https://exemplo.com/imagem.jpg"
+            uploadOptions={{
+              maxSize: 5 * 1024 * 1024, // 5MB
+              compressionThreshold: 500 * 1024, // 500KB
+              compressionOptions: {
+                maxWidth: 800,
+                maxHeight: 800,
+                quality: 0.85,
+                format: 'jpeg'
+              }
+            }}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="comp-ingredients">Ingredientes (opcional)</Label>
