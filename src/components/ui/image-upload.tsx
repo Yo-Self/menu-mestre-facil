@@ -4,9 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Link, X, Image as ImageIcon } from "lucide-react";
+import { Upload, Link, X, Image as ImageIcon, Edit3 } from "lucide-react";
 import { useImageUpload, ImageUploadOptions } from "@/hooks/useImageUpload";
 import { useToast } from "@/hooks/use-toast";
+import { ImageEditor } from "./image-editor";
 
 interface ImageUploadProps {
   value: string;
@@ -16,6 +17,16 @@ interface ImageUploadProps {
   placeholder?: string;
   required?: boolean;
   uploadOptions?: ImageUploadOptions;
+  editorSettings?: {
+    enabled?: boolean;
+    defaultAspectRatio?: string;
+    maxWidth?: number;
+    maxHeight?: number;
+    defaultQuality?: number;
+    allowRotation?: boolean;
+    allowScaling?: boolean;
+    allowFreeCrop?: boolean;
+  };
 }
 
 export function ImageUpload({
@@ -26,8 +37,10 @@ export function ImageUpload({
   placeholder = "https://exemplo.com/imagem.jpg",
   required = false,
   uploadOptions = {},
+  editorSettings = {},
 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(value || null);
+  const [showEditor, setShowEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -65,6 +78,27 @@ export function ImageUpload({
     setPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleEditImage = () => {
+    setShowEditor(true);
+  };
+
+  const handleSaveEditedImage = async (editedImage: File) => {
+    try {
+      // Fazer upload da imagem editada
+      const result = await uploadImage(editedImage);
+      onChange(result.url);
+      setPreview(result.url);
+      setShowEditor(false);
+      
+      toast({
+        title: "Imagem editada com sucesso!",
+        description: "A imagem foi processada e salva",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar imagem editada:', error);
     }
   };
 
@@ -182,15 +216,29 @@ export function ImageUpload({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Preview da Imagem</CardTitle>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveImage}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                {editorSettings?.enabled !== false && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditImage}
+                    className="h-8 px-3"
+                  >
+                    <Edit3 className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveImage}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -221,6 +269,26 @@ export function ImageUpload({
             Enviando imagem...
           </span>
         </div>
+      )}
+
+      {/* Editor de Imagem */}
+      {showEditor && preview && editorSettings?.enabled !== false && (
+        <ImageEditor
+          imageUrl={preview}
+          onSave={handleSaveEditedImage}
+          onCancel={() => setShowEditor(false)}
+          aspectRatio={editorSettings?.defaultAspectRatio === '1:1' ? 1 : 
+                      editorSettings?.defaultAspectRatio === '4:3' ? 4/3 :
+                      editorSettings?.defaultAspectRatio === '3:2' ? 3/2 :
+                      editorSettings?.defaultAspectRatio === '5:4' ? 5/4 :
+                      editorSettings?.defaultAspectRatio === '3:1' ? 3 : 16/9}
+          maxWidth={editorSettings?.maxWidth || 1920}
+          maxHeight={editorSettings?.maxHeight || 1080}
+          quality={editorSettings?.defaultQuality || 0.9}
+          allowRotation={editorSettings?.allowRotation}
+          allowScaling={editorSettings?.allowScaling}
+          allowFreeCrop={editorSettings?.allowFreeCrop}
+        />
       )}
     </div>
   );
