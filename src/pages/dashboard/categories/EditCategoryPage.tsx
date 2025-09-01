@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ export default function EditCategoryPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [name, setName] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -67,6 +68,27 @@ export default function EditCategoryPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!confirm(`Tem certeza que deseja excluir a categoria "${name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Categoria excluída", description: `${name} foi excluída com sucesso.` });
+      navigate("/dashboard/categories");
+    } catch (error: any) {
+      toast({ title: "Erro ao excluir categoria", description: error.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -102,9 +124,14 @@ export default function EditCategoryPage() {
               <Label htmlFor="image">URL da Imagem</Label>
               <Input id="image" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
             </div>
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-4 pt-4 items-center">
               <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
               <Button type="button" variant="outline" onClick={() => navigate("/dashboard/categories")}>Cancelar</Button>
+              <div className="ml-auto" />
+              <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleting ? "Excluindo..." : "Excluir Categoria"}
+              </Button>
             </div>
           </form>
         </CardContent>
