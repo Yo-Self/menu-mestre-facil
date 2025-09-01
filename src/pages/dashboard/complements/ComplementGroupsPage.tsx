@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, Trash2, Users } from "lucide-react";
+import { Plus, Settings, Trash2, Users, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,9 @@ export default function ComplementGroupsPage() {
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [newGroupRequired, setNewGroupRequired] = useState(false);
   const [newGroupMaxSelections, setNewGroupMaxSelections] = useState<number | "">(1);
+  
+  // Estado para edição de complementos
+  const [editingComplement, setEditingComplement] = useState<Complement | null>(null);
 
   useEffect(() => {
     loadRestaurantAndGroups();
@@ -274,6 +277,44 @@ export default function ComplementGroupsPage() {
     }
   };
 
+  const handleUpdateComplement = async (
+    groupId: string,
+    complementId: string,
+    fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
+  ) => {
+    setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: true }));
+    try {
+      const { error } = await supabase
+        .from("complements")
+        .update({
+          name: fields.name.trim(),
+          description: fields.description.trim() || null,
+          price: Number(parseFloat(fields.price || "0")) || 0,
+          image_url: fields.imageUrl.trim() || null,
+          ingredients: fields.ingredients.trim() || null,
+        })
+        .eq("id", complementId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Complemento atualizado", description: "Complemento foi atualizado com sucesso." });
+      setEditingComplement(null);
+      await loadRestaurantAndGroups();
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar complemento", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: false }));
+    }
+  };
+
+  const handleEditComplement = (complement: Complement) => {
+    setEditingComplement(complement);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingComplement(null);
+  };
+
   const handleDeleteComplement = async (complementId: string) => {
     if (!confirm("Tem certeza que deseja excluir este complemento?")) return;
     try {
@@ -457,6 +498,13 @@ export default function ComplementGroupsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => handleEditComplement(comp)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleDeleteComplement(comp.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -472,6 +520,9 @@ export default function ComplementGroupsPage() {
                 <NewComplementForm
                   saving={Boolean(savingComplementByGroup[group.id])}
                   onSubmit={(fields) => handleCreateComplement(group.id, fields)}
+                  editingComplement={editingComplement}
+                  onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
+                  onCancelEdit={handleCancelEdit}
                 />
               </CardContent>
             </Card>
@@ -485,6 +536,9 @@ export default function ComplementGroupsPage() {
 function NewComplementForm({
   saving,
   onSubmit,
+  editingComplement,
+  onUpdate,
+  onCancelEdit,
 }: {
   saving: boolean;
   onSubmit: (fields: {
@@ -494,6 +548,15 @@ function NewComplementForm({
     imageUrl: string;
     ingredients: string;
   }) => void;
+  editingComplement?: Complement | null;
+  onUpdate?: (fields: {
+    name: string;
+    description: string;
+    price: string;
+    imageUrl: string;
+    ingredients: string;
+  }) => void;
+  onCancelEdit?: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -501,15 +564,41 @@ function NewComplementForm({
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
 
+  // Preencher campos quando estiver editando
+  useEffect(() => {
+    if (editingComplement) {
+      setName(editingComplement.name);
+      setDescription(editingComplement.description || "");
+      setPrice(editingComplement.price.toString());
+      setImageUrl(editingComplement.image_url || "");
+      setIngredients(editingComplement.ingredients || "");
+    } else {
+      // Limpar campos quando não estiver editando
+      setName("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setIngredients("");
+    }
+  }, [editingComplement]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, description, price, imageUrl, ingredients });
-    setName("");
-    setDescription("");
-    setPrice("");
-    setImageUrl("");
-    setIngredients("");
+    
+    if (editingComplement && onUpdate) {
+      onUpdate({ name, description, price, imageUrl, ingredients });
+    } else {
+      onSubmit({ name, description, price, imageUrl, ingredients });
+      // Limpar campos apenas após criar novo complemento
+      setName("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setIngredients("");
+    }
   };
+
+  const isEditing = Boolean(editingComplement);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -569,11 +658,24 @@ function NewComplementForm({
           />
         </div>
       </div>
-      <div>
-        <Button type="submit" disabled={saving}>
-          <Plus className="h-4 w-4 mr-2" />
-          {saving ? "Adicionando..." : "Adicionar Complemento"}
-        </Button>
+      <div className="flex items-center gap-2">
+        {isEditing ? (
+          <>
+            <Button type="submit" disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancelEdit}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" disabled={saving}>
+            <Plus className="h-4 w-4 mr-2" />
+            {saving ? "Adicionando..." : "Adicionar Complemento"}
+          </Button>
+        )}
       </div>
     </form>
   );

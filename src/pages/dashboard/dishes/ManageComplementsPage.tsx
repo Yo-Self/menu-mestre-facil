@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ExternalLink, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +53,9 @@ export default function ManageComplementsPage() {
   const [availableGroups, setAvailableGroups] = useState<ComplementGroup[]>([]);
   const [complementsByGroup, setComplementsByGroup] = useState<Record<string, Complement[]>>({});
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  
+  // Estado para edição de complementos
+  const [editingComplement, setEditingComplement] = useState<Complement | null>(null);
 
   const hasDishAndId = useMemo(() => Boolean(dishId), [dishId]);
 
@@ -255,6 +258,44 @@ export default function ManageComplementsPage() {
     }
   };
 
+  const handleUpdateComplement = async (
+    groupId: string,
+    complementId: string,
+    fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
+  ) => {
+    setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: true }));
+    try {
+      const { error } = await supabase
+        .from("complements")
+        .update({
+          name: fields.name.trim(),
+          description: fields.description.trim() || null,
+          price: Number(parseFloat(fields.price || "0")) || 0,
+          image_url: fields.imageUrl.trim() || null,
+          ingredients: fields.ingredients.trim() || null,
+        })
+        .eq("id", complementId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Complemento atualizado", description: "Complemento foi atualizado com sucesso." });
+      setEditingComplement(null);
+      await loadGroupsAndComplements();
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar complemento", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: false }));
+    }
+  };
+
+  const handleEditComplement = (complement: Complement) => {
+    setEditingComplement(complement);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingComplement(null);
+  };
+
   const handleDeleteComplement = async (complementId: string) => {
     if (!confirm("Tem certeza que deseja excluir este complemento?")) return;
     try {
@@ -381,6 +422,13 @@ export default function ManageComplementsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleEditComplement(comp)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               <Button variant="outline" size="sm" onClick={() => handleDeleteComplement(comp.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -395,6 +443,9 @@ export default function ManageComplementsPage() {
                 <NewComplementForm
                   saving={Boolean(savingComplementByGroup[group.id])}
                   onSubmit={(fields) => handleCreateComplement(group.id, fields)}
+                  editingComplement={editingComplement}
+                  onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
+                  onCancelEdit={handleCancelEdit}
                 />
               </CardContent>
             </Card>
@@ -408,9 +459,15 @@ export default function ManageComplementsPage() {
 function NewComplementForm({
   saving,
   onSubmit,
+  editingComplement,
+  onUpdate,
+  onCancelEdit,
 }: {
   saving: boolean;
   onSubmit: (fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }) => void;
+  editingComplement?: Complement | null;
+  onUpdate?: (fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }) => void;
+  onCancelEdit?: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -418,15 +475,41 @@ function NewComplementForm({
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
 
+  // Preencher campos quando estiver editando
+  useEffect(() => {
+    if (editingComplement) {
+      setName(editingComplement.name);
+      setDescription(editingComplement.description || "");
+      setPrice(editingComplement.price.toString());
+      setImageUrl(editingComplement.image_url || "");
+      setIngredients(editingComplement.ingredients || "");
+    } else {
+      // Limpar campos quando não estiver editando
+      setName("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setIngredients("");
+    }
+  }, [editingComplement]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, description, price, imageUrl, ingredients });
-    setName("");
-    setDescription("");
-    setPrice("");
-    setImageUrl("");
-    setIngredients("");
+    
+    if (editingComplement && onUpdate) {
+      onUpdate({ name, description, price, imageUrl, ingredients });
+    } else {
+      onSubmit({ name, description, price, imageUrl, ingredients });
+      // Limpar campos apenas após criar novo complemento
+      setName("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setIngredients("");
+    }
   };
+
+  const isEditing = Boolean(editingComplement);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -454,11 +537,24 @@ function NewComplementForm({
           <Input id="comp-ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="Ex: bacon, pimenta" />
         </div>
       </div>
-      <div>
-        <Button type="submit" disabled={saving}>
-          <Plus className="h-4 w-4 mr-2" />
-          {saving ? "Adicionando..." : "Adicionar Complemento"}
-        </Button>
+      <div className="flex items-center gap-2">
+        {isEditing ? (
+          <>
+            <Button type="submit" disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancelEdit}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" disabled={saving}>
+            <Plus className="h-4 w-4 mr-2" />
+            {saving ? "Adicionando..." : "Adicionar Complemento"}
+          </Button>
+        )}
       </div>
     </form>
   );
