@@ -103,21 +103,31 @@ export default function ComplementsPage() {
         } else {
           // Organizar pratos por grupo
           const dishesByGroup: Record<string, { id: string; name: string }[]> = {};
-          (linkedDishesData || []).forEach((item: any) => {
-            const groupId = item.complement_group_id;
-            if (!dishesByGroup[groupId]) {
-              dishesByGroup[groupId] = [];
-            }
-            dishesByGroup[groupId].push({
-              id: item.dishes.id,
-              name: item.dishes.name
+          
+          // Verificar se linkedDishesData é um array antes de usar forEach
+          if (Array.isArray(linkedDishesData)) {
+            linkedDishesData.forEach((item: any) => {
+              const groupId = item.complement_group_id;
+              if (!dishesByGroup[groupId]) {
+                dishesByGroup[groupId] = [];
+              }
+              dishesByGroup[groupId].push({
+                id: item.dishes.id,
+                name: item.dishes.name
+              });
             });
-          });
+          } else {
+            console.warn("linkedDishesData não é um array:", linkedDishesData);
+          }
 
           // Adicionar pratos vinculados aos grupos
-          groupsList.forEach(group => {
-            group.linked_dishes = dishesByGroup[group.id] || [];
-          });
+          if (Array.isArray(groupsList)) {
+            groupsList.forEach(group => {
+              group.linked_dishes = dishesByGroup[group.id] || [];
+            });
+          } else {
+            console.warn("groupsList não é um array:", groupsList);
+          }
         }
       }
       
@@ -139,12 +149,23 @@ export default function ComplementsPage() {
 
       if (compsError) throw compsError;
 
+      
+
       const byGroup: Record<string, Complement[]> = {};
-      (compsData || []).forEach((c) => {
-        const key = (c as any).group_id as string;
-        if (!byGroup[key]) byGroup[key] = [];
-        byGroup[key].push(c as any as Complement);
-      });
+      
+      // Verificar se compsData é um array antes de usar forEach
+      if (Array.isArray(compsData)) {
+        compsData.forEach((c) => {
+          const key = (c as any).group_id as string;
+          if (!byGroup[key]) byGroup[key] = [];
+          byGroup[key].push(c as any as Complement);
+          
+          // noop
+        });
+      } else {
+        console.warn("compsData não é um array:", compsData);
+      }
+      
       setComplementsByGroup(byGroup);
     } catch (error: any) {
       toast({ title: "Erro ao carregar complementos", description: error.message, variant: "destructive" });
@@ -227,6 +248,7 @@ export default function ComplementsPage() {
     groupId: string,
     fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
   ) => {
+    
     setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: true }));
     try {
       const { error } = await supabase.from("complements").insert({
@@ -238,8 +260,10 @@ export default function ComplementsPage() {
         ingredients: fields.ingredients.trim() || null,
       });
       if (error) throw error;
+      
       toast({ title: "Complemento criado", description: "Novo complemento adicionado ao grupo." });
       await loadGroupsAndComplements();
+      
     } catch (error: any) {
       toast({ title: "Erro ao criar complemento", description: error.message, variant: "destructive" });
     } finally {
@@ -252,24 +276,93 @@ export default function ComplementsPage() {
     complementId: string,
     fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
   ) => {
+    
     setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: true }));
     try {
-      const { error } = await supabase
-        .from("complements")
-        .update({
-          name: fields.name.trim(),
-          description: fields.description.trim() || null,
-          price: Number(parseFloat(fields.price || "0")) || 0,
-          image_url: fields.imageUrl.trim() || null,
-          ingredients: fields.ingredients.trim() || null,
-        })
-        .eq("id", complementId);
+      // Verificar se o usuário está autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
       
-      if (error) throw error;
+      // Tratar o image_url corretamente
+      let imageUrlValue = null;
+      if (fields.imageUrl && fields.imageUrl.trim() !== '') {
+        imageUrlValue = fields.imageUrl.trim();
+      }
+      
+      const updateData = {
+        name: fields.name.trim(),
+        description: fields.description.trim() || null,
+        price: Number(parseFloat(fields.price || "0")) || 0,
+        image_url: imageUrlValue,
+        ingredients: fields.ingredients.trim() || null,
+      };
+      
+      // Primeiro, verificar se o complemento existe e pertence ao usuário
+      const { data: existingComplement, error: selectError } = await supabase
+        .from("complements")
+        .select("*, complement_groups!inner(restaurant_id, restaurants!inner(user_id))")
+        .eq("id", complementId)
+        .single();
+      
+      if (selectError) {
+        throw selectError;
+      }
+      
+      // Verificar se o usuário tem permissão para atualizar
+      if (existingComplement.complement_groups.restaurants.user_id !== user.id) {
+        throw new Error("Usuário não tem permissão para atualizar este complemento");
+      }
+      
+      // Verificar se o usuário tem acesso à tabela complements
+      const { data: tableAccess, error: tableError } = await supabase
+        .from("complements")
+        .select("id")
+        .limit(1);
+      
+      if (tableError) {
+        throw tableError;
+      }
+      
+      // Tentar update apenas com o campo image_url primeiro
+      const { data: updatedRow1, error: updateError } = await supabase
+        .from("complements")
+        .update({ image_url: imageUrlValue })
+        .eq("id", complementId)
+        .select("id, image_url")
+        .single();
+
+      if (updateError) {
+        // Tentar com todos os campos
+        const { data: updatedRow2, error: fullUpdateError } = await supabase
+          .from("complements")
+          .update(updateData)
+          .eq("id", complementId)
+          .select("id, image_url")
+          .single();
+
+        if (fullUpdateError) {
+          throw fullUpdateError;
+        }
+
+        if (!updatedRow2) {
+          throw new Error("Nenhuma linha atualizada. Pode ser RLS bloqueando a atualização.");
+        }
+        if (updatedRow2.image_url !== imageUrlValue) {
+          throw new Error("A imagem não foi atualizada. Verifique as políticas de acesso (RLS).");
+        }
+      } else {
+        if (!updatedRow1) {
+          throw new Error("Nenhuma linha atualizada. Pode ser RLS bloqueando a atualização.");
+        }
+        if (updatedRow1.image_url !== imageUrlValue) {
+          throw new Error("A imagem não foi atualizada. Verifique as políticas de acesso (RLS).");
+        }
+      }
       
       toast({ title: "Complemento atualizado", description: "Complemento foi atualizado com sucesso." });
       setEditingComplement(null);
       await loadGroupsAndComplements();
+      
     } catch (error: any) {
       toast({ title: "Erro ao atualizar complemento", description: error.message, variant: "destructive" });
     } finally {
@@ -502,14 +595,13 @@ function NewComplementForm({
       setName("");
       setDescription("");
       setPrice("");
-      setImageUrl("");
+      // setImageUrl(""); // Comentado para preservar a imagem editada
       setIngredients("");
     }
-  }, [editingComplement]);
+  }, [editingComplement?.id]); // Usar apenas o ID para evitar re-renders desnecessários
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (editingComplement && onUpdate) {
       onUpdate({ name, description, price, imageUrl, ingredients });
     } else {
@@ -518,7 +610,7 @@ function NewComplementForm({
       setName("");
       setDescription("");
       setPrice("");
-      setImageUrl("");
+      // setImageUrl(""); // Comentado para preservar a imagem editada
       setIngredients("");
     }
   };
@@ -547,7 +639,9 @@ function NewComplementForm({
             label="Imagem do complemento (opcional)"
             description="Adicione uma foto do complemento"
             value={imageUrl}
-            onChange={setImageUrl}
+            onChange={(url) => {
+              setImageUrl(url);
+            }}
             placeholder="https://exemplo.com/imagem.jpg"
             uploadOptions={{
               maxSize: 5 * 1024 * 1024, // 5MB

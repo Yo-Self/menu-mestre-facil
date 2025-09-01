@@ -120,24 +120,42 @@ export function ImageEditor({
 
   // Função para gerar a imagem editada
   const generateEditedImage = async (): Promise<File> => {
+    
     if (!imgRef.current || !completedCrop) {
+      console.error('❌ ImageEditor - Imagem ou crop não disponível');
       throw new Error('Imagem ou crop não disponível');
+    }
+    
+    // Verificar se a imagem é cross-origin
+    try {
+      const testCanvas = document.createElement('canvas');
+      const testCtx = testCanvas.getContext('2d');
+      if (testCtx) {
+        testCanvas.width = 1;
+        testCanvas.height = 1;
+        testCtx.drawImage(imgRef.current, 0, 0, 1, 1);
+      }
+    } catch (error) {
+      // Cross-origin: seguirá para fallbacks abaixo
     }
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
+      console.error('❌ ImageEditor - Não foi possível obter contexto do canvas');
       throw new Error('Não foi possível obter contexto do canvas');
     }
 
     const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
     const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+    
+    
 
     // Aplicar rotação e escala
     canvas.width = completedCrop.width * scaleX;
     canvas.height = completedCrop.height * scaleY;
-
+    
     // Aplicar transformações
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -162,22 +180,120 @@ export function ImageEditor({
 
     // Converter para blob
     return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const file = new File([blob], 'edited-image.jpg', { type: 'image/jpeg' });
-            resolve(file);
-          } else {
-            reject(new Error('Falha ao gerar blob'));
+      // Método 1: Tentar toBlob diretamente
+      const tryToBlob = () => {
+        try {
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const file = new File([blob], 'edited-image.jpg', { type: 'image/jpeg' });
+                resolve(file);
+              } else {
+                tryDataURL();
+              }
+            },
+            'image/jpeg',
+            exportQuality,
+          );
+        } catch (error) {
+          tryDataURL();
+        }
+      };
+
+      // Método 2: Tentar data URL
+      const tryDataURL = () => {
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', exportQuality);
+          
+          // Converter data URL para blob
+          fetch(dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              const file = new File([blob], 'edited-image.jpg', { type: 'image/jpeg' });
+              resolve(file);
+            })
+            .catch(fetchError => {
+              tryAlternativeApproach();
+            });
+        } catch (dataUrlError) {
+          tryAlternativeApproach();
+        }
+      };
+
+      // Método 3: Abordagem alternativa - recriar canvas sem cross-origin
+      const tryAlternativeApproach = () => {
+        
+        // Tentar recriar a imagem com crossOrigin
+        const newImg = new Image();
+        newImg.crossOrigin = 'anonymous';
+        
+        newImg.onload = () => {
+          try {
+            const newCanvas = document.createElement('canvas');
+            const newCtx = newCanvas.getContext('2d');
+            
+            if (!newCtx) {
+              reject(new Error('Não foi possível obter contexto 2D'));
+              return;
+            }
+            
+            newCanvas.width = completedCrop.width;
+            newCanvas.height = completedCrop.height;
+            
+            // Aplicar transformações
+            newCtx.save();
+            newCtx.translate(newCanvas.width / 2, newCanvas.height / 2);
+            newCtx.rotate((rotation * Math.PI) / 180);
+            newCtx.scale(scale, scale);
+            newCtx.translate(-newCanvas.width / 2, -newCanvas.height / 2);
+            
+            // Desenhar imagem
+            newCtx.drawImage(
+              newImg,
+              completedCrop.x,
+              completedCrop.y,
+              completedCrop.width,
+              completedCrop.height,
+              0,
+              0,
+              completedCrop.width,
+              completedCrop.height,
+            );
+            
+            newCtx.restore();
+            
+            // Tentar toBlob novamente
+            newCanvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const file = new File([blob], 'edited-image.jpg', { type: 'image/jpeg' });
+                  resolve(file);
+                } else {
+                  reject(new Error('Todas as abordagens falharam'));
+                }
+              },
+              'image/jpeg',
+              exportQuality,
+            );
+          } catch (error) {
+            reject(new Error('Todas as abordagens falharam'));
           }
-        },
-        'image/jpeg',
-        exportQuality,
-      );
+        };
+        
+        newImg.onerror = () => {
+          reject(new Error('Todas as abordagens falharam'));
+        };
+        
+        newImg.src = imageUrl;
+      };
+
+      // Iniciar com o primeiro método
+      tryToBlob();
     });
   };
 
   const handleSave = async () => {
+    
     if (!completedCrop) {
       toast({
         title: "Erro",
@@ -188,9 +304,11 @@ export function ImageEditor({
     }
 
     setIsProcessing(true);
+    
     try {
       const editedImage = await generateEditedImage();
       onSave(editedImage);
+      
       toast({
         title: "Sucesso!",
         description: "Imagem editada e salva com sucesso",
@@ -271,6 +389,7 @@ export function ImageEditor({
                     ref={imgRef}
                     alt="Editar"
                     src={imageUrl}
+                    crossOrigin="anonymous"
                     style={{
                       transform: `scale(${scale}) rotate(${rotation}deg)`,
                       maxWidth: '100%',
@@ -278,6 +397,13 @@ export function ImageEditor({
                       objectFit: 'contain',
                     }}
                     onLoad={onImageLoad}
+                    onError={(e) => {
+                      console.error('❌ ImageEditor - Erro ao carregar imagem:', e);
+                      // Se falhar com crossOrigin, tentar sem
+                      const img = e.target as HTMLImageElement;
+                      img.crossOrigin = '';
+                      img.src = imageUrl;
+                    }}
                   />
                 </ReactCrop>
               </div>

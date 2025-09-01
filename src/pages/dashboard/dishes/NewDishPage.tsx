@@ -98,6 +98,18 @@ export default function NewDishPage() {
         return;
       }
 
+      console.log('📝 Dados do prato sendo enviados:', {
+        name,
+        description: description || null,
+        price: parseFloat(price),
+        image_url: imageUrl,
+        ingredients: ingredients || null,
+        category_id: selectedCategories.length > 0 ? selectedCategories[0] : null,
+        restaurant_id: restaurants[0].id,
+        is_available: isAvailable,
+        is_featured: isFeatured,
+      });
+
       // Criar o prato
       const { data: dish, error: dishError } = await supabase
         .from("dishes")
@@ -246,7 +258,10 @@ export default function NewDishPage() {
             <div className="space-y-4">
               <ImageUpload
                 value={imageUrl}
-                onChange={setImageUrl}
+                onChange={(url) => {
+                  console.log('🔄 NewDishPage - onChange chamado com URL:', url);
+                  setImageUrl(url);
+                }}
                 label="Imagem do Prato"
                 description="Escolha uma imagem do seu computador ou forneça uma URL"
                 placeholder="https://exemplo.com/imagem.jpg"

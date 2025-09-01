@@ -49,8 +49,11 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
   };
 
   const uploadImage = async (file: File): Promise<ImageUploadResult> => {
+    console.log('🚀 useImageUpload - Iniciando upload:', file.name, file.size, file.type);
+    
     const validationError = validateFile(file);
     if (validationError) {
+      console.error('❌ useImageUpload - Erro de validação:', validationError);
       throw new Error(validationError);
     }
 
@@ -107,6 +110,8 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
         width: compressionResult?.width,
         height: compressionResult?.height,
       };
+
+      console.log('✅ useImageUpload - Upload concluído com sucesso:', result);
 
       toast({
         title: "Imagem enviada com sucesso!",

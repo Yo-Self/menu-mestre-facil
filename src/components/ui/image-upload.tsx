@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,14 @@ export function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Sincronizar o preview com o value quando ele mudar
+  useEffect(() => {
+    // Evitar loop infinito - só atualizar se o value for diferente do preview atual
+    if (value !== preview) {
+      setPreview(value || null);
+    }
+  }, [value]); // Remover preview da dependência para evitar loop
+
   // Usar o hook de upload
   const { uploadImage, uploading, isProcessing, options } = useImageUpload(uploadOptions);
 
@@ -56,7 +64,6 @@ export function ImageUpload({
       setPreview(result.url);
     } catch (error) {
       // Erro já tratado no hook
-      console.error('Erro no upload:', error);
     }
   };
 
@@ -87,9 +94,15 @@ export function ImageUpload({
 
   const handleSaveEditedImage = async (editedImage: File) => {
     try {
+      
       // Fazer upload da imagem editada
       const result = await uploadImage(editedImage);
+      
+      // Atualizar o estado local e notificar o componente pai
+      
       onChange(result.url);
+      
+      // Atualizar o preview imediatamente para evitar conflitos
       setPreview(result.url);
       setShowEditor(false);
       
@@ -98,7 +111,11 @@ export function ImageUpload({
         description: "A imagem foi processada e salva",
       });
     } catch (error) {
-      console.error('Erro ao salvar imagem editada:', error);
+      toast({
+        title: "Erro ao salvar imagem",
+        description: "Falha ao processar a imagem editada",
+        variant: "destructive",
+      });
     }
   };
 
@@ -276,11 +293,13 @@ export function ImageUpload({
         <ImageEditor
           imageUrl={preview}
           onSave={handleSaveEditedImage}
-          onCancel={() => setShowEditor(false)}
+          onCancel={() => {
+            setShowEditor(false);
+          }}
           aspectRatio={editorSettings?.defaultAspectRatio === '1:1' ? 1 : 
                       editorSettings?.defaultAspectRatio === '4:3' ? 4/3 :
                       editorSettings?.defaultAspectRatio === '3:2' ? 3/2 :
-                      editorSettings?.defaultAspectRatio === '5:4' ? 5/4 :
+                      editorSettings?.defaultAspectRatio === '5/4' ? 5/4 :
                       editorSettings?.defaultAspectRatio === '3:1' ? 3 : 16/9}
           maxWidth={editorSettings?.maxWidth || 1920}
           maxHeight={editorSettings?.maxHeight || 1080}
