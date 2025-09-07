@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { RotateCcw, ZoomIn, ZoomOut, Move, Crop as CropIcon, Download, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -69,6 +70,16 @@ export function ImageEditor({
   
   const imgRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
+
+  // Prevenir scroll da tela de fundo quando o modal está aberto
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
 
   // Inicializar crop quando a imagem carrega
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -350,13 +361,13 @@ export function ImageEditor({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        <CardHeader className="pb-3">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-1 sm:p-4">
+      <Card className="w-full max-w-6xl h-[98vh] sm:h-[90vh] flex flex-col overflow-hidden">
+        <CardHeader className="pb-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">Editor de Imagem</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Redimensione, rotacione e posicione sua imagem
               </CardDescription>
             </div>
@@ -371,46 +382,47 @@ export function ImageEditor({
           </div>
         </CardHeader>
         
-        <CardContent className="p-0">
-          <div className="flex flex-col lg:flex-row">
-            {/* Área de edição da imagem */}
-            <div className="flex-1 p-4 bg-muted/20">
-              <div className="relative overflow-hidden rounded-lg border bg-background">
-                <ReactCrop
-                  crop={crop}
-                  onChange={(_, percentCrop) => setCrop(percentCrop)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={selectedAspectRatio === 'free' ? undefined : ASPECT_RATIOS[selectedAspectRatio as keyof typeof ASPECT_RATIOS]}
-                  minWidth={100}
-                  minHeight={100}
-                  keepRatio={selectedAspectRatio !== 'free'}
-                >
-                  <img
-                    ref={imgRef}
-                    alt="Editar"
-                    src={imageUrl}
-                    crossOrigin="anonymous"
-                    style={{
-                      transform: `scale(${scale}) rotate(${rotation}deg)`,
-                      maxWidth: '100%',
-                      maxHeight: '70vh',
-                      objectFit: 'contain',
-                    }}
-                    onLoad={onImageLoad}
-                    onError={(e) => {
-                      console.error('❌ ImageEditor - Erro ao carregar imagem:', e);
-                      // Se falhar com crossOrigin, tentar sem
-                      const img = e.target as HTMLImageElement;
-                      img.crossOrigin = '';
-                      img.src = imageUrl;
-                    }}
-                  />
-                </ReactCrop>
-              </div>
+        <CardContent className="p-0 flex-1 flex flex-col lg:flex-row overflow-hidden">
+          {/* Área de edição da imagem */}
+          <div className="flex-1 p-2 sm:p-4 bg-muted/20 flex items-center justify-center min-h-0">
+            <div className="relative overflow-hidden rounded-lg border bg-background w-full max-w-full h-full flex items-center justify-center">
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={selectedAspectRatio === 'free' ? undefined : ASPECT_RATIOS[selectedAspectRatio as keyof typeof ASPECT_RATIOS]}
+                minWidth={100}
+                minHeight={100}
+                keepRatio={selectedAspectRatio !== 'free'}
+              >
+                <img
+                  ref={imgRef}
+                  alt="Editar"
+                  src={imageUrl}
+                  crossOrigin="anonymous"
+                  style={{
+                    transform: `scale(${scale}) rotate(${rotation}deg)`,
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                  }}
+                  onLoad={onImageLoad}
+                  onError={(e) => {
+                    console.error('❌ ImageEditor - Erro ao carregar imagem:', e);
+                    // Se falhar com crossOrigin, tentar sem
+                    const img = e.target as HTMLImageElement;
+                    img.crossOrigin = '';
+                    img.src = imageUrl;
+                  }}
+                />
+              </ReactCrop>
             </div>
+          </div>
 
-            {/* Painel de controles */}
-            <div className="w-full lg:w-80 p-4 border-l bg-muted/10">
+          {/* Painel de controles */}
+          <div className="w-full lg:w-80 border-l bg-muted/10 flex flex-col min-h-0">
+            <ScrollArea className="flex-1">
+              <div className="p-3 sm:p-4">
               <Tabs defaultValue="crop" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="crop">
@@ -582,24 +594,25 @@ export function ImageEditor({
                   )}
                 </TabsContent>
               </Tabs>
-
-              {/* Botões de ação */}
-              <div className="flex gap-2 mt-6 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={onCancel}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={!completedCrop || isProcessing}
-                  className="flex-1"
-                >
-                  {isProcessing ? 'Processando...' : 'Salvar Imagem'}
-                </Button>
               </div>
+            </ScrollArea>
+
+            {/* Botões de ação - sempre visíveis */}
+            <div className="flex gap-2 p-3 sm:p-4 pt-2 border-t bg-background flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                className="flex-1 h-10 text-sm"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!completedCrop || isProcessing}
+                className="flex-1 h-10 text-sm"
+              >
+                {isProcessing ? 'Processando...' : 'Salvar Imagem'}
+              </Button>
             </div>
           </div>
         </CardContent>
