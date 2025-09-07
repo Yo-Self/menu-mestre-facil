@@ -3,11 +3,7 @@ import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-im
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { RotateCcw, ZoomIn, ZoomOut, Move, Crop as CropIcon, Download, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Move, X, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -54,21 +50,19 @@ export function ImageEditor({
 }: ImageEditorProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [scale, setScale] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState<string>(
-    allowFreeCrop ? '16:9' : 
-    aspectRatio === 1 ? '1:1' :
-    aspectRatio === 4/3 ? '4:3' :
-    aspectRatio === 3/2 ? '3:2' :
-    aspectRatio === 5/4 ? '5:4' :
-    aspectRatio === 3 ? '3:1' : '16:9'
-  );
+  const [imageZoom, setImageZoom] = useState(1);
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [selectedAspectRatio] = useState<string>('16:9');
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [exportQuality, setExportQuality] = useState(quality);
+  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Prevenir scroll da tela de fundo quando o modal está aberto
@@ -81,27 +75,64 @@ export function ImageEditor({
     };
   }, []);
 
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setImageZoom(prev => Math.max(0.5, Math.min(3, prev + delta)));
+  }, []);
+
+  // Register wheel event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
+  // Reset states when image URL changes
+  useEffect(() => {
+    setIsImageLoading(true);
+    setHasError(false);
+    setImageZoom(1);
+    setImagePosition({ x: 0, y: 0 });
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  }, [imageUrl]);
+
   // Inicializar crop quando a imagem carrega
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    setImageInfo({ width, height });
-    
-    // Criar crop inicial centralizado
-    const crop = centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90,
-        },
-        aspectRatio,
+    try {
+      const { width, height } = e.currentTarget;
+      setImageInfo({ width, height });
+      setIsImageLoading(false);
+      setHasError(false);
+      
+      // Criar crop inicial centralizado
+      const crop = centerCrop(
+        makeAspectCrop(
+          {
+            unit: '%',
+            width: 90,
+          },
+          aspectRatio,
+          width,
+          height,
+        ),
         width,
         height,
-      ),
-      width,
-      height,
-    );
-    
-    setCrop(crop);
+      );
+      
+      setCrop(crop);
+    } catch (error) {
+      console.error('❌ Erro ao carregar imagem:', error);
+      setHasError(true);
+      setIsImageLoading(false);
+    }
   }, [aspectRatio]);
 
   // Atualizar aspect ratio quando selecionado
@@ -163,16 +194,9 @@ export function ImageEditor({
     
     
 
-    // Aplicar rotação e escala
+    // Definir dimensões do canvas
     canvas.width = completedCrop.width * scaleX;
     canvas.height = completedCrop.height * scaleY;
-    
-    // Aplicar transformações
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(scale, scale);
-    ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
     // Desenhar a imagem cortada
     ctx.drawImage(
@@ -186,8 +210,6 @@ export function ImageEditor({
       completedCrop.width * scaleX,
       completedCrop.height * scaleY,
     );
-
-    ctx.restore();
 
     // Converter para blob
     return new Promise((resolve, reject) => {
@@ -251,13 +273,6 @@ export function ImageEditor({
             newCanvas.width = completedCrop.width;
             newCanvas.height = completedCrop.height;
             
-            // Aplicar transformações
-            newCtx.save();
-            newCtx.translate(newCanvas.width / 2, newCanvas.height / 2);
-            newCtx.rotate((rotation * Math.PI) / 180);
-            newCtx.scale(scale, scale);
-            newCtx.translate(-newCanvas.width / 2, -newCanvas.height / 2);
-            
             // Desenhar imagem
             newCtx.drawImage(
               newImg,
@@ -270,8 +285,6 @@ export function ImageEditor({
               completedCrop.width,
               completedCrop.height,
             );
-            
-            newCtx.restore();
             
             // Tentar toBlob novamente
             newCanvas.toBlob(
@@ -304,7 +317,6 @@ export function ImageEditor({
   };
 
   const handleSave = async () => {
-    
     if (!completedCrop) {
       toast({
         title: "Erro",
@@ -336,8 +348,8 @@ export function ImageEditor({
   };
 
   const handleReset = () => {
-    setScale(1);
-    setRotation(0);
+    setImageZoom(1);
+    setImagePosition({ x: 0, y: 0 });
     if (imageInfo) {
       const crop = centerCrop(
         makeAspectCrop(
@@ -356,9 +368,79 @@ export function ImageEditor({
     }
   };
 
-  const handleAspectRatioChange = (value: string) => {
-    setSelectedAspectRatio(value);
-  };
+
+  // Funções para zoom e pan da imagem
+  const handleImageZoomIn = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImageZoom(prev => Math.min(prev + 0.25, 3));
+  }, []);
+
+  const handleImageZoomOut = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setImageZoom(prev => Math.max(prev - 0.25, 0.5));
+  }, []);
+
+  const handleImageZoomReset = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImageZoom(1);
+    setImagePosition({ x: 0, y: 0 });
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (imageZoom > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - imagePosition.x,
+        y: e.clientY - imagePosition.y,
+      });
+    }
+  }, [imageZoom, imagePosition]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDragging && imageZoom > 1) {
+      setImagePosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  }, [isDragging, dragStart, imageZoom]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+
+  // Touch events for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (imageZoom > 1 && e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - imagePosition.x,
+        y: e.touches[0].clientY - imagePosition.y,
+      });
+    }
+  }, [imageZoom, imagePosition]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (isDragging && imageZoom > 1 && e.touches.length === 1) {
+      e.preventDefault();
+      setImagePosition({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+    }
+  }, [isDragging, dragStart, imageZoom]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-1 sm:p-4">
@@ -372,6 +454,7 @@ export function ImageEditor({
               </CardDescription>
             </div>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={onCancel}
@@ -386,220 +469,180 @@ export function ImageEditor({
           {/* Área de edição da imagem */}
           <div className="flex-1 p-2 sm:p-4 bg-muted/20 flex items-center justify-center min-h-0">
             <div className="relative overflow-hidden rounded-lg border bg-background w-full max-w-full h-full flex items-center justify-center">
-              <ReactCrop
-                crop={crop}
-                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={selectedAspectRatio === 'free' ? undefined : ASPECT_RATIOS[selectedAspectRatio as keyof typeof ASPECT_RATIOS]}
-                minWidth={100}
-                minHeight={100}
-                keepRatio={selectedAspectRatio !== 'free'}
+              {/* Controles de zoom da imagem */}
+              <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleImageZoomIn}
+                  className="h-8 w-8 p-0"
+                  disabled={imageZoom >= 3}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleImageZoomOut}
+                  className="h-8 w-8 p-0"
+                  disabled={imageZoom <= 0.5}
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleImageZoomReset}
+                  className="h-8 w-8 p-0"
+                  disabled={imageZoom === 1 && imagePosition.x === 0 && imagePosition.y === 0}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Indicador de zoom */}
+              <div className="absolute top-2 left-2 z-10 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                {Math.round(imageZoom * 100)}%
+              </div>
+
+              {/* Instruções de pan */}
+              {imageZoom > 1 && (
+                <div className="absolute bottom-2 left-2 z-10 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  <div className="flex items-center gap-1">
+                    <Move className="h-3 w-3" />
+                    Arraste para mover
+                  </div>
+                </div>
+              )}
+
+              <div
+                ref={containerRef}
+                className="w-full h-full flex items-center justify-center"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{
+                  cursor: imageZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                }}
               >
-                <img
-                  ref={imgRef}
-                  alt="Editar"
-                  src={imageUrl}
-                  crossOrigin="anonymous"
-                  style={{
-                    transform: `scale(${scale}) rotate(${rotation}deg)`,
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
-                  }}
-                  onLoad={onImageLoad}
-                  onError={(e) => {
-                    console.error('❌ ImageEditor - Erro ao carregar imagem:', e);
-                    // Se falhar com crossOrigin, tentar sem
-                    const img = e.target as HTMLImageElement;
-                    img.crossOrigin = '';
-                    img.src = imageUrl;
-                  }}
-                />
-              </ReactCrop>
+                {/* Loading indicator */}
+                {isImageLoading && (
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <p className="text-sm text-muted-foreground">Carregando imagem...</p>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {hasError && (
+                  <div className="flex flex-col items-center justify-center space-y-4 p-8">
+                    <div className="text-destructive text-4xl">⚠️</div>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Erro ao carregar a imagem
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setHasError(false);
+                        setIsImageLoading(true);
+                        // Recarregar a imagem
+                        if (imgRef.current) {
+                          imgRef.current.src = imageUrl;
+                        }
+                      }}
+                    >
+                      Tentar novamente
+                    </Button>
+                  </div>
+                )}
+
+                {/* Image editor - sempre renderizar para permitir onLoad */}
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={selectedAspectRatio === 'free' ? undefined : ASPECT_RATIOS[selectedAspectRatio as keyof typeof ASPECT_RATIOS]}
+                  minWidth={100}
+                  minHeight={100}
+                  keepRatio={selectedAspectRatio !== 'free'}
+                >
+                  <img
+                    ref={imgRef}
+                    alt="Editar"
+                    src={imageUrl}
+                    style={{
+                      transform: `scale(${imageZoom}) translate(${imagePosition.x / imageZoom}px, ${imagePosition.y / imageZoom}px)`,
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      transformOrigin: 'center center',
+                      opacity: isImageLoading ? 0 : 1,
+                      transition: 'opacity 0.3s ease',
+                    }}
+                    onLoad={onImageLoad}
+                    onError={(e) => {
+                      console.error('❌ ImageEditor - Erro ao carregar imagem:', e);
+                      // Se falhar sem crossOrigin, tentar com crossOrigin
+                      const img = e.target as HTMLImageElement;
+                      if (!img.crossOrigin) {
+                        console.log('🔄 Tentando com crossOrigin...');
+                        img.crossOrigin = 'anonymous';
+                        img.src = imageUrl;
+                      } else {
+                        setHasError(true);
+                        setIsImageLoading(false);
+                        toast({
+                          title: "Erro ao carregar imagem",
+                          description: "Não foi possível carregar a imagem para edição",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    draggable={false}
+                  />
+                </ReactCrop>
+              </div>
             </div>
           </div>
 
-          {/* Painel de controles */}
+          {/* Painel de controles simplificado */}
           <div className="w-full lg:w-80 border-l bg-muted/10 flex flex-col min-h-0">
-            <ScrollArea className="flex-1">
-              <div className="p-3 sm:p-4">
-              <Tabs defaultValue="crop" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="crop">
-                    <CropIcon className="w-4 h-4 mr-1" />
-                    Crop
-                  </TabsTrigger>
-                  {(allowRotation || allowScaling) && (
-                    <TabsTrigger value="transform">
-                      <Move className="w-4 h-4 mr-1" />
-                      Transform
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger value="export">
-                    <Download className="w-4 h-4 mr-1" />
-                    Exportar
-                  </TabsTrigger>
-                </TabsList>
+            <div className="p-3 sm:p-4 space-y-4">
 
-                <TabsContent value="crop" className="space-y-4 mt-4">
-                  <div className="space-y-3">
-                    <Label>Proporção da Imagem</Label>
-                    <Select value={selectedAspectRatio} onValueChange={handleAspectRatioChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a proporção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1:1">Quadrado (1:1)</SelectItem>
-                        <SelectItem value="4:3">Padrão (4:3)</SelectItem>
-                        <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
-                        <SelectItem value="3:2">Foto (3:2)</SelectItem>
-                        <SelectItem value="5:4">Retrato (5:4)</SelectItem>
-                        {allowFreeCrop && <SelectItem value="free">Livre</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    
-                    <p className="text-xs text-muted-foreground">
-                      Escolha a proporção ideal para sua imagem
-                    </p>
+              {/* Informações do crop */}
+              {completedCrop && (
+                <div className="space-y-2 p-3 bg-muted rounded-lg">
+                  <Label className="text-sm">Dimensões do Crop (16:9)</Label>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>Largura: {Math.round(completedCrop.width)}px</div>
+                    <div>Altura: {Math.round(completedCrop.height)}px</div>
+                    <div>X: {Math.round(completedCrop.x)}px</div>
+                    <div>Y: {Math.round(completedCrop.y)}px</div>
                   </div>
+                </div>
+              )}
 
-                  {completedCrop && (
-                    <div className="space-y-2 p-3 bg-muted rounded-lg">
-                      <Label className="text-sm">Dimensões do Crop</Label>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div>Largura: {Math.round(completedCrop.width)}px</div>
-                        <div>Altura: {Math.round(completedCrop.height)}px</div>
-                        <div>X: {Math.round(completedCrop.x)}px</div>
-                        <div>Y: {Math.round(completedCrop.y)}px</div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="transform" className="space-y-4 mt-4">
-                  {allowScaling && (
-                    <div className="space-y-3">
-                      <Label>Escala: {Math.round(scale * 100)}%</Label>
-                      <Slider
-                        value={[scale]}
-                        onValueChange={([value]) => setScale(value)}
-                        min={0.1}
-                        max={3}
-                        step={0.1}
-                        className="w-full"
-                      />
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setScale(Math.max(0.1, scale - 0.1))}
-                        >
-                          <ZoomOut className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setScale(1)}
-                        >
-                          100%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setScale(Math.min(3, scale + 0.1))}
-                        >
-                          <ZoomIn className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {allowRotation && (
-                    <div className="space-y-3">
-                      <Label>Rotação: {rotation}°</Label>
-                      <Slider
-                        value={[rotation]}
-                        onValueChange={([value]) => setRotation(value)}
-                        min={-180}
-                        max={180}
-                        step={1}
-                        className="w-full"
-                      />
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRotation(rotation - 90)}
-                        >
-                          -90°
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRotation(0)}
-                        >
-                          0°
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRotation(rotation + 90)}
-                        >
-                          +90°
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {(allowRotation || allowScaling) && (
-                    <Button
-                      variant="outline"
-                      onClick={handleReset}
-                      className="w-full"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Resetar Transformações
-                    </Button>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="export" className="space-y-4 mt-4">
-                  <div className="space-y-3">
-                    <Label>Qualidade: {Math.round(exportQuality * 100)}%</Label>
-                    <Slider
-                      value={[exportQuality * 100]}
-                      onValueChange={([value]) => setExportQuality(value / 100)}
-                      min={50}
-                      max={100}
-                      step={5}
-                      className="w-full"
-                    />
-                    
-                    <p className="text-xs text-muted-foreground">
-                      Maior qualidade = arquivo maior
-                    </p>
-                  </div>
-
-                  {imageInfo && (
-                    <div className="space-y-2 p-3 bg-muted rounded-lg">
-                      <Label className="text-sm">Informações da Imagem</Label>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div>Largura original: {imageInfo.width}px</div>
-                        <div>Altura original: {imageInfo.height}px</div>
-                        <div>Proporção: {(imageInfo.width / imageInfo.height).toFixed(2)}:1</div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+              {/* Instruções */}
+              <div className="text-sm text-muted-foreground">
+                <p>• Arraste as bordas para ajustar a área de corte</p>
+                <p>• Use os botões de zoom para aproximar/afastar</p>
+                <p>• Arraste a imagem quando estiver com zoom</p>
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Botões de ação - sempre visíveis */}
             <div className="flex gap-2 p-3 sm:p-4 pt-2 border-t bg-background flex-shrink-0">
               <Button
+                type="button"
                 variant="outline"
                 onClick={onCancel}
                 className="flex-1 h-10 text-sm"
@@ -607,6 +650,7 @@ export function ImageEditor({
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleSave}
                 disabled={!completedCrop || isProcessing}
                 className="flex-1 h-10 text-sm"
