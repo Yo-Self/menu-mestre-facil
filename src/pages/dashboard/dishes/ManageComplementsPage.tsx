@@ -37,6 +37,7 @@ type Complement = {
   image_url: string | null;
   ingredients: string | null;
   position: number | null;
+  is_active: boolean;
 };
 
 export default function ManageComplementsPage() {
@@ -247,6 +248,7 @@ export default function ManageComplementsPage() {
         price: Number(parseFloat(fields.price || "0")) || 0,
         image_url: fields.imageUrl.trim() || null,
         ingredients: fields.ingredients.trim() || null,
+        is_active: true,
       });
       if (error) throw error;
       toast({ title: "Complemento criado", description: "Novo complemento adicionado ao grupo." });
@@ -305,6 +307,32 @@ export default function ManageComplementsPage() {
       await loadGroupsAndComplements();
     } catch (error: any) {
       toast({ title: "Erro ao excluir complemento", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleToggleComplementStatus = async (complementId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("complements")
+        .update({ is_active: !currentStatus })
+        .eq("id", complementId);
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: currentStatus ? "Complemento desativado" : "Complemento ativado",
+        description: currentStatus 
+          ? "O complemento foi desativado e não aparecerá para os clientes." 
+          : "O complemento foi ativado e estará disponível para os clientes."
+      });
+      
+      await loadGroupsAndComplements();
+    } catch (error: any) {
+      toast({ 
+        title: "Erro ao alterar status do complemento", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -433,6 +461,23 @@ export default function ManageComplementsPage() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
+                          </div>
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id={`active-${comp.id}`}
+                                checked={comp.is_active}
+                                onCheckedChange={() => handleToggleComplementStatus(comp.id, comp.is_active)}
+                              />
+                              <Label htmlFor={`active-${comp.id}`} className="text-sm">
+                                {comp.is_active ? "Ativo" : "Inativo"}
+                              </Label>
+                            </div>
+                            {!comp.is_active && (
+                              <Badge variant="secondary" className="text-xs">
+                                Oculto dos clientes
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       ))}
