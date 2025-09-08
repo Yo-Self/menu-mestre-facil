@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X, Users, ExternalLink } from "lucide-react";
+import { Plus, X, Users, ExternalLink, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,8 @@ export function DishComplementGroupsManager({
   const [availableGroups, setAvailableGroups] = useState<ComplementGroup[]>([]);
   const [assignedGroups, setAssignedGroups] = useState<(ComplementGroup & { position: number; relation_id: string })[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [draggedGroup, setDraggedGroup] = useState<string | null>(null);
+  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
 
   useEffect(() => {
     loadGroups();
@@ -178,12 +180,39 @@ export function DishComplementGroupsManager({
     if (!confirm(`Remover o grupo "${groupTitle}" deste prato?`)) return;
 
     try {
+      // Primeiro, obter a posição do grupo que será removido
+      const groupToRemove = assignedGroups.find(g => g.relation_id === relationId);
+      if (!groupToRemove) return;
+
+      const removedPosition = groupToRemove.position;
+
+      // Remover o grupo
       const { error } = await supabase
         .from("dish_complement_groups")
         .delete()
         .eq("id", relationId);
 
       if (error) throw error;
+
+      // Reordenar os grupos restantes que estavam após o removido
+      const groupsToReorder = assignedGroups.filter(g => g.position > removedPosition);
+
+      if (groupsToReorder.length > 0) {
+        // Atualizar posições em lote
+        const updates = groupsToReorder.map(group => ({
+          id: group.relation_id,
+          position: group.position - 1
+        }));
+
+        for (const update of updates) {
+          const { error: reorderError } = await supabase
+            .from("dish_complement_groups")
+            .update({ position: update.position })
+            .eq("id", update.id);
+
+          if (reorderError) throw reorderError;
+        }
+      }
 
       toast({
         title: "Grupo removido",
@@ -203,7 +232,64 @@ export function DishComplementGroupsManager({
   };
 
   const handleUpdatePosition = async (relationId: string, newPosition: number) => {
+    if (newPosition < 1) {
+      toast({
+        title: "Posição inválida",
+        description: "A posição deve ser maior ou igual a 1.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const currentGroup = assignedGroups.find(g => g.relation_id === relationId);
+    if (!currentGroup) return;
+
+    const currentPosition = currentGroup.position;
+    if (currentPosition === newPosition) return; // Nenhuma mudança necessária
+
+    const maxPosition = Math.max(...assignedGroups.map(g => g.position));
+
+    // Se a nova posição for maior que o máximo atual, ajustar para o máximo
+    if (newPosition > maxPosition) {
+      newPosition = maxPosition;
+    }
+
     try {
+      // Verificar se já existe um grupo nesta posição
+      const existingGroupAtPosition = assignedGroups.find(g => g.position === newPosition && g.relation_id !== relationId);
+
+      if (existingGroupAtPosition) {
+        // Se movendo para uma posição ocupada, fazer shift dos grupos
+        if (currentPosition < newPosition) {
+          // Movendo para baixo - shift para cima os grupos entre current e new
+          for (let i = currentPosition + 1; i <= newPosition; i++) {
+            const groupToShift = assignedGroups.find(g => g.position === i);
+            if (groupToShift) {
+              const { error } = await supabase
+                .from("dish_complement_groups")
+                .update({ position: i - 1 })
+                .eq("id", groupToShift.relation_id);
+
+              if (error) throw error;
+            }
+          }
+        } else {
+          // Movendo para cima - shift para baixo os grupos entre new e current
+          for (let i = newPosition; i < currentPosition; i++) {
+            const groupToShift = assignedGroups.find(g => g.position === i);
+            if (groupToShift) {
+              const { error } = await supabase
+                .from("dish_complement_groups")
+                .update({ position: i + 1 })
+                .eq("id", groupToShift.relation_id);
+
+              if (error) throw error;
+            }
+          }
+        }
+      }
+
+      // Atualizar a posição do grupo atual
       const { error } = await supabase
         .from("dish_complement_groups")
         .update({ position: newPosition })
@@ -221,6 +307,167 @@ export function DishComplementGroupsManager({
         variant: "destructive"
       });
     }
+  };
+
+  const handleMoveUp = async (relationId: string, currentPosition: number) => {
+    if (currentPosition <= 1) return; // Já é o primeiro
+
+    try {
+      // Encontrar o grupo acima
+      const groupAbove = assignedGroups.find(g => g.position === currentPosition - 1);
+      if (!groupAbove) return;
+
+      // Atualizar posições: trocar com o grupo acima
+      const { error: error1 } = await supabase
+        .from("dish_complement_groups")
+        .update({ position: currentPosition - 1 })
+        .eq("id", relationId);
+
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from("dish_complement_groups")
+        .update({ position: currentPosition })
+        .eq("id", groupAbove.relation_id);
+
+      if (error2) throw error2;
+
+      await loadGroups();
+      onUpdate?.();
+
+    } catch (error: any) {
+      toast({
+        title: "Erro ao mover grupo",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMoveDown = async (relationId: string, currentPosition: number) => {
+    const maxPosition = Math.max(...assignedGroups.map(g => g.position));
+    if (currentPosition >= maxPosition) return; // Já é o último
+
+    try {
+      // Encontrar o grupo abaixo
+      const groupBelow = assignedGroups.find(g => g.position === currentPosition + 1);
+      if (!groupBelow) return;
+
+      // Atualizar posições: trocar com o grupo abaixo
+      const { error: error1 } = await supabase
+        .from("dish_complement_groups")
+        .update({ position: currentPosition + 1 })
+        .eq("id", relationId);
+
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from("dish_complement_groups")
+        .update({ position: currentPosition })
+        .eq("id", groupBelow.relation_id);
+
+      if (error2) throw error2;
+
+      await loadGroups();
+      onUpdate?.();
+
+    } catch (error: any) {
+      toast({
+        title: "Erro ao mover grupo",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, groupId: string) => {
+    setDraggedGroup(groupId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedGroup(null);
+    setDragOverGroup(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, groupId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverGroup(groupId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverGroup(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetGroupId: string) => {
+    e.preventDefault();
+    setDragOverGroup(null);
+
+    if (!draggedGroup || draggedGroup === targetGroupId) return;
+
+    const draggedIndex = assignedGroups.findIndex(g => g.id === draggedGroup);
+    const targetIndex = assignedGroups.findIndex(g => g.id === targetGroupId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const draggedGroupData = assignedGroups[draggedIndex];
+    const targetGroupData = assignedGroups[targetIndex];
+
+    try {
+      // Se movendo para cima (posição menor)
+      if (draggedIndex > targetIndex) {
+        // Atualizar posições dos grupos entre o dragged e o target
+        for (let i = targetIndex; i < draggedIndex; i++) {
+          const { error } = await supabase
+            .from("dish_complement_groups")
+            .update({ position: assignedGroups[i].position + 1 })
+            .eq("id", assignedGroups[i].relation_id);
+
+          if (error) throw error;
+        }
+
+        // Atualizar posição do grupo arrastado
+        const { error } = await supabase
+          .from("dish_complement_groups")
+          .update({ position: targetGroupData.position })
+          .eq("id", draggedGroupData.relation_id);
+
+        if (error) throw error;
+
+      } else {
+        // Movendo para baixo (posição maior)
+        // Atualizar posições dos grupos entre o dragged e o target
+        for (let i = draggedIndex + 1; i <= targetIndex; i++) {
+          const { error } = await supabase
+            .from("dish_complement_groups")
+            .update({ position: assignedGroups[i].position - 1 })
+            .eq("id", assignedGroups[i].relation_id);
+
+          if (error) throw error;
+        }
+
+        // Atualizar posição do grupo arrastado
+        const { error } = await supabase
+          .from("dish_complement_groups")
+          .update({ position: targetGroupData.position })
+          .eq("id", draggedGroupData.relation_id);
+
+        if (error) throw error;
+      }
+
+      await loadGroups();
+      onUpdate?.();
+
+    } catch (error: any) {
+      toast({
+        title: "Erro ao reordenar grupo",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+
+    setDraggedGroup(null);
   };
 
   if (loading) {
@@ -257,51 +504,101 @@ export function DishComplementGroupsManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {assignedGroups.map((group, index) => (
-                <div
-                  key={group.id}
-                  className="flex items-start justify-between p-4 rounded-lg border"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-medium">{group.title}</h4>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {group.complement_count}
-                      </Badge>
-                      <Badge variant={group.required ? "default" : "secondary"}>
-                        {group.required ? "Obrigatório" : "Opcional"}
-                      </Badge>
+              {assignedGroups.map((group, index) => {
+                const isFirst = group.position === Math.min(...assignedGroups.map(g => g.position));
+                const isLast = group.position === Math.max(...assignedGroups.map(g => g.position));
+
+                return (
+                  <div
+                    key={group.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, group.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, group.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, group.id)}
+                    className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${
+                      draggedGroup === group.id ? 'opacity-50' : ''
+                    } ${
+                      dragOverGroup === group.id ? 'border-primary bg-primary/5' : ''
+                    }`}
+                  >
+                    {/* Drag Handle */}
+                    <div className="flex flex-col items-center gap-1 mt-2">
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {group.position}
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {group.description || "Sem descrição"} • Máximo de {group.max_selections}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`position-${group.id}`} className="text-xs">
-                        Posição:
-                      </Label>
-                      <Input
-                        id={`position-${group.id}`}
-                        type="number"
-                        min="1"
-                        value={group.position}
-                        onChange={(e) => {
-                          const newPos = parseInt(e.target.value) || 1;
-                          handleUpdatePosition(group.relation_id, newPos);
-                        }}
-                        className="w-20 h-8 text-xs"
-                      />
+
+                    {/* Content */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{group.title}</h4>
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {group.complement_count}
+                        </Badge>
+                        <Badge variant={group.required ? "default" : "secondary"}>
+                          {group.required ? "Obrigatório" : "Opcional"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {group.description || "Sem descrição"} • Máximo de {group.max_selections}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`position-${group.id}`} className="text-xs">
+                          Posição:
+                        </Label>
+                        <Input
+                          id={`position-${group.id}`}
+                          type="number"
+                          min="1"
+                          value={group.position}
+                          onChange={(e) => {
+                            const newPos = parseInt(e.target.value) || 1;
+                            handleUpdatePosition(group.relation_id, newPos);
+                          }}
+                          className="w-20 h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMoveUp(group.relation_id, group.position)}
+                        disabled={isFirst}
+                        className="h-8 w-8 p-0"
+                        title="Mover para cima"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMoveDown(group.relation_id, group.position)}
+                        disabled={isLast}
+                        className="h-8 w-8 p-0"
+                        title="Mover para baixo"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnassignGroup(group.relation_id, group.title)}
+                        className="h-8 w-8 p-0"
+                        title="Remover grupo"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleUnassignGroup(group.relation_id, group.title)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

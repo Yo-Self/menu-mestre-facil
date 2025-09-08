@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, ExternalLink, Edit, Save, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DishComplementGroupsManager } from "@/components/dashboard/DishComplementGroupsManager";
 
 type Dish = {
   id: string;
@@ -50,14 +51,11 @@ export default function ManageComplementsPage() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [savingGroup, setSavingGroup] = useState(false);
   const [savingComplementByGroup, setSavingComplementByGroup] = useState<Record<string, boolean>>({});
 
   const [dish, setDish] = useState<Dish | null>(null);
   const [groups, setGroups] = useState<ComplementGroup[]>([]);
-  const [availableGroups, setAvailableGroups] = useState<ComplementGroup[]>([]);
   const [complementsByGroup, setComplementsByGroup] = useState<Record<string, Complement[]>>({});
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   
   // Estado para edição de complementos
   const [editingComplement, setEditingComplement] = useState<Complement | null>(null);
@@ -86,7 +84,6 @@ export default function ManageComplementsPage() {
     (async () => {
       try {
         await loadGroupsAndComplements();
-        await loadAvailableGroups();
       } catch (error: any) {
         toast({ title: "Erro", description: error.message || "Falha ao carregar complementos", variant: "destructive" });
       }
@@ -169,49 +166,7 @@ export default function ManageComplementsPage() {
     setComplementsByGroup(byGroup);
   };
 
-  const loadAvailableGroups = async () => {
-    if (!dish) return;
-    try {
-      // Buscar todos os grupos do restaurante
-      const { data: allGroups, error } = await supabase
-        .from("complement_groups")
-        .select("*")
-        .eq("restaurant_id", dish.restaurant_id);
-        
-      if (error) throw error;
-      
-      // Filtrar grupos que não estão já associados ao prato
-      const currentGroupIds = groups.map(g => g.id);
-      const available = (allGroups || []).filter(group => !currentGroupIds.includes(group.id));
-      setAvailableGroups(available);
-    } catch (error: any) {
-      console.error("Erro ao carregar grupos disponíveis:", error);
-    }
-  };
 
-  const handleAddExistingGroup = async () => {
-    if (!selectedGroupId || !dishId) return;
-    setSavingGroup(true);
-    try {
-      const { error } = await supabase
-        .from("dish_complement_groups")
-        .insert({
-          dish_id: dishId,
-          complement_group_id: selectedGroupId,
-        });
-      
-      if (error) throw error;
-      
-      toast({ title: "Grupo adicionado", description: "Grupo de complementos associado ao prato." });
-      setSelectedGroupId("");
-      await loadGroupsAndComplements();
-      await loadAvailableGroups();
-    } catch (error: any) {
-      toast({ title: "Erro ao adicionar grupo", description: error.message, variant: "destructive" });
-    } finally {
-      setSavingGroup(false);
-    }
-  };
 
   const handleDeleteGroup = async (groupId: string) => {
     if (!confirm("Tem certeza que deseja excluir este grupo e todos os seus complementos?")) return;
@@ -360,62 +315,23 @@ export default function ManageComplementsPage() {
         </div>
       </div>
 
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle>Adicionar Grupo de Complementos</CardTitle>
-          <CardDescription>Selecione um grupo existente ou crie um novo na página de complementos</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="group-select">Selecionar Grupo Existente</Label>
-            <div className="flex gap-2">
-              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Escolha um grupo de complementos" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableGroups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.title} ({group.required ? "Obrigatório" : "Opcional"})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button 
-                onClick={handleAddExistingGroup} 
-                disabled={!selectedGroupId || savingGroup}
-              >
-                {savingGroup ? "Adicionando..." : "Adicionar"}
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/dashboard/complements")}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Criar Novo Grupo
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Crie e gerencie grupos na página de complementos
-            </span>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Separator />
+      {/* Usar o componente DishComplementGroupsManager para gerenciar grupos */}
+      {dish && (
+        <DishComplementGroupsManager
+          dishId={dish.id}
+          restaurantId={dish.restaurant_id}
+          onUpdate={() => {
+            loadGroupsAndComplements();
+          }}
+        />
+      )}
 
-      <div className="space-y-6">
-        {groups.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Nenhum grupo criado. Utilize o formulário acima para criar o primeiro.
-            </CardContent>
-          </Card>
-        ) : (
-          groups.map((group) => (
+      {/* Seção para gerenciar complementos dentro dos grupos */}
+      {groups.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">Gerenciar Complementos dos Grupos</h2>
+          {groups.map((group) => (
             <Card key={group.id} className="">
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
@@ -498,9 +414,9 @@ export default function ManageComplementsPage() {
                 />
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
