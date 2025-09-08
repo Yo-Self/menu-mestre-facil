@@ -414,94 +414,25 @@ export default function ComplementsPage() {
     complementId: string,
     fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
   ) => {
-    
     setSavingComplementByGroup((prev) => ({ ...prev, [groupId]: true }));
     try {
-      // Verificar se o usuário está autenticado
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-      
-      // Tratar o image_url corretamente
-      let imageUrlValue = null;
-      if (fields.imageUrl && fields.imageUrl.trim() !== '') {
-        imageUrlValue = fields.imageUrl.trim();
-      }
-      
-      const updateData = {
-        name: fields.name.trim(),
-        description: fields.description.trim() || null,
-        price: Number(parseFloat(fields.price || "0")) || 0,
-        image_url: imageUrlValue,
-        ingredients: fields.ingredients.trim() || null,
-      };
-      
-      // Primeiro, verificar se o complemento existe e pertence ao usuário
-      const { data: existingComplement, error: selectError } = await supabase
+      const { error } = await supabase
         .from("complements")
-        .select("*, complement_groups!inner(restaurant_id, restaurants!inner(user_id))")
-        .eq("id", complementId)
-        .single();
+        .update({
+          name: fields.name.trim(),
+          description: fields.description.trim() || null,
+          price: Number(parseFloat(fields.price || "0")) || 0,
+          image_url: fields.imageUrl.trim() || null,
+          ingredients: fields.ingredients.trim() || null,
+        })
+        .eq("id", complementId);
       
-      if (selectError) {
-        throw selectError;
-      }
-      
-      // Verificar se o usuário tem permissão para atualizar
-      if (existingComplement.complement_groups.restaurants.user_id !== user.id) {
-        throw new Error("Usuário não tem permissão para atualizar este complemento");
-      }
-      
-      // Verificar se o usuário tem acesso à tabela complements
-      const { data: tableAccess, error: tableError } = await supabase
-        .from("complements")
-        .select("id")
-        .limit(1);
-      
-      if (tableError) {
-        throw tableError;
-      }
-      
-      // Tentar update apenas com o campo image_url primeiro
-      const { data: updatedRow1, error: updateError } = await supabase
-        .from("complements")
-        .update({ image_url: imageUrlValue })
-        .eq("id", complementId)
-        .select("id, image_url")
-        .single();
-
-      if (updateError) {
-        // Tentar com todos os campos
-        const { data: updatedRow2, error: fullUpdateError } = await supabase
-          .from("complements")
-          .update(updateData)
-          .eq("id", complementId)
-          .select("id, image_url")
-          .single();
-
-        if (fullUpdateError) {
-          throw fullUpdateError;
-        }
-
-        if (!updatedRow2) {
-          throw new Error("Nenhuma linha atualizada. Pode ser RLS bloqueando a atualização.");
-        }
-        if (updatedRow2.image_url !== imageUrlValue) {
-          throw new Error("A imagem não foi atualizada. Verifique as políticas de acesso (RLS).");
-        }
-      } else {
-        if (!updatedRow1) {
-          throw new Error("Nenhuma linha atualizada. Pode ser RLS bloqueando a atualização.");
-        }
-        if (updatedRow1.image_url !== imageUrlValue) {
-          throw new Error("A imagem não foi atualizada. Verifique as políticas de acesso (RLS).");
-        }
-      }
+      if (error) throw error;
       
       toast({ title: "Complemento atualizado", description: "Complemento foi atualizado com sucesso." });
       setEditingComplement(null);
       await loadGroupsAndComplements();
       handleHideComplementForm(groupId); // Esconder formulário após atualizar
-      
     } catch (error: any) {
       toast({ title: "Erro ao atualizar complemento", description: error.message, variant: "destructive" });
     } finally {
