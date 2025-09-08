@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit, Save, X, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Edit, Save, X, Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,6 +34,15 @@ type Complement = {
   ingredients: string | null;
   position: number | null;
   is_active: boolean;
+};
+
+type Dish = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  ingredients: string | null;
 };
 
 export default function ComplementsPage() {
@@ -785,6 +795,48 @@ function NewComplementForm({
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
+  const [selectedDishId, setSelectedDishId] = useState("");
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [loadingDishes, setLoadingDishes] = useState(false);
+
+  // Carregar pratos do restaurante
+  useEffect(() => {
+    const loadDishes = async () => {
+      if (editingComplement) return; // Não carregar pratos quando editando
+      
+      setLoadingDishes(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from("dishes")
+          .select(`
+            id,
+            name,
+            description,
+            price,
+            image_url,
+            ingredients,
+            restaurants!inner (
+              user_id
+            )
+          `)
+          .eq("restaurants.user_id", user.id)
+          .eq("is_available", true)
+          .order("name", { ascending: true });
+
+        if (error) throw error;
+        setDishes(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar pratos:", error);
+      } finally {
+        setLoadingDishes(false);
+      }
+    };
+
+    loadDishes();
+  }, [editingComplement]);
 
   // Preencher campos quando estiver editando
   useEffect(() => {
@@ -799,10 +851,23 @@ function NewComplementForm({
       setName("");
       setDescription("");
       setPrice("");
-      // setImageUrl(""); // Comentado para preservar a imagem editada
+      setImageUrl("");
       setIngredients("");
+      setSelectedDishId("");
     }
   }, [editingComplement?.id]); // Usar apenas o ID para evitar re-renders desnecessários
+
+  const handleImportFromDish = (dishId: string) => {
+    const dish = dishes.find(d => d.id === dishId);
+    if (dish) {
+      setName(dish.name);
+      setDescription(dish.description || "");
+      setPrice(dish.price.toString());
+      setImageUrl(dish.image_url || "");
+      setIngredients(dish.ingredients || "");
+      setSelectedDishId(dishId);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -814,8 +879,9 @@ function NewComplementForm({
       setName("");
       setDescription("");
       setPrice("");
-      // setImageUrl(""); // Comentado para preservar a imagem editada
+      setImageUrl("");
       setIngredients("");
+      setSelectedDishId("");
     }
   };
 
@@ -823,6 +889,47 @@ function NewComplementForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {!isEditing && (
+        <div className="space-y-2">
+          <Label htmlFor="import-dish">Importar dados de um prato (opcional)</Label>
+          <div className="flex gap-2">
+            <Select value={selectedDishId} onValueChange={handleImportFromDish} disabled={loadingDishes}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder={loadingDishes ? "Carregando pratos..." : "Selecione um prato para importar dados"} />
+              </SelectTrigger>
+              <SelectContent>
+                {dishes.map((dish) => (
+                  <SelectItem key={dish.id} value={dish.id}>
+                    {dish.name} - {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(dish.price)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedDishId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedDishId("");
+                  setName("");
+                  setDescription("");
+                  setPrice("");
+                  setImageUrl("");
+                  setIngredients("");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {selectedDishId && (
+            <p className="text-sm text-muted-foreground">
+              Dados importados do prato: {dishes.find(d => d.id === selectedDishId)?.name}
+            </p>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="comp-name">Nome</Label>
