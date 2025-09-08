@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit, Save, X } from "lucide-react";
+import { Plus, Trash2, Edit, Save, X, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,16 @@ export default function ComplementsPage() {
   
   // Estado para edição de complementos
   const [editingComplement, setEditingComplement] = useState<Complement | null>(null);
+  
+  // Estados para edição de grupos
+  const [editingGroup, setEditingGroup] = useState<ComplementGroup | null>(null);
+  const [editGroupTitle, setEditGroupTitle] = useState("");
+  const [editGroupDescription, setEditGroupDescription] = useState("");
+  const [editGroupRequired, setEditGroupRequired] = useState(false);
+  const [editGroupMaxSelections, setEditGroupMaxSelections] = useState<number | "">(1);
+  
+  // Estados para formulário de complemento
+  const [showComplementForm, setShowComplementForm] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadGroupsAndComplements();
@@ -244,6 +254,130 @@ export default function ComplementsPage() {
     }
   };
 
+  const handleDuplicateGroup = async (groupId: string) => {
+    try {
+      // 1. Get the original group data
+      const { data: originalGroup, error: groupError } = await supabase
+        .from("complement_groups")
+        .select("*")
+        .eq("id", groupId)
+        .single();
+      
+      if (groupError || !originalGroup) throw groupError || new Error("Grupo não encontrado");
+
+      // 2. Get the original group's complements
+      const { data: originalComplements, error: complementsError } = await supabase
+        .from("complements")
+        .select("*")
+        .eq("group_id", groupId);
+      
+      if (complementsError) throw complementsError;
+
+      // 3. Create the duplicated group with "Cópia" suffix
+      const { data: newGroup, error: newGroupError } = await supabase
+        .from("complement_groups")
+        .insert({
+          title: `${originalGroup.title} - Cópia`,
+          description: originalGroup.description,
+          required: originalGroup.required,
+          max_selections: originalGroup.max_selections,
+          restaurant_id: originalGroup.restaurant_id,
+        })
+        .select()
+        .single();
+      
+      if (newGroupError || !newGroup) throw newGroupError || new Error("Erro ao criar grupo duplicado");
+
+      // 4. Duplicate all complements from the original group
+      if (originalComplements && originalComplements.length > 0) {
+        const complementsToInsert = originalComplements.map(complement => ({
+          group_id: newGroup.id,
+          name: complement.name,
+          description: complement.description,
+          price: complement.price,
+          image_url: complement.image_url,
+          ingredients: complement.ingredients,
+          position: complement.position,
+        }));
+
+        const { error: insertComplementsError } = await supabase
+          .from("complements")
+          .insert(complementsToInsert);
+        
+        if (insertComplementsError) throw insertComplementsError;
+      }
+
+      toast({ 
+        title: "Grupo duplicado", 
+        description: `O grupo "${originalGroup.title}" foi duplicado com sucesso.` 
+      });
+      
+      await loadGroupsAndComplements();
+    } catch (error: any) {
+      toast({ 
+        title: "Erro ao duplicar grupo", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleStartEditGroup = (group: ComplementGroup) => {
+    setEditingGroup(group);
+    setEditGroupTitle(group.title);
+    setEditGroupDescription(group.description || "");
+    setEditGroupRequired(group.required);
+    setEditGroupMaxSelections(group.max_selections);
+  };
+
+  const handleSaveEditGroup = async () => {
+    if (!editingGroup) return;
+    
+    try {
+      const maxSel = Number(editGroupMaxSelections);
+      if (!Number.isFinite(maxSel) || maxSel < 1) {
+        toast({ title: "Erro", description: "Máximo de seleções deve ser um número maior que 0", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("complement_groups")
+        .update({
+          title: editGroupTitle.trim(),
+          description: editGroupDescription.trim() || null,
+          required: editGroupRequired,
+          max_selections: maxSel,
+        })
+        .eq("id", editingGroup.id);
+      
+      if (error) throw error;
+      
+      toast({ title: "Grupo atualizado", description: "As alterações foram salvas com sucesso." });
+      setEditingGroup(null);
+      await loadGroupsAndComplements();
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar grupo", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleCancelEditGroup = () => {
+    setEditingGroup(null);
+    setEditGroupTitle("");
+    setEditGroupDescription("");
+    setEditGroupRequired(false);
+    setEditGroupMaxSelections(1);
+  };
+
+  const handleShowComplementForm = (groupId: string) => {
+    setShowComplementForm(prev => ({ ...prev, [groupId]: true }));
+    setEditingComplement(null); // Limpar edição se estiver editando
+  };
+
+  const handleHideComplementForm = (groupId: string) => {
+    setShowComplementForm(prev => ({ ...prev, [groupId]: false }));
+    setEditingComplement(null); // Limpar edição
+  };
+
   const handleCreateComplement = async (
     groupId: string,
     fields: { name: string; description: string; price: string; imageUrl: string; ingredients: string }
@@ -263,6 +397,7 @@ export default function ComplementsPage() {
       
       toast({ title: "Complemento criado", description: "Novo complemento adicionado ao grupo." });
       await loadGroupsAndComplements();
+      handleHideComplementForm(groupId); // Esconder formulário após criar
       
     } catch (error: any) {
       toast({ title: "Erro ao criar complemento", description: error.message, variant: "destructive" });
@@ -362,6 +497,7 @@ export default function ComplementsPage() {
       toast({ title: "Complemento atualizado", description: "Complemento foi atualizado com sucesso." });
       setEditingComplement(null);
       await loadGroupsAndComplements();
+      handleHideComplementForm(groupId); // Esconder formulário após atualizar
       
     } catch (error: any) {
       toast({ title: "Erro ao atualizar complemento", description: error.message, variant: "destructive" });
@@ -372,10 +508,12 @@ export default function ComplementsPage() {
 
   const handleEditComplement = (complement: Complement) => {
     setEditingComplement(complement);
+    setShowComplementForm(prev => ({ ...prev, [complement.group_id]: true }));
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (groupId: string) => {
     setEditingComplement(null);
+    handleHideComplementForm(groupId);
   };
 
   const handleDeleteComplement = async (complementId: string) => {
@@ -480,30 +618,102 @@ export default function ComplementsPage() {
           groups.map((group) => (
             <Card key={group.id} className="">
               <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="text-xl">{group.title}</CardTitle>
-                  <CardDescription>
-                    {group.description || "Sem descrição"} • {group.required ? "Obrigatório" : "Opcional"} • Máximo de {group.max_selections}
-                  </CardDescription>
-                  {group.linked_dishes && group.linked_dishes.length > 0 && (
-                    <div className="mt-2 text-sm">
-                      <span className="text-muted-foreground">Vinculado aos pratos: </span>
-                      <span className="font-medium text-primary">
-                        {group.linked_dishes.map(dish => dish.name).join(", ")}
-                      </span>
+                {editingGroup?.id === group.id ? (
+                  // Interface de edição
+                  <div className="flex-1 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-title-${group.id}`}>Título do Grupo</Label>
+                      <Input 
+                        id={`edit-title-${group.id}`}
+                        value={editGroupTitle} 
+                        onChange={(e) => setEditGroupTitle(e.target.value)} 
+                        placeholder="Ex: Adicionais" 
+                        required 
+                      />
                     </div>
-                  )}
-                  {(!group.linked_dishes || group.linked_dishes.length === 0) && (
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      Não vinculado a nenhum prato
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-description-${group.id}`}>Descrição (opcional)</Label>
+                      <Textarea 
+                        id={`edit-description-${group.id}`}
+                        value={editGroupDescription} 
+                        onChange={(e) => setEditGroupDescription(e.target.value)} 
+                        rows={2} 
+                        placeholder="Ex: Escolha até 2 adicionais" 
+                      />
                     </div>
-                  )}
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Obrigatório</Label>
+                        <div className="flex items-center justify-between rounded-md border p-3">
+                          <span className="text-sm text-muted-foreground">Usuário deve selecionar pelo menos 1</span>
+                          <Switch checked={editGroupRequired} onCheckedChange={setEditGroupRequired} />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`edit-max-${group.id}`}>Máximo de seleções</Label>
+                        <Input
+                          id={`edit-max-${group.id}`}
+                          type="number"
+                          min={1}
+                          value={editGroupMaxSelections}
+                          onChange={(e) => setEditGroupMaxSelections(e.target.value === "" ? "" : Number(e.target.value))}
+                          placeholder="1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Interface normal
+                  <div>
+                    <CardTitle className="text-xl">{group.title}</CardTitle>
+                    <CardDescription>
+                      {group.description || "Sem descrição"} • {group.required ? "Obrigatório" : "Opcional"} • Máximo de {group.max_selections}
+                    </CardDescription>
+                    {group.linked_dishes && group.linked_dishes.length > 0 && (
+                      <div className="mt-2 text-sm">
+                        <span className="text-muted-foreground">Vinculado aos pratos: </span>
+                        <span className="font-medium text-primary">
+                          {group.linked_dishes.map(dish => dish.name).join(", ")}
+                        </span>
+                      </div>
+                    )}
+                    {(!group.linked_dishes || group.linked_dishes.length === 0) && (
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        Não vinculado a nenhum prato
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleDeleteGroup(group.id)}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir grupo
-                  </Button>
+                  {editingGroup?.id === group.id ? (
+                    // Botões de edição
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleSaveEditGroup}>
+                        <Check className="h-4 w-4 mr-2" />
+                        Salvar
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleCancelEditGroup}>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    // Botões normais
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleStartEditGroup(group)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDuplicateGroup(group.id)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicar
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDeleteGroup(group.id)}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir grupo
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -547,13 +757,30 @@ export default function ComplementsPage() {
                   )}
                 </div>
 
-                <NewComplementForm
-                  saving={Boolean(savingComplementByGroup[group.id])}
-                  onSubmit={(fields) => handleCreateComplement(group.id, fields)}
-                  editingComplement={editingComplement}
-                  onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
-                  onCancelEdit={handleCancelEdit}
-                />
+                {/* Botão Adicionar Complemento */}
+                {!showComplementForm[group.id] && (
+                  <div className="flex justify-center pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleShowComplementForm(group.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar Complemento
+                    </Button>
+                  </div>
+                )}
+
+                {/* Formulário de Complemento */}
+                {showComplementForm[group.id] && (
+                  <NewComplementForm
+                    saving={Boolean(savingComplementByGroup[group.id])}
+                    onSubmit={(fields) => handleCreateComplement(group.id, fields)}
+                    editingComplement={editingComplement}
+                    onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
+                    onCancelEdit={() => handleCancelEdit(group.id)}
+                  />
+                )}
               </CardContent>
             </Card>
           ))
