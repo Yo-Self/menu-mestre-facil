@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Store, Menu, UtensilsCrossed, FolderOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Store, 
+  Menu, 
+  UtensilsCrossed, 
+  FolderOpen, 
+  Plus, 
+  Settings, 
+  Download, 
+  Eye,
+  CheckCircle,
+  XCircle,
+  Activity,
+  RefreshCw
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivities } from "@/hooks/useActivities";
+import { QuickAction } from "@/types/activity";
 
 interface Stats {
   restaurants: number;
@@ -13,6 +30,7 @@ interface Stats {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { activities, loading: activitiesLoading, refreshActivities } = useActivities(8);
   const [stats, setStats] = useState<Stats>({
     restaurants: 0,
     menus: 0,
@@ -140,6 +158,84 @@ export default function Dashboard() {
     navigate(route);
   };
 
+  const quickActions: QuickAction[] = [
+    {
+      title: "Novo Restaurante",
+      description: "Criar um novo restaurante",
+      icon: Plus,
+      href: "/dashboard/restaurants/new",
+      color: "text-green-600",
+    },
+    {
+      title: "Novo Menu",
+      description: "Criar um novo menu",
+      icon: Menu,
+      href: "/dashboard/menus/new",
+      color: "text-blue-600",
+    },
+    {
+      title: "Nova Categoria",
+      description: "Criar uma nova categoria",
+      icon: FolderOpen,
+      href: "/dashboard/categories/new",
+      color: "text-purple-600",
+    },
+    {
+      title: "Novo Prato",
+      description: "Adicionar um novo prato",
+      icon: UtensilsCrossed,
+      href: "/dashboard/dishes/new",
+      color: "text-orange-600",
+    },
+    {
+      title: "Importar Menu",
+      description: "Importar do MenuDino",
+      icon: Download,
+      href: "/dashboard/import",
+      color: "text-indigo-600",
+    },
+    {
+      title: "Configurações",
+      description: "Configurar sistema",
+      icon: Settings,
+      href: "/dashboard/settings",
+      color: "text-gray-600",
+    },
+  ];
+
+  const getActivityIcon = (iconName: string) => {
+    const iconMap: { [key: string]: any } = {
+      Store,
+      Menu,
+      FolderOpen,
+      UtensilsCrossed,
+      Download,
+      Settings,
+      Eye,
+      CheckCircle,
+      XCircle,
+      Activity,
+    };
+    return iconMap[iconName] || Activity;
+  };
+
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const activityTime = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "Agora mesmo";
+    if (diffInMinutes < 60) return `${diffInMinutes}m atrás`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h atrás`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d atrás`;
+    
+    return activityTime.toLocaleDateString('pt-BR');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -180,24 +276,88 @@ export default function Dashboard() {
               Acesse rapidamente as funcionalidades principais
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Use o menu lateral para navegar entre as seções de gestão do seu restaurante.
-            </p>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {quickActions.map((action) => {
+                const IconComponent = action.icon;
+                return (
+                  <Button
+                    key={action.title}
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-center space-y-2 hover:shadow-md transition-all"
+                    onClick={() => navigate(action.href)}
+                  >
+                    <IconComponent className={`h-5 w-5 ${action.color}`} />
+                    <div className="text-center">
+                      <div className="font-medium text-sm">{action.title}</div>
+                      <div className="text-xs text-muted-foreground">{action.description}</div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Últimas Atividades</CardTitle>
-            <CardDescription>
-              Acompanhe as últimas mudanças no sistema
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Últimas Atividades</CardTitle>
+              <CardDescription>
+                Acompanhe as últimas mudanças no sistema
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshActivities}
+              disabled={activitiesLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${activitiesLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Sem atividades recentes
-            </p>
+            {activitiesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Carregando atividades...</span>
+              </div>
+            ) : activities.length === 0 ? (
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  As atividades aparecerão aqui conforme você usar o sistema
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {activities.map((activity) => {
+                  const IconComponent = getActivityIcon(activity.icon);
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-start space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className={`p-2 rounded-full bg-muted ${activity.color}`}>
+                        <IconComponent className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium">{activity.title}</h4>
+                          <Badge variant="secondary" className="text-xs">
+                            {formatTimeAgo(activity.timestamp)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {activity.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
