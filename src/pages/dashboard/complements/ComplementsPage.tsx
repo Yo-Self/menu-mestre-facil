@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit, Save, X, Copy, Check, Download } from "lucide-react";
+import { Plus, Trash2, Edit, Save, X, Copy, Check, Download, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ export default function ComplementsPage() {
   
   const [groups, setGroups] = useState<ComplementGroup[]>([]);
   const [complementsByGroup, setComplementsByGroup] = useState<Record<string, Complement[]>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   
   // New group form state
   const [newGroupTitle, setNewGroupTitle] = useState("");
@@ -380,6 +381,13 @@ export default function ComplementsPage() {
     setEditGroupMaxSelections(1);
   };
 
+  const toggleGroupExpansion = (groupId: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
   const handleShowComplementForm = (groupId: string) => {
     setShowComplementForm(prev => ({ ...prev, [groupId]: true }));
     setEditingComplement(null); // Limpar edição se estiver editando
@@ -634,8 +642,22 @@ export default function ComplementsPage() {
                   </div>
                 ) : (
                   // Interface normal
-                  <div>
-                    <CardTitle className="text-xl">{group.title}</CardTitle>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleGroupExpansion(group.id)}
+                        className="p-1 h-auto hover:bg-transparent"
+                      >
+                        {expandedGroups[group.id] ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <CardTitle className="text-xl">{group.title}</CardTitle>
+                    </div>
                     <CardDescription>
                       {group.description || "Sem descrição"} • {group.required ? "Obrigatório" : "Opcional"} • Máximo de {group.max_selections}
                     </CardDescription>
@@ -686,89 +708,91 @@ export default function ComplementsPage() {
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <h3 className="font-medium">Complementos</h3>
-                  {(complementsByGroup[group.id] || []).length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Nenhum complemento neste grupo</div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(complementsByGroup[group.id] || []).map((comp) => (
-                        <div key={comp.id} className="rounded-md border p-3">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="font-medium">{comp.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {comp.description || "Sem descrição"}
+              {expandedGroups[group.id] && (
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="font-medium">Complementos</h3>
+                    {(complementsByGroup[group.id] || []).length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Nenhum complemento neste grupo</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(complementsByGroup[group.id] || []).map((comp) => (
+                          <div key={comp.id} className="rounded-md border p-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <div className="font-medium">{comp.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {comp.description || "Sem descrição"}
+                                </div>
+                                <div className="text-sm mt-1">
+                                  Preço: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(comp.price || 0)}
+                                </div>
+                                {comp.ingredients && (
+                                  <div className="text-xs text-muted-foreground mt-1">Ingredientes: {comp.ingredients}</div>
+                                )}
                               </div>
-                              <div className="text-sm mt-1">
-                                Preço: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(comp.price || 0)}
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleEditComplement(comp)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => handleDeleteComplement(comp.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                              {comp.ingredients && (
-                                <div className="text-xs text-muted-foreground mt-1">Ingredientes: {comp.ingredients}</div>
+                            </div>
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  id={`active-${comp.id}`}
+                                  checked={comp.is_active}
+                                  onCheckedChange={() => handleToggleComplementStatus(comp.id, comp.is_active)}
+                                />
+                                <Label htmlFor={`active-${comp.id}`} className="text-sm">
+                                  {comp.is_active ? "Ativo" : "Inativo"}
+                                </Label>
+                              </div>
+                              {!comp.is_active && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Oculto dos clientes
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleEditComplement(comp)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => handleDeleteComplement(comp.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </div>
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                id={`active-${comp.id}`}
-                                checked={comp.is_active}
-                                onCheckedChange={() => handleToggleComplementStatus(comp.id, comp.is_active)}
-                              />
-                              <Label htmlFor={`active-${comp.id}`} className="text-sm">
-                                {comp.is_active ? "Ativo" : "Inativo"}
-                              </Label>
-                            </div>
-                            {!comp.is_active && (
-                              <Badge variant="secondary" className="text-xs">
-                                Oculto dos clientes
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botão Adicionar Complemento */}
+                  {!showComplementForm[group.id] && (
+                    <div className="flex justify-center pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleShowComplementForm(group.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar Complemento
+                      </Button>
                     </div>
                   )}
-                </div>
 
-                {/* Botão Adicionar Complemento */}
-                {!showComplementForm[group.id] && (
-                  <div className="flex justify-center pt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => handleShowComplementForm(group.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Adicionar Complemento
-                    </Button>
-                  </div>
-                )}
-
-                {/* Formulário de Complemento */}
-                {showComplementForm[group.id] && (
-                  <NewComplementForm
-                    saving={Boolean(savingComplementByGroup[group.id])}
-                    onSubmit={(fields) => handleCreateComplement(group.id, fields)}
-                    editingComplement={editingComplement}
-                    onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
-                    onCancelEdit={() => handleCancelEdit(group.id)}
-                  />
-                )}
-              </CardContent>
+                  {/* Formulário de Complemento */}
+                  {showComplementForm[group.id] && (
+                    <NewComplementForm
+                      saving={Boolean(savingComplementByGroup[group.id])}
+                      onSubmit={(fields) => handleCreateComplement(group.id, fields)}
+                      editingComplement={editingComplement}
+                      onUpdate={(fields) => handleUpdateComplement(group.id, editingComplement!.id, fields)}
+                      onCancelEdit={() => handleCancelEdit(group.id)}
+                    />
+                  )}
+                </CardContent>
+              )}
             </Card>
           ))
         )}
