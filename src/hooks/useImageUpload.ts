@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client.ts';
+import { useToast } from '@/hooks/use-toast.ts';
 import { imageCompressionService, CompressionOptions } from '@/services/image-compression';
 
 export interface ImageUploadOptions {
@@ -93,7 +93,12 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
 
       const { data, error } = await supabase.storage
         .from('images')
-        .upload(filePath, fileToUpload);
+        .upload(filePath, fileToUpload, {
+          cacheControl: "3155695200",
+          headers: {
+            "Cache-Control": "max-age=3155695200, s-maxage=3155695200",
+          },
+        });
 
       if (error) throw error;
 
