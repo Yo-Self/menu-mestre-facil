@@ -30,7 +30,7 @@ A API key do Google Maps está aparecendo como `undefined` no deploy porque:
 ```
 Settings > Secrets and variables > Actions > New repository secret
 Name: VITE_GOOGLE_MAPS_API_KEY
-Value: AIzaSyBJIlZtMc_n9y5HYUo7m94BEZat5aX730c
+Value: CHAVEAPI
 ```
 
 ### Passo 2: Fazer Deploy
@@ -67,4 +67,3 @@ Após o deploy, acesse a aplicação e verifique:
 
 **NÃO** coloque a chave da API diretamente no código! Sempre use variáveis de ambiente para segurança.
 
-A chave `AIzaSyBJIlZtMc_n9y5HYUo7m94BEZat5aX730c` que aparece no erro é apenas para debug - você deve usar sua própria chave.
