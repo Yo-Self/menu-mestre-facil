@@ -248,6 +248,8 @@ export type Database = {
           waiter_call_enabled: boolean
           whatsapp_enabled: boolean
           whatsapp_phone: string | null
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           address?: string | null
@@ -266,6 +268,8 @@ export type Database = {
           waiter_call_enabled?: boolean
           whatsapp_enabled?: boolean
           whatsapp_phone?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Update: {
           address?: string | null
@@ -284,6 +288,8 @@ export type Database = {
           waiter_call_enabled?: boolean
           whatsapp_enabled?: boolean
           whatsapp_phone?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
       }
     }

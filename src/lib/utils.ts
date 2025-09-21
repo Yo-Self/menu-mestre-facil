@@ -31,13 +31,14 @@ export async function checkSlugExists(slug: string, table: 'profiles' | 'restaur
       query = query.neq('id', excludeId);
     }
     
-    const { data, error } = await query.single();
+    const { data, error } = await query;
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      throw error;
+    if (error) {
+      console.error('Erro ao verificar slug:', error);
+      return false;
     }
 
-    return !!data;
+    return data && data.length > 0;
   } catch (error) {
     console.error('Erro ao verificar slug:', error);
     return false;

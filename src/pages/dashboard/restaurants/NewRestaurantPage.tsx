@@ -12,6 +12,7 @@ import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { AddressSelector } from "@/components/ui/address-selector";
 
 const cuisineTypes = [
   "Brasileira",
@@ -52,6 +53,11 @@ export default function NewRestaurantPage() {
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [addressData, setAddressData] = useState({
+    address: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+  });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -84,6 +90,9 @@ export default function NewRestaurantPage() {
             whatsapp_enabled: whatsappEnabled,
             background_light: formData.background_light || "#ffffff",
             background_night: formData.background_night || "#1a1a1a",
+            address: addressData.address || null,
+            latitude: addressData.latitude,
+            longitude: addressData.longitude,
           },
         ])
         .select()
@@ -214,6 +223,13 @@ export default function NewRestaurantPage() {
                 rows={4}
               />
             </div>
+
+            <AddressSelector
+              value={addressData}
+              onChange={setAddressData}
+              label="Endereço do Restaurante"
+              placeholder="Digite o endereço do restaurante..."
+            />
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

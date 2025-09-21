@@ -12,6 +12,7 @@ import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
+import { AddressSelector } from "@/components/ui/address-selector";
 
 const cuisineTypes = [
   "Brasileira",
@@ -49,6 +50,9 @@ interface Restaurant {
   waiter_call_enabled: boolean;
   whatsapp_phone: string | null;
   whatsapp_enabled: boolean;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   background_light: string | null;
   background_night: string | null;
 }
@@ -71,6 +75,11 @@ export default function EditRestaurantPage() {
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [addressData, setAddressData] = useState({
+    address: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+  });
 
   useEffect(() => {
     if (id) {
@@ -100,6 +109,11 @@ export default function EditRestaurantPage() {
       setWaiterCallEnabled(data.waiter_call_enabled);
       setWhatsappPhone(data.whatsapp_phone || "");
       setWhatsappEnabled(data.whatsapp_enabled);
+      setAddressData({
+        address: data.address || "",
+        latitude: data.latitude,
+        longitude: data.longitude,
+      });
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -138,6 +152,9 @@ export default function EditRestaurantPage() {
           whatsapp_enabled: whatsappEnabled,
           background_light: formData.background_light || null,
           background_night: formData.background_night || null,
+          address: addressData.address || null,
+          latitude: addressData.latitude,
+          longitude: addressData.longitude,
         })
         .eq("id", id);
 
@@ -232,10 +249,9 @@ export default function EditRestaurantPage() {
                 value={formData.slug}
                 onChange={handleChange}
                 placeholder="ex: restaurante-do-chef"
-                required
               />
               <p className="text-sm text-muted-foreground">
-                Seu restaurante será acessível em: yo-self.com/restaurant/{formData.slug || '[slug-atual]'}
+                Deixe em branco para gerar automaticamente a partir do nome. Seu restaurante será acessível em: yo-self.com/restaurant/{formData.slug || '[slug-gerado]'}
               </p>
             </div>
 
@@ -275,6 +291,13 @@ export default function EditRestaurantPage() {
                 rows={4}
               />
             </div>
+
+            <AddressSelector
+              value={addressData}
+              onChange={setAddressData}
+              label="Endereço do Restaurante"
+              placeholder="Digite o endereço do restaurante..."
+            />
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
