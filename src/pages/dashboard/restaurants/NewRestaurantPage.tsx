@@ -53,6 +53,7 @@ export default function NewRestaurantPage() {
   const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [addressActive, setAddressActive] = useState(false);
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -93,6 +94,7 @@ export default function NewRestaurantPage() {
             address: addressData.address || null,
             latitude: addressData.latitude,
             longitude: addressData.longitude,
+            address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
           },
         ])
         .select()
@@ -230,6 +232,25 @@ export default function NewRestaurantPage() {
               label="Endereço do Restaurante"
               placeholder="Digite o endereço do restaurante..."
             />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  Endereço Ativo
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Ativa a função de digitar o endereço no menu. Só é possível ativar se o endereço estiver preenchido.
+                </p>
+              </div>
+              <Switch
+                checked={addressActive && !!addressData.address && addressData.address.trim().length > 0}
+                onCheckedChange={(checked) => {
+                  if (checked && !(addressData.address && addressData.address.trim().length > 0)) return;
+                  setAddressActive(checked);
+                }}
+                disabled={!(addressData.address && addressData.address.trim().length > 0)}
+              />
+            </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
