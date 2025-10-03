@@ -251,6 +251,7 @@ export type Database = {
           whatsapp_phone: string | null
           latitude: number | null
           longitude: number | null
+          table_payment: boolean
         }
         Insert: {
           address?: string | null
@@ -272,6 +273,7 @@ export type Database = {
           whatsapp_phone?: string | null
           latitude?: number | null
           longitude?: number | null
+          table_payment?: boolean
         }
         Update: {
           address?: string | null
@@ -293,6 +295,7 @@ export type Database = {
           whatsapp_phone?: string | null
           latitude?: number | null
           longitude?: number | null
+          table_payment?: boolean
         }
       }
     }

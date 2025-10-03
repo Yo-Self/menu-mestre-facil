@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ interface Restaurant {
   background_light: string | null;
   background_night: string | null;
   open: boolean;
+  table_payment: boolean;
 }
 
 interface Profile {
@@ -264,6 +265,14 @@ export default function RestaurantDetailPage() {
                 <Badge variant={restaurant.whatsapp_enabled ? "default" : "secondary"} className="flex items-center gap-1">
                   <MessageCircle className="h-3 w-3" />
                   {restaurant.whatsapp_enabled ? "Habilitado" : "Desabilitado"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Pagamento na Mesa:</span>
+                <Badge variant={restaurant.table_payment ? "default" : "secondary"} className="flex items-center gap-1">
+                  <CreditCard className="h-3 w-3" />
+                  {restaurant.table_payment ? "Habilitado" : "Desabilitado"}
                 </Badge>
               </div>
               

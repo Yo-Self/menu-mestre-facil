@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Bell, MessageCircle, Palette } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle, Palette, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -54,6 +54,7 @@ export default function NewRestaurantPage() {
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [addressActive, setAddressActive] = useState(false);
+  const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -95,6 +96,7 @@ export default function NewRestaurantPage() {
             latitude: addressData.latitude,
             longitude: addressData.longitude,
             address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
+            table_payment: tablePaymentEnabled,
             open: true,
           },
         ])
@@ -266,6 +268,22 @@ export default function NewRestaurantPage() {
               <Switch
                 checked={waiterCallEnabled}
                 onCheckedChange={setWaiterCallEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Pagamento na Mesa
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Ativa a funcionalidade de pagamento na mesa para os clientes
+                </p>
+              </div>
+              <Switch
+                checked={tablePaymentEnabled}
+                onCheckedChange={setTablePaymentEnabled}
               />
             </div>
 

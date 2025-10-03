@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, MessageCircle, Palette } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle, Palette, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +56,7 @@ interface Restaurant {
   background_light: string | null;
   background_night: string | null;
   open: boolean;
+  table_payment: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -77,6 +78,7 @@ export default function EditRestaurantPage() {
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [addressActive, setAddressActive] = useState(false);
+  const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -111,6 +113,7 @@ export default function EditRestaurantPage() {
       setWaiterCallEnabled(data.waiter_call_enabled);
       setWhatsappPhone(data.whatsapp_phone || "");
       setWhatsappEnabled(data.whatsapp_enabled);
+      setTablePaymentEnabled(data.table_payment);
       setAddressData({
         address: data.address || "",
         latitude: data.latitude,
@@ -159,6 +162,7 @@ export default function EditRestaurantPage() {
           latitude: addressData.latitude,
           longitude: addressData.longitude,
           address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
+          table_payment: tablePaymentEnabled,
         })
         .eq("id", id);
 
@@ -335,6 +339,22 @@ export default function EditRestaurantPage() {
               <Switch
                 checked={waiterCallEnabled}
                 onCheckedChange={setWaiterCallEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Pagamento na Mesa
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Ativa a funcionalidade de pagamento na mesa para os clientes
+                </p>
+              </div>
+              <Switch
+                checked={tablePaymentEnabled}
+                onCheckedChange={setTablePaymentEnabled}
               />
             </div>
 
