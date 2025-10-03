@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
   whatsapp_phone text,
   whatsapp_custom_message text,
   waiter_call_enabled boolean DEFAULT false,
+  open boolean DEFAULT true,
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()

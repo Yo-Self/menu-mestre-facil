@@ -55,6 +55,7 @@ interface Restaurant {
   longitude: number | null;
   background_light: string | null;
   background_night: string | null;
+  open: boolean;
 }
 
 export default function EditRestaurantPage() {

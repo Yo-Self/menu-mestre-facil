@@ -1,8 +1,9 @@
 -- Migration: add_restaurant_location_fields
 -- Description: Add latitude and longitude fields to restaurants table for Google Maps integration
 
--- Add latitude and longitude columns to restaurants table
+-- Add address, latitude and longitude columns to restaurants table
 ALTER TABLE public.restaurants 
+ADD COLUMN IF NOT EXISTS address text,
 ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8),
 ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
 

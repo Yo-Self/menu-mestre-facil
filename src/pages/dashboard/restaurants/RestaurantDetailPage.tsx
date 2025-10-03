@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ interface Restaurant {
   whatsapp_enabled: boolean;
   background_light: string | null;
   background_night: string | null;
+  open: boolean;
 }
 
 interface Profile {
@@ -112,6 +113,33 @@ export default function RestaurantDetailPage() {
     }
   };
 
+  const toggleRestaurantStatus = async () => {
+    if (!restaurant) return;
+
+    try {
+      const newStatus = !restaurant.open;
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ open: newStatus })
+        .eq("id", restaurant.id);
+
+      if (error) throw error;
+
+      setRestaurant({ ...restaurant, open: newStatus });
+      
+      toast({
+        title: newStatus ? "Restaurante Aberto" : "Restaurante Fechado",
+        description: `O restaurante foi ${newStatus ? "aberto" : "fechado"} com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -167,12 +195,22 @@ export default function RestaurantDetailPage() {
           <h1 className="text-3xl font-bold text-primary">{restaurant.name}</h1>
           <p className="text-muted-foreground">Gestão do restaurante</p>
         </div>
-        <Link to={`/dashboard/restaurants/${id}/edit`}>
-          <Button>
-            <Edit className="h-4 w-4 mr-2" />
-            Editar Restaurante
+        <div className="flex gap-2">
+          <Button
+            onClick={toggleRestaurantStatus}
+            variant={restaurant.open ? "destructive" : "default"}
+            className={restaurant.open ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            <Power className="h-4 w-4 mr-2" />
+            {restaurant.open ? "Fechar Restaurante" : "Abrir Restaurante"}
           </Button>
-        </Link>
+          <Link to={`/dashboard/restaurants/${id}/edit`}>
+            <Button variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Editar Restaurante
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -191,8 +229,14 @@ export default function RestaurantDetailPage() {
               </div>
               
               <div>
-                <h3 className="font-semibold">{restaurant.name}</h3>
-                <Badge variant="secondary" className="mt-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold">{restaurant.name}</h3>
+                  <Badge variant={restaurant.open ? "default" : "secondary"} className="flex items-center gap-1">
+                    <Power className="h-3 w-3" />
+                    {restaurant.open ? "Aberto" : "Fechado"}
+                  </Badge>
+                </div>
+                <Badge variant="secondary">
                   {restaurant.cuisine_type}
                 </Badge>
               </div>

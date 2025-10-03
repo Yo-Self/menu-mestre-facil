@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2, Settings } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ interface Restaurant {
   description: string;
   image_url: string;
   created_at: string;
+  open: boolean;
 }
 
 export default function RestaurantsPage() {
@@ -133,8 +134,14 @@ export default function RestaurantsPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg">{restaurant.name}</CardTitle>
-                    <Badge variant="secondary" className="mt-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-lg">{restaurant.name}</CardTitle>
+                      <Badge variant={restaurant.open ? "default" : "secondary"} className="flex items-center gap-1">
+                        <Power className="h-3 w-3" />
+                        {restaurant.open ? "Aberto" : "Fechado"}
+                      </Badge>
+                    </div>
+                    <Badge variant="secondary">
                       {restaurant.cuisine_type}
                     </Badge>
                   </div>

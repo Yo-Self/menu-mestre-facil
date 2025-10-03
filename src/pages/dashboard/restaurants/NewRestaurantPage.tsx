@@ -95,6 +95,7 @@ export default function NewRestaurantPage() {
             latitude: addressData.latitude,
             longitude: addressData.longitude,
             address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
+            open: true,
           },
         ])
         .select()

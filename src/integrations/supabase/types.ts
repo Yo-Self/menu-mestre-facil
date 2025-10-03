@@ -241,6 +241,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          open: boolean
           owner_id: string
           phone: string | null
           slug: string
@@ -261,6 +262,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          open?: boolean
           owner_id: string
           phone?: string | null
           slug: string
@@ -281,6 +283,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          open?: boolean
           owner_id?: string
           phone?: string | null
           slug?: string

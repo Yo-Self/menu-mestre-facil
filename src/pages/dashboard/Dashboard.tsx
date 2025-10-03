@@ -14,7 +14,8 @@ import {
   CheckCircle,
   XCircle,
   Activity,
-  RefreshCw
+  RefreshCw,
+  Power
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,15 @@ interface Stats {
   dishes: number;
 }
 
+interface Restaurant {
+  id: string;
+  name: string;
+  slug: string;
+  open: boolean;
+  image_url: string;
+  cuisine_type: string;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { activities, loading: activitiesLoading, refreshActivities } = useActivities(8);
@@ -37,6 +47,8 @@ export default function Dashboard() {
     categories: 0,
     dishes: 0,
   });
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -117,7 +129,51 @@ export default function Dashboard() {
     };
 
     fetchStats();
+    fetchRestaurants();
   }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name, slug, open, image_url, cuisine_type")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRestaurants(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar restaurantes:", error);
+    } finally {
+      setLoadingRestaurants(false);
+    }
+  };
+
+  const toggleRestaurantStatus = async (restaurantId: string, currentStatus: boolean) => {
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ open: newStatus })
+        .eq("id", restaurantId);
+
+      if (error) throw error;
+
+      // Atualizar o estado local
+      setRestaurants(prev => 
+        prev.map(restaurant => 
+          restaurant.id === restaurantId 
+            ? { ...restaurant, open: newStatus }
+            : restaurant
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao alterar status do restaurante:", error);
+    }
+  };
 
   const statCards = [
     {
@@ -268,7 +324,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Ações Rápidas</CardTitle>
@@ -296,6 +352,76 @@ export default function Dashboard() {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus Restaurantes</CardTitle>
+            <CardDescription>
+              Gerencie o status dos seus restaurantes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingRestaurants ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Carregando restaurantes...</span>
+              </div>
+            ) : restaurants.length === 0 ? (
+              <div className="text-center py-8">
+                <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">Nenhum restaurante cadastrado</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Crie seu primeiro restaurante para começar
+                </p>
+                <Button 
+                  className="mt-4" 
+                  onClick={() => navigate("/dashboard/restaurants/new")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Restaurante
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {restaurants.map((restaurant) => (
+                  <div
+                    key={restaurant.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <img
+                          src={restaurant.image_url}
+                          alt={restaurant.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium truncate">{restaurant.name}</h4>
+                        <p className="text-xs text-muted-foreground">{restaurant.cuisine_type}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <Badge variant={restaurant.open ? "default" : "secondary"} className="flex items-center gap-1">
+                        <Power className="h-3 w-3" />
+                        {restaurant.open ? "Aberto" : "Fechado"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant={restaurant.open ? "destructive" : "default"}
+                        className={restaurant.open ? "bg-green-600 hover:bg-green-700" : ""}
+                        onClick={() => toggleRestaurantStatus(restaurant.id, restaurant.open)}
+                      >
+                        <Power className="h-3 w-3 mr-1" />
+                        {restaurant.open ? "Fechar" : "Abrir"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
