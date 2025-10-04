@@ -7,15 +7,15 @@ export function useOrders(restaurantId?: string) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (isInitialFetch = false) => {
     if (!restaurantId) {
       setOrders([])
-      setLoading(false)
+      if (isInitialFetch) setLoading(false)
       return
     }
 
     try {
-      setLoading(true)
+      if (isInitialFetch) setLoading(true)
       setError(null)
 
       // Fetch orders with their items and dish details
@@ -40,7 +40,7 @@ export function useOrders(restaurantId?: string) {
       console.error('Error fetching orders:', err)
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos')
     } finally {
-      setLoading(false)
+      if (isInitialFetch) setLoading(false)
     }
   }
 
@@ -156,7 +156,7 @@ export function useOrders(restaurantId?: string) {
   useEffect(() => {
     if (!restaurantId) return
 
-    fetchOrders()
+    fetchOrders(true)
 
     // Subscribe to order changes
     const ordersSubscription = supabase
@@ -171,10 +171,71 @@ export function useOrders(restaurantId?: string) {
         },
         (payload) => {
           console.log('Order change received:', payload)
-          fetchOrders() // Refresh the orders list
+
+          const handleUpsert = async (orderId: string) => {
+            try {
+              const { data: orderData, error } = await supabase
+                .from('orders')
+                .select(`
+                  *,
+                  order_items (
+                    *,
+                    dishes (*)
+                  )
+                `)
+                .eq('id', orderId)
+                .single()
+
+              if (error) {
+                console.error('Error fetching updated order:', error)
+                return
+              }
+
+              if (orderData) {
+                setOrders(prevOrders => {
+                  const existingOrderIndex = prevOrders.findIndex(o => o.id === orderId)
+                  if (existingOrderIndex !== -1) {
+                    // Update existing order
+                    const newOrders = [...prevOrders]
+                    newOrders[existingOrderIndex] = orderData
+                    return newOrders
+                  } else {
+                    // Add new order
+                    return [orderData, ...prevOrders]
+                  }
+                })
+              }
+            } catch (err) {
+              console.error('Error processing upsert:', err)
+            }
+          }
+
+          if (payload.eventType === 'INSERT') {
+            console.log('Novo pedido inserido via real-time:', payload.new.id)
+            handleUpsert(payload.new.id)
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Pedido atualizado via real-time:', payload.new.id)
+            handleUpsert(payload.new.id)
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Pedido deletado via real-time:', payload.old.id)
+            const deletedOrder = payload.old as OrderWithItems
+            setOrders(prevOrders =>
+              prevOrders.filter(order => order.id !== deletedOrder.id)
+            )
+          }
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Subscribed to orders changes!')
+        } else if (status === 'TIMED_OUT') {
+          console.error('Subscription to orders changes timed out.', err)
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Error subscribing to orders changes:', err)
+        } else if (status === 'CLOSED') {
+          console.log('Subscription to orders changes closed.')
+        }
+      })
 
     return () => {
       ordersSubscription.unsubscribe()

@@ -1,14 +1,24 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { useParams } from 'react-router-dom'
 import { OrdersKanban } from '../../../components/orders/OrdersKanban'
 import { Button } from '../../../components/ui/button'
 import { RefreshCw } from 'lucide-react'
 import { useOrders } from '../../../hooks/useOrders'
+import { useOrderNotifications } from '../../../hooks/useOrderNotifications'
 import { OrderStatus } from '../../../types/orders'
 
 export default function OrdersPage() {
   const { restaurantId } = useParams<{ restaurantId: string }>()
   const { orders, loading, error, refetch, updateOrderStatus } = useOrders(restaurantId)
+  
+  // Hook para gerenciar notificações sonoras de novos pedidos
+  useOrderNotifications({ 
+    orders, 
+    loading,
+    onNewOrderDetected: () => {
+      console.log('Callback: Novo pedido detectado na OrdersPage')
+    }
+  })
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     try {
