@@ -95,7 +95,7 @@ jobs:
             -d '{
               "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
               "message_thread_id": 2,
-              "text": "🤖 **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ✅ Sucesso\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Build e deploy concluídos com sucesso! O site foi publicado no GitHub Pages.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
+              "text": "🤖 Menu Mestre Fácil **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ✅ Sucesso\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Build e deploy concluídos com sucesso! O site foi publicado no GitHub Pages.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
               "parse_mode": "Markdown"
             }')
           
@@ -112,7 +112,7 @@ jobs:
               -d '{
                 "chat_id": '$MIGRATE_ID',
                 "message_thread_id": 2,
-                "text": "🤖 **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ✅ Sucesso\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Build e deploy concluídos com sucesso! O site foi publicado no GitHub Pages.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
+                "text": "🤖 Menu Mestre Fácil **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ✅ Sucesso\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Build e deploy concluídos com sucesso! O site foi publicado no GitHub Pages.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
                 "parse_mode": "Markdown"
               }'
           else
@@ -120,7 +120,7 @@ jobs:
             echo "$RESPONSE"
           fi
             # Notification job - Failure
-            
+
   notify-failure:
     needs: [build, deploy]
     if: always() && (needs.build.result == 'failure' || needs.deploy.result == 'failure')
@@ -135,7 +135,7 @@ jobs:
             -d '{
               "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
               "message_thread_id": 2,
-              "text": "🤖 **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ❌ Falha\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Falha no build ou deploy. Verifique os logs para mais detalhes.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
+              "text": "🤖 Menu Mestre Fácil **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ❌ Falha\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Falha no build ou deploy. Verifique os logs para mais detalhes.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
               "parse_mode": "Markdown"
             }')
           
@@ -152,7 +152,7 @@ jobs:
               -d '{
                 "chat_id": '$MIGRATE_ID',
                 "message_thread_id": 2,
-                "text": "🤖 **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ❌ Falha\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Falha no build ou deploy. Verifique os logs para mais detalhes.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
+                "text": "🤖 Menu Mestre Fácil **GitHub Actions - Deploy Next.js**\n\n📋 **Status:** ❌ Falha\n\n🌿 **Branch:** ${{ github.ref_name }}\n\n📝 **Detalhes:** Falha no build ou deploy. Verifique os logs para mais detalhes.\n\n🔗 **Ver execução:** [Deploy Next.js](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n⏰ **Executado em:** ${{ github.event.head_commit.timestamp || github.event.schedule || 'Agora' }}",
                 "parse_mode": "Markdown"
               }'
           else
