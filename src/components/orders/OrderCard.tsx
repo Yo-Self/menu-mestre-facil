@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/ui/WhatsappIcon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -143,11 +144,24 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         </div>
 
         {/* Customer Info */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-          <User className="h-4 w-4" />
-          <span>{getCustomerName()}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+            <User className="h-4 w-4" />
+            <span>{getCustomerName()}</span>
+            {getCustomerPhone() && (
+              <span className="text-xs">({getCustomerPhone()})</span>
+            )}
+          </div>
           {getCustomerPhone() && (
-            <span className="text-xs">({getCustomerPhone()})</span>
+            <a 
+              href={`https://wa.me/${getCustomerPhone().replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <WhatsAppIcon className="h-6 w-6 text-green-600" />
+              </Button>
+            </a>
           )}
         </div>
 
