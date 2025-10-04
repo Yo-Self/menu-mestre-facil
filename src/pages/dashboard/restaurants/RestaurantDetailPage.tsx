@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -161,6 +161,13 @@ export default function RestaurantDetailPage() {
   }
 
   const quickActions = [
+    {
+      title: "Gerenciar Pedidos",
+      description: "Visualizar e gerenciar pedidos",
+      icon: ShoppingCart,
+      href: `/orders/${id}`,
+      color: "text-green-600",
+    },
     {
       title: "Gerenciar Menus",
       description: `${stats.menus} menus cadastrados`,
