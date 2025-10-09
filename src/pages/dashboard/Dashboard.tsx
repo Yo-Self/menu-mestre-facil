@@ -15,7 +15,11 @@ import {
   XCircle,
   Activity,
   RefreshCw,
-  Power
+  Power,
+  ShoppingCart,
+  Clock,
+  TrendingUp,
+  DollarSign
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +42,15 @@ interface Restaurant {
   cuisine_type: string;
 }
 
+interface OrdersSummary {
+  totalOrders: number;
+  newOrders: number;
+  inPreparation: number;
+  ready: number;
+  todayRevenue: number;
+  averageTicket: number;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { activities, loading: activitiesLoading, refreshActivities } = useActivities(8);
@@ -49,6 +62,15 @@ export default function Dashboard() {
   });
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [ordersSummary, setOrdersSummary] = useState<OrdersSummary>({
+    totalOrders: 0,
+    newOrders: 0,
+    inPreparation: 0,
+    ready: 0,
+    todayRevenue: 0,
+    averageTicket: 0,
+  });
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -130,7 +152,66 @@ export default function Dashboard() {
 
     fetchStats();
     fetchRestaurants();
+    fetchOrdersSummary();
   }, []);
+
+  const fetchOrdersSummary = async () => {
+    setLoadingOrders(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Buscar restaurantes do usuário
+      const { data: userRestaurants } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (!userRestaurants || userRestaurants.length === 0) {
+        setLoadingOrders(false);
+        return;
+      }
+
+      const restaurantIds = userRestaurants.map(r => r.id);
+
+      // Data de hoje (início)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Buscar pedidos de hoje dos restaurantes do usuário
+      const { data: todayOrders, error } = await supabase
+        .from('orders')
+        .select('id, status, total_price, created_at')
+        .in('restaurant_id', restaurantIds)
+        .gte('created_at', today.toISOString());
+
+      if (error) throw error;
+
+      if (todayOrders) {
+        const newOrders = todayOrders.filter(o => o.status === 'new' || o.status === 'pending_payment').length;
+        const inPreparation = todayOrders.filter(o => o.status === 'in_preparation').length;
+        const ready = todayOrders.filter(o => o.status === 'ready').length;
+        
+        // Calcular receita apenas de pedidos finalizados
+        const finishedOrders = todayOrders.filter(o => o.status === 'finished');
+        const todayRevenue = finishedOrders.reduce((sum, order) => sum + (order.total_price || 0), 0) / 100;
+        const averageTicket = finishedOrders.length > 0 ? todayRevenue / finishedOrders.length : 0;
+
+        setOrdersSummary({
+          totalOrders: todayOrders.length,
+          newOrders,
+          inPreparation,
+          ready,
+          todayRevenue,
+          averageTicket,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar resumo de pedidos:", error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -214,6 +295,7 @@ export default function Dashboard() {
     navigate(route);
   };
 
+  // Definir quickActions dentro do componente para ter acesso ao estado restaurants
   const quickActions: QuickAction[] = [
     {
       title: "Novo Restaurante",
@@ -244,10 +326,10 @@ export default function Dashboard() {
       color: "text-orange-600",
     },
     {
-      title: "Importar Menu",
-      description: "Importar do MenuDino",
-      icon: Download,
-      href: "/dashboard/import",
+      title: "Gerenciar Pedidos",
+      description: "Ver e gerenciar pedidos",
+      icon: ShoppingCart,
+      href: restaurants.length > 0 ? `/orders/${restaurants[0].id}` : "/dashboard/restaurants",
       color: "text-indigo-600",
     },
     {
@@ -403,11 +485,7 @@ export default function Dashboard() {
                         <p className="text-xs text-muted-foreground">{restaurant.cuisine_type}</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <Badge variant={restaurant.open ? "default" : "secondary"} className="flex items-center gap-1">
-                        <Power className="h-3 w-3" />
-                        {restaurant.open ? "Aberto" : "Fechado"}
-                      </Badge>
+                    <div className="flex items-center flex-shrink-0">
                       <Button
                         size="sm"
                         variant={restaurant.open ? "destructive" : "default"}
@@ -428,60 +506,128 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Últimas Atividades</CardTitle>
+              <CardTitle>Resumo de Pedidos</CardTitle>
               <CardDescription>
-                Acompanhe as últimas mudanças no sistema
+                Status dos pedidos de hoje
               </CardDescription>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              onClick={refreshActivities}
-              disabled={activitiesLoading}
+              onClick={fetchOrdersSummary}
+              disabled={loadingOrders}
             >
-              <RefreshCw className={`h-4 w-4 ${activitiesLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${loadingOrders ? 'animate-spin' : ''}`} />
             </Button>
           </CardHeader>
           <CardContent>
-            {activitiesLoading ? (
+            {loadingOrders ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Carregando atividades...</span>
+                <span className="ml-2 text-sm text-muted-foreground">Carregando pedidos...</span>
               </div>
-            ) : activities.length === 0 ? (
+            ) : ordersSummary.totalOrders === 0 ? (
               <div className="text-center py-8">
-                <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+                <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">Nenhum pedido hoje</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  As atividades aparecerão aqui conforme você usar o sistema
+                  Os pedidos aparecerão aqui conforme forem sendo realizados
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {activities.map((activity) => {
-                  const IconComponent = getActivityIcon(activity.icon);
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-start space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <div className={`p-2 rounded-full bg-muted ${activity.color}`}>
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium">{activity.title}</h4>
-                          <Badge variant="secondary" className="text-xs">
-                            {formatTimeAgo(activity.timestamp)}
-                          </Badge>
+              <div className="space-y-4">
+                {/* Métricas Principais */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Card className="border-primary/20">
+                    <CardContent className="pt-4 pb-3 px-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Receita Hoje</p>
+                          <p className="text-lg font-bold text-primary">
+                            {ordersSummary.todayRevenue.toLocaleString('pt-BR', { 
+                              style: 'currency', 
+                              currency: 'BRL' 
+                            })}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {activity.description}
-                        </p>
+                        <DollarSign className="h-8 w-8 text-primary opacity-20" />
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-blue-500/20">
+                    <CardContent className="pt-4 pb-3 px-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Ticket Médio</p>
+                          <p className="text-lg font-bold text-blue-600">
+                            {ordersSummary.averageTicket.toLocaleString('pt-BR', { 
+                              style: 'currency', 
+                              currency: 'BRL' 
+                            })}
+                          </p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-blue-600 opacity-20" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Status dos Pedidos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span className="text-sm font-medium">Novos</span>
                     </div>
-                  );
-                })}
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                      {ordersSummary.newOrders}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                      <span className="text-sm font-medium">Em Preparo</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+                      {ordersSummary.inPreparation}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <span className="text-sm font-medium">Prontos</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
+                      {ordersSummary.ready}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="pt-3 border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Total de Pedidos</span>
+                    </div>
+                    <span className="text-xl font-bold text-primary">{ordersSummary.totalOrders}</span>
+                  </div>
+                </div>
+
+                {/* Link para página de pedidos */}
+                {restaurants.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-2"
+                    onClick={() => navigate(`/orders/${restaurants[0].id}`)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver Todos os Pedidos
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
