@@ -761,6 +761,47 @@ export type Database = {
           },
         ]
       }
+      restaurant_hours: {
+        Row: {
+          id: string
+          restaurant_id: string
+          day_of_week: number
+          open_time: string
+          close_time: string
+          is_closed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          day_of_week: number
+          open_time: string
+          close_time: string
+          is_closed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          day_of_week?: number
+          open_time?: string
+          close_time?: string
+          is_closed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_hours_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waiter_calls: {
         Row: {
           attended_at: string | null

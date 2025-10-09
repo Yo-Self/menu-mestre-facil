@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { RestaurantProvider } from "./components/providers/RestaurantProvider";
+import { RestaurantScheduleMonitor } from "./components/RestaurantScheduleMonitor";
 import AuthPage from "./pages/auth/AuthPage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import RestaurantsPage from "./pages/dashboard/restaurants/RestaurantsPage";
@@ -13,6 +14,7 @@ import NewRestaurantPage from "./pages/dashboard/restaurants/NewRestaurantPage";
 import RestaurantDetailPage from "./pages/dashboard/restaurants/RestaurantDetailPage";
 import EditRestaurantPage from "./pages/dashboard/restaurants/EditRestaurantPage";
 import ReportsPage from "./pages/dashboard/restaurants/ReportsPage";
+import RestaurantHoursPage from "./pages/dashboard/restaurants/RestaurantHoursPage";
 import MenusPage from "./pages/dashboard/menus/MenusPage";
 import MenuDetailPage from "./pages/dashboard/menus/MenuDetailPage";
 import EditMenuPage from "./pages/dashboard/menus/EditMenuPage";
@@ -41,6 +43,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <RestaurantScheduleMonitor />
       <BrowserRouter basename="/">
         <RestaurantProvider>
                     <Routes>
@@ -57,6 +60,7 @@ const App = () => (
                         <Route path="restaurants/:id" element={<RestaurantDetailPage />} />
                         <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
                         <Route path="restaurants/:id/reports" element={<ReportsPage />} />
+                        <Route path="restaurants/:id/hours" element={<RestaurantHoursPage />} />
                         <Route path="menus" element={<MenusPage />} />
                         <Route path="menus/new" element={<NewMenuPage />} />
                         <Route path="menus/:id" element={<MenuDetailPage />} />

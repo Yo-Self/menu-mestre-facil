@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard, ShoppingCart, BarChart } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard, ShoppingCart, BarChart, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -223,6 +223,12 @@ export default function RestaurantDetailPage() {
             <Button variant="outline">
               <Edit className="h-4 w-4 mr-2" />
               Editar Restaurante
+            </Button>
+          </Link>
+          <Link to={`/dashboard/restaurants/${id}/hours`}>
+            <Button variant="outline">
+              <Clock className="h-4 w-4 mr-2" />
+              Horários
             </Button>
           </Link>
         </div>
