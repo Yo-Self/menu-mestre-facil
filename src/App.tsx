@@ -12,6 +12,7 @@ import RestaurantsPage from "./pages/dashboard/restaurants/RestaurantsPage";
 import NewRestaurantPage from "./pages/dashboard/restaurants/NewRestaurantPage";
 import RestaurantDetailPage from "./pages/dashboard/restaurants/RestaurantDetailPage";
 import EditRestaurantPage from "./pages/dashboard/restaurants/EditRestaurantPage";
+import ReportsPage from "./pages/dashboard/restaurants/ReportsPage";
 import MenusPage from "./pages/dashboard/menus/MenusPage";
 import MenuDetailPage from "./pages/dashboard/menus/MenuDetailPage";
 import EditMenuPage from "./pages/dashboard/menus/EditMenuPage";
@@ -55,6 +56,7 @@ const App = () => (
                         <Route path="restaurants/new" element={<NewRestaurantPage />} />
                         <Route path="restaurants/:id" element={<RestaurantDetailPage />} />
                         <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
+                        <Route path="restaurants/:id/reports" element={<ReportsPage />} />
                         <Route path="menus" element={<MenusPage />} />
                         <Route path="menus/new" element={<NewMenuPage />} />
                         <Route path="menus/:id" element={<MenuDetailPage />} />
