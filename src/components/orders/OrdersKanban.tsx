@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   DndContext,
   DragEndEvent,
@@ -11,6 +12,8 @@ import {
 import { KanbanColumn } from './KanbanColumn'
 import { OrderCard } from './OrderCard'
 import { OrderStatus, OrderWithItems } from '../../types/orders'
+import { Button } from '../ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 interface OrdersKanbanProps {
   orders: OrderWithItems[]
@@ -67,6 +70,7 @@ const STATUS_ORDER: OrderStatus[] = [
 ]
 
 export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanProps) {
+  const navigate = useNavigate()
   const [activeOrder, setActiveOrder] = useState<OrderWithItems | null>(null)
   
   const sensors = useSensors(
@@ -126,8 +130,23 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
     >
       <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Quadro de Pedidos</h1>
-          <p className="text-gray-500 dark:text-gray-400">Arraste os pedidos para alterar o status</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dashboard/restaurants')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Quadro de Pedidos</h1>
+                <p className="text-gray-500 dark:text-gray-400">Arraste os pedidos para alterar o status</p>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="flex space-x-6 overflow-x-auto pb-4">
           {STATUS_ORDER.map((status) => {
