@@ -117,21 +117,62 @@ export class IfoodImporter {
    */
   private async scrapeIfoodPage(url: string): Promise<IfoodExtractedData> {
     try {
-      // Extrair ID do restaurante da URL
-      const restaurantId = this.extractRestaurantId(url);
-      
-      if (restaurantId) {
-        // Tentar extrair dados da API do iFood
-        const apiData = await this.extractFromIfoodAPI(restaurantId);
-        if (apiData) {
-          return apiData;
-        }
+      const { data, error } = await supabase.functions.invoke('scrape-ifood', {
+        body: { url }
+      });
+
+      if (error) {
+        throw error;
       }
 
-      // Se não conseguir da API, tentar scraping da página
-      return await this.scrapeFromPage(url);
+      const result = data;
+
+      // Map ScrapedData to IfoodExtractedData
+      const categoriesMap = new Map<string, IfoodProduct[]>();
+      
+      result.menu_items?.forEach((item: any) => {
+        if (!categoriesMap.has(item.category)) {
+          categoriesMap.set(item.category, []);
+        }
+        
+        let parsedPrice = 0;
+        if (typeof item.price === 'string') {
+          const match = item.price.match(/[\d.,]+/);
+          if (match) {
+            parsedPrice = parseFloat(match[0].replace(',', '.'));
+          }
+        } else if (typeof item.price === 'number') {
+          parsedPrice = item.price;
+        }
+
+        categoriesMap.get(item.category)?.push({
+          id: `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: item.name,
+          description: item.description,
+          price: parsedPrice || 0,
+          image_url: item.image
+        });
+      });
+
+      const categories: IfoodCategory[] = Array.from(categoriesMap.entries()).map(([name, products], index) => ({
+        id: `cat_${index + 1}`,
+        name,
+        position: index + 1,
+        products
+      }));
+
+      return {
+        restaurant_data: {
+          name: result.restaurant_name || 'Restaurante Desconhecido',
+          description: result.warning || 'Importado via Edge Function',
+          cuisine_type: 'Geral',
+          image_url: result.restaurant_image
+        },
+        categories,
+        complements: [] 
+      };
     } catch (error) {
-      console.error('Erro no scraping:', error);
+      console.error('Erro no scraping via Edge Function:', error);
       
       // Se falhar o scraping real, usar dados de exemplo baseados na URL
       return this.getFallbackData(url);

@@ -161,7 +161,7 @@ export default function ReportsPage() {
 
   const getDateRange = (period: string) => {
     const now = new Date();
-    let from = new Date();
+    const from = new Date();
     const to = new Date();
 
     switch (period) {
