@@ -34,6 +34,8 @@ import SettingsPage from "./pages/dashboard/settings/SettingsPage";
 import WaiterCallTestPage from "./pages/dashboard/WaiterCallTestPage";
 import MenuImportPage from "./pages/dashboard/MenuImportPage";
 import OrdersPage from "./pages/dashboard/orders/OrdersPage";
+import POSDashboard from "./pages/dashboard/pos/POSDashboard";
+import POSTerminal from "./pages/dashboard/pos/POSTerminal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +80,8 @@ const App = () => (
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
                         <Route path="import-menu" element={<MenuImportPage />} />
+                        <Route path="pos" element={<POSDashboard />} />
+                        <Route path="pos/terminal" element={<POSTerminal />} />
                       </Route>
                       <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                       <Route path="*" element={<NotFound />} />

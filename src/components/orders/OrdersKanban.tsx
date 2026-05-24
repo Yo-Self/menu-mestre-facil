@@ -19,6 +19,7 @@ interface OrdersKanbanProps {
   orders: OrderWithItems[]
   onStatusChange: (orderId: string, newStatus: OrderStatus) => void
   loading: boolean
+  onPlaySound?: () => void
 }
 
 const STATUS_CONFIG = {
@@ -69,7 +70,7 @@ const STATUS_ORDER: OrderStatus[] = [
   'cancelled'
 ]
 
-export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanProps) {
+export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: OrdersKanbanProps) {
   const navigate = useNavigate()
   const [activeOrder, setActiveOrder] = useState<OrderWithItems | null>(null)
   
@@ -130,7 +131,7 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
     >
       <div className="glass-card p-6 rounded-2xl shadow-sm animate-fade-in-up">
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
@@ -150,6 +151,17 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
                 </p>
               </div>
             </div>
+            {onPlaySound && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlaySound}
+                className="flex items-center gap-2 rounded-xl transition-all duration-300 hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/40 shrink-0 h-9 font-bold text-xs"
+                title="Testar Campainha da Cozinha"
+              >
+                Campainha da Cozinha 🔊
+              </Button>
+            )}
           </div>
         </div>
         <div className="flex space-x-6 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-muted">

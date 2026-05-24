@@ -12,7 +12,7 @@ export default function OrdersPage() {
   const { orders, loading, error, refetch, updateOrderStatus } = useOrders(restaurantId)
   
   // Hook para gerenciar notificações sonoras de novos pedidos
-  useOrderNotifications({ 
+  const { playDoubleNotificationSound } = useOrderNotifications({ 
     orders, 
     loading,
     onNewOrderDetected: () => {
@@ -62,6 +62,7 @@ export default function OrdersPage() {
         orders={orders}
         onStatusChange={handleStatusChange}
         loading={loading}
+        onPlaySound={playDoubleNotificationSound}
       />
     </div>
   )

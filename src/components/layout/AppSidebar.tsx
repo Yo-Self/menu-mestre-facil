@@ -9,6 +9,7 @@ import {
   Settings,
   Download,
   Plus,
+  Calculator,
 } from "lucide-react";
 
 import {
@@ -30,6 +31,7 @@ const menuItems = [
   { title: "Categorias", url: "/dashboard/categories", icon: FolderOpen },
   { title: "Pratos", url: "/dashboard/dishes", icon: UtensilsCrossed },
   { title: "Complementos", url: "/dashboard/complements", icon: Plus },
+  { title: "PDV (Caixa)", url: "/dashboard/pos", icon: Calculator },
   { title: "Importar Menu", url: "/dashboard/import-menu", icon: Download },
   { title: "Configurações", url: "/dashboard/settings", icon: Settings },
 ];

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { Card, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
@@ -11,7 +11,10 @@ import {
   CreditCard,
   ChevronDown,
   ChevronUp,
-  Printer
+  Printer,
+  Play,
+  Check,
+  AlertTriangle
 } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/ui/WhatsappIcon'
 import {
@@ -39,16 +42,31 @@ const STATUS_OPTIONS: Record<OrderStatus, string> = {
 }
 
 const STATUS_COLOR_MAP: Record<OrderStatus, string> = {
-  pending_payment: 'bg-orange-500',
-  new: 'bg-blue-500 animate-pulse',
-  in_preparation: 'bg-yellow-500',
-  ready: 'bg-green-500 animate-pulse',
+  pending_payment: 'bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)]',
+  new: 'bg-blue-500 animate-pulse shadow-[0_0_12px_rgba(59,130,246,0.5)]',
+  in_preparation: 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.4)]',
+  ready: 'bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.5)]',
   finished: 'bg-zinc-400',
-  cancelled: 'bg-red-500'
+  cancelled: 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.4)]'
 }
 
 export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [elapsedMinutes, setElapsedMinutes] = useState(0)
+
+  useEffect(() => {
+    const calculateElapsed = () => {
+      const created = new Date(order.created_at).getTime()
+      const now = Date.now()
+      const diffMs = now - created
+      setElapsedMinutes(Math.max(0, Math.floor(diffMs / 60000)))
+    }
+    
+    calculateElapsed()
+    const interval = setInterval(calculateElapsed, 30000)
+    return () => clearInterval(interval)
+  }, [order.created_at])
+
   const { isDesktop, printThermalCupom } = usePrinting()
 
   const handlePrint = async () => {
@@ -147,6 +165,69 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     onStatusChange(order.id, newStatus)
   }
 
+  const getTimerBadge = () => {
+    if (currentStatus === 'finished' || currentStatus === 'cancelled') return null
+
+    let colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+    if (elapsedMinutes >= 20) {
+      colorClass = 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse border font-black'
+    } else if (elapsedMinutes >= 10) {
+      colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold'
+    }
+
+    return (
+      <Badge variant="outline" className={`text-[10px] font-mono flex items-center gap-1 px-1.5 py-0.5 rounded-lg ${colorClass}`}>
+        <Clock className="h-3 w-3" />
+        {elapsedMinutes} min
+      </Badge>
+    )
+  }
+
+  const getDeliveryTypeBadge = () => {
+    const type = order.delivery_type || 'dine_in'
+    const badges: Record<string, { label: string; color: string }> = {
+      dine_in: { label: 'Mesa / Local', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+      takeout: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' },
+      delivery: { label: 'Delivery', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20' }
+    }
+    const config = badges[type] || badges.dine_in
+    return (
+      <Badge variant="outline" className={`text-[9px] font-bold uppercase rounded-lg px-2 py-0.5 ${config.color}`}>
+        {config.label}
+      </Badge>
+    )
+  }
+
+  const getNextStatusAction = () => {
+    switch (currentStatus) {
+      case 'new':
+        return {
+          label: 'Iniciar Preparo',
+          nextStatus: 'in_preparation' as OrderStatus,
+          icon: <Play className="h-3 w-3" />,
+          className: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg h-8 mt-3 flex items-center justify-center gap-1.5 text-xs transition-all duration-200'
+        }
+      case 'in_preparation':
+        return {
+          label: 'Concluir Preparo',
+          nextStatus: 'ready' as OrderStatus,
+          icon: <Check className="h-3 w-3" />,
+          className: 'w-full bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg h-8 mt-3 flex items-center justify-center gap-1.5 text-xs transition-all duration-200'
+        }
+      case 'ready':
+        return {
+          label: 'Entregar / Finalizar',
+          nextStatus: 'finished' as OrderStatus,
+          icon: <Check className="h-3 w-3 stroke-[3]" />,
+          className: 'w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg h-8 mt-3 flex items-center justify-center gap-1.5 text-xs transition-all duration-200'
+        }
+      default:
+        return null
+    }
+  }
+
+  const action = getNextStatusAction()
+
   return (
     <Card 
       ref={setNodeRef}
@@ -164,10 +245,12 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         {/* Order Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-1.5 mb-1">
               <Badge variant="outline" className="text-[10px] font-bold font-heading px-1.5 py-0">
                 #{order.id.slice(-6)}
               </Badge>
+              {getDeliveryTypeBadge()}
+              {getTimerBadge()}
               {order.stripe_payment_intent_id && (
                 <Badge variant="secondary" className="text-[10px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/15 border-0 px-1.5 py-0 flex items-center">
                   <CreditCard className="h-2.5 w-2.5 mr-0.5" />
@@ -332,6 +415,19 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               </div>
             )}
           </div>
+        )}
+        {action && (
+          <Button
+            size="sm"
+            className={action.className}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleStatusChange(action.nextStatus)
+            }}
+          >
+            {action.icon}
+            {action.label}
+          </Button>
         )}
       </CardContent>
     </Card>
