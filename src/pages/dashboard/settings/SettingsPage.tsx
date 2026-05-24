@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, User, Bell, Shield, Palette, Globe, Zap } from "lucide-react";
+import { Settings, User, Bell, Shield, Palette, Globe, Zap, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { UrlPreview } from "@/components/ui/url-preview";
+import { usePrinting } from "@/hooks/usePrinting";
 
 
 interface Profile {
@@ -29,6 +30,87 @@ export default function SettingsPage() {
     slug: "",
   });
   const { toast } = useToast();
+  
+  // Lógica de Impressora Desktop
+  const { isDesktop, getPrinters, printThermalCupom } = usePrinting();
+  const [printers, setPrinters] = useState<any[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState(localStorage.getItem("thermal_printer") || "");
+  const [paperWidth, setPaperWidth] = useState(localStorage.getItem("thermal_paper_width") || "80mm");
+
+  useEffect(() => {
+    if (isDesktop) {
+      getPrinters().then((list) => {
+        setPrinters(list);
+        if (list.length > 0 && !selectedPrinter) {
+          const defaultP = list.find((p) => p.isDefault)?.name || list[0].name;
+          setSelectedPrinter(defaultP);
+          localStorage.setItem("thermal_printer", defaultP);
+        }
+      });
+    }
+  }, [isDesktop, getPrinters]);
+
+  const handleSavePrinter = () => {
+    localStorage.setItem("thermal_printer", selectedPrinter);
+    localStorage.setItem("thermal_paper_width", paperWidth);
+    toast({
+      title: "Configurações de impressão salvas!",
+      description: "Sua impressora térmica padrão foi configurada com sucesso.",
+    });
+  };
+
+  const handleTestPrint = async () => {
+    if (!selectedPrinter) {
+      toast({
+        title: "Nenhuma impressora selecionada",
+        description: "Selecione uma impressora na lista antes de testar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const testOrder = {
+      id: "teste-123456",
+      display_id: "TESTE",
+      created_at: new Date().toISOString(),
+      customer_name: "Cliente Teste",
+      customer_phone: "(11) 99999-9999",
+      delivery_type: "delivery",
+      address: "Rua do Sucesso, 123 - Centro",
+      total_price: 4990, // preço no banco está em centavos (R$ 49,90)
+      payment_method: "pix",
+      restaurant_name: "Menu Mestre Fácil",
+      items: [
+        { quantity: 2, dish_name: "X-Burger Gourmet", unit_price: 1995, complements: [{ name: "Queijo Cheddar", price: 200 }], notes: "Sem cebola" },
+        { quantity: 1, dish_name: "Refrigerante Lata", unit_price: 800 }
+      ]
+    };
+
+    const widthInPixels = paperWidth === "58mm" ? "210px" : "300px";
+    
+    toast({
+      title: "Imprimindo teste...",
+      description: `Enviando cupom para a impressora: ${selectedPrinter}`
+    });
+
+    const result = await printThermalCupom(testOrder, {
+      printerName: selectedPrinter,
+      width: widthInPixels
+    });
+
+    if (result.success) {
+      toast({
+        title: "Sucesso!",
+        description: "Cupom de teste impresso com sucesso!"
+      });
+    } else {
+      toast({
+        title: "Erro ao imprimir teste",
+        description: result.error,
+        variant: "destructive"
+      });
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -321,6 +403,66 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Impressora Térmica (Apenas no Desktop) */}
+        {isDesktop && (
+          <>
+            <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Printer className="h-5 w-5" />
+                  Impressora Térmica (Desktop)
+                </CardTitle>
+                <CardDescription>
+                  Configure e teste a impressora para impressão silenciosa e automática de cupons de pedido.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="printer-select">Selecione a Impressora Alvo</Label>
+                    <select
+                      id="printer-select"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={selectedPrinter}
+                      onChange={(e) => setSelectedPrinter(e.target.value)}
+                    >
+                      <option value="">Nenhuma selecionada</option>
+                      {printers.map((printer) => (
+                        <option key={printer.name} value={printer.name}>
+                          {printer.displayName} {printer.isDefault ? "(Padrão)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="width-select">Largura da Bobina</Label>
+                    <select
+                      id="width-select"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={paperWidth}
+                      onChange={(e) => setPaperWidth(e.target.value)}
+                    >
+                      <option value="80mm">80mm (Bobina Larga Padrão)</option>
+                      <option value="58mm">58mm (Bobina Estreita)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button onClick={handleSavePrinter}>
+                    Salvar Configurações
+                  </Button>
+                  <Button variant="outline" onClick={handleTestPrint}>
+                    Imprimir Cupom de Teste
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

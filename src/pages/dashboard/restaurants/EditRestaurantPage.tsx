@@ -57,6 +57,7 @@ interface Restaurant {
   background_night: string | null;
   open: boolean;
   table_payment: boolean;
+  online_payment: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -79,6 +80,7 @@ export default function EditRestaurantPage() {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [addressActive, setAddressActive] = useState(false);
   const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -114,6 +116,7 @@ export default function EditRestaurantPage() {
       setWhatsappPhone(data.whatsapp_phone || "");
       setWhatsappEnabled(data.whatsapp_enabled);
       setTablePaymentEnabled(data.table_payment);
+      setOnlinePaymentEnabled(data.online_payment ?? false);
       setAddressData({
         address: data.address || "",
         latitude: data.latitude,
@@ -163,6 +166,7 @@ export default function EditRestaurantPage() {
           longitude: addressData.longitude,
           address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
           table_payment: tablePaymentEnabled,
+          online_payment: onlinePaymentEnabled,
         })
         .eq("id", id);
 
@@ -355,6 +359,22 @@ export default function EditRestaurantPage() {
               <Switch
                 checked={tablePaymentEnabled}
                 onCheckedChange={setTablePaymentEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Ativar pagamento online
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Ativa o pagamento online para receber pagamentos via plataforma no menu digital
+                </p>
+              </div>
+              <Switch
+                checked={onlinePaymentEnabled}
+                onCheckedChange={setOnlinePaymentEnabled}
               />
             </div>
 

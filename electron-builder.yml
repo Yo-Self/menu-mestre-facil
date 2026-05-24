@@ -1,0 +1,40 @@
+appId: com.menumestre.facil
+productName: Menu Mestre Fácil
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+asarUnpack:
+  - resources/**
+win:
+  executableName: menu-mestre-facil
+  target:
+    - nsis
+nsis:
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  category: public.app-category.business
+  extendInfo:
+    - NSCameraUsageDescription: O aplicativo precisa de acesso à câmera para ler QR Codes.
+    - NSDocumentsFolderUsageDescription: O aplicativo solicita acesso para salvar arquivos de relatórios.
+  notarize: false
+dmg:
+  artifactName: ${productName}-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: menumestrefacil.com
+  category: Office
+appImage:
+  artifactName: ${productName}-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: generic
+  url: https://menumestrefacil.com/updates

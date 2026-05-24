@@ -128,7 +128,7 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
+      <div className="glass-card p-6 rounded-2xl shadow-sm animate-fade-in-up">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -136,19 +136,23 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/dashboard/restaurants')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 rounded-xl transition-all duration-300 hover:bg-primary/5 hover:text-primary hover:border-primary/40 hover:-translate-x-1"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Quadro de Pedidos</h1>
-                <p className="text-gray-500 dark:text-gray-400">Arraste os pedidos para alterar o status</p>
+                <h1 className="text-3xl font-black font-heading bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                  Painel de Controle de Pedidos
+                </h1>
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                  Arraste e solte os cartões de pedidos para alterar o status do fluxo operacional em tempo real
+                </p>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex space-x-6 overflow-x-auto pb-4">
+        <div className="flex space-x-6 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-muted">
           {STATUS_ORDER.map((status) => {
             const statusConfig = STATUS_CONFIG[status]
             const statusOrders = getOrdersByStatus(status)
@@ -170,11 +174,11 @@ export function OrdersKanban({ orders, onStatusChange, loading }: OrdersKanbanPr
         </div>
         
         {orders.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📋</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum pedido encontrado</h3>
-            <p className="text-gray-500">
-              Quando houver pedidos, eles aparecerão aqui organizados por status.
+          <div className="text-center py-16 bg-white/30 dark:bg-zinc-900/30 rounded-2xl border border-dashed border-border/60 mt-4">
+            <div className="text-5xl mb-4 animate-bounce duration-1000">📋</div>
+            <h3 className="text-lg font-bold font-heading text-foreground mb-1">Nenhum pedido ativo no momento</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto font-medium">
+              Os pedidos dos clientes do restaurante aparecerão aqui organizados por status à medida que forem realizados.
             </p>
           </div>
         )}

@@ -693,6 +693,7 @@ export type Database = {
           open: boolean
           slug: string
           table_payment: boolean
+          online_payment: boolean
           updated_at: string | null
           user_id: string | null
           waiter_call_enabled: boolean | null
@@ -718,6 +719,7 @@ export type Database = {
           open?: boolean
           slug: string
           table_payment?: boolean
+          online_payment?: boolean
           updated_at?: string | null
           user_id?: string | null
           waiter_call_enabled?: boolean | null
@@ -743,6 +745,7 @@ export type Database = {
           open?: boolean
           slug?: string
           table_payment?: boolean
+          online_payment?: boolean
           updated_at?: string | null
           user_id?: string | null
           waiter_call_enabled?: boolean | null

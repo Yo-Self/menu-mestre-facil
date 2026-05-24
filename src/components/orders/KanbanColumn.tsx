@@ -31,24 +31,26 @@ export function KanbanColumn({
   return (
     <div 
       ref={setNodeRef}
-      className={`flex-shrink-0 w-80 ${bgColor} rounded-lg border-2 border-dashed ${
-        isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-      } transition-colors`}
+      className={`flex-shrink-0 w-80 rounded-2xl border-2 transition-all duration-300 ${
+        isOver 
+          ? 'border-primary bg-primary/5 scale-[1.01] shadow-lg shadow-primary/5' 
+          : 'border-border/40 bg-white/20 dark:bg-zinc-900/10'
+      }`}
     >
       {/* Column Header */}
-      <div className={`p-4 border-b-2 ${color} rounded-t-lg`}>
+      <div className={`p-4 border-b border-border/30 rounded-t-2xl ${bgColor.replace('bg-', 'bg-opacity-40 bg-')}`}>
         <div className="flex items-center justify-between">
-          <h3 className={`font-semibold ${textColor}`}>
+          <h3 className={`font-heading font-bold text-sm ${textColor}`}>
             {title}
           </h3>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${color} ${textColor}`}>
+          <span className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${color} ${textColor}`}>
             {count}
           </span>
         </div>
       </div>
 
       {/* Orders List */}
-      <div className="p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
+      <div className="p-4 space-y-4 min-h-[450px] max-h-[600px] overflow-y-auto scrollbar-none">
         {orders.map((order) => (
           <OrderCard
             key={order.id}
@@ -59,10 +61,10 @@ export function KanbanColumn({
         ))}
         
         {orders.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-2">📭</div>
-            <p className={`text-sm ${textColor} opacity-70`}>
-              Nenhum pedido neste status
+          <div className="text-center py-10 bg-white/5 dark:bg-zinc-900/5 rounded-xl border border-dashed border-border/30">
+            <div className="text-3xl mb-2 opacity-60">📭</div>
+            <p className={`text-xs font-semibold ${textColor} opacity-60`}>
+              Nenhum pedido nesta etapa
             </p>
           </div>
         )}

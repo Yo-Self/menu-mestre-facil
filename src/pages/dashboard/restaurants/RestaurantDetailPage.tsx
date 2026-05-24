@@ -14,17 +14,18 @@ interface Restaurant {
   id: string;
   name: string;
   cuisine_type: string;
-  description: string;
+  description: string | null;
   image_url: string;
   slug: string;
-  created_at: string;
-  waiter_call_enabled: boolean;
+  created_at: string | null;
+  waiter_call_enabled: boolean | null;
   whatsapp_phone: string | null;
-  whatsapp_enabled: boolean;
+  whatsapp_enabled: boolean | null;
   background_light: string | null;
   background_night: string | null;
   open: boolean;
   table_payment: boolean;
+  online_payment: boolean;
 }
 
 interface Profile {
@@ -268,9 +269,11 @@ export default function RestaurantDetailPage() {
                 </p>
               )}
               
-              <div className="text-xs text-muted-foreground">
-                Criado em: {new Date(restaurant.created_at).toLocaleDateString("pt-BR")}
-              </div>
+              {restaurant.created_at && (
+                <div className="text-xs text-muted-foreground">
+                  Criado em: {new Date(restaurant.created_at).toLocaleDateString("pt-BR")}
+                </div>
+              )}
               
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Chamada de Garçom:</span>
@@ -293,6 +296,14 @@ export default function RestaurantDetailPage() {
                 <Badge variant={restaurant.table_payment ? "default" : "secondary"} className="flex items-center gap-1">
                   <CreditCard className="h-3 w-3" />
                   {restaurant.table_payment ? "Habilitado" : "Desabilitado"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Pagamento Online:</span>
+                <Badge variant={restaurant.online_payment ? "default" : "secondary"} className="flex items-center gap-1">
+                  <CreditCard className="h-3 w-3" />
+                  {restaurant.online_payment ? "Habilitado" : "Desabilitado"}
                 </Badge>
               </div>
               

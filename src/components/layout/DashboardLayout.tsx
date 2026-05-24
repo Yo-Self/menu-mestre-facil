@@ -42,10 +42,12 @@ export function DashboardLayout() {
         <AppSidebar />
         
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b bg-background flex items-center justify-between px-6">
+          <header className="glass-header sticky top-0 z-40 h-16 flex items-center justify-between px-6 transition-all duration-300">
             <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <h1 className="text-lg font-semibold">Gestão de Restaurantes</h1>
+              <SidebarTrigger className="hover:text-primary transition-colors duration-200" />
+              <h1 className="font-heading font-semibold text-lg bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                Gestão de Restaurantes
+              </h1>
             </div>
             
             <div className="flex items-center gap-2">
@@ -60,16 +62,16 @@ export function DashboardLayout() {
                   }}
                 />
               )}
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary transition-colors rounded-full">
                 <User className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </header>
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 animate-fade-in-up">
             <Outlet />
           </main>
         </div>

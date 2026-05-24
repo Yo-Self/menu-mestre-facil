@@ -376,10 +376,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-primary">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo ao seu painel de gestão de restaurantes
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3.5xl font-extrabold font-heading text-primary bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
+          Dashboard Geral
+        </h1>
+        <p className="text-muted-foreground font-medium text-sm">
+          Bem-vindo ao seu painel de gestão. Administre suas demandas e cardápios de maneira eficiente.
         </p>
       </div>
 
@@ -387,18 +389,21 @@ export default function Dashboard() {
         {statCards.map((stat) => (
           <Card 
             key={stat.title}
-            className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 hover:border-primary/50"
+            className="cursor-pointer glass-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/40 group overflow-hidden relative"
             onClick={() => handleCardClick(stat.route)}
           >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-semibold font-heading text-muted-foreground group-hover:text-primary transition-colors duration-200">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <div className="p-2 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                <stat.icon className="h-4.5 w-4.5" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-black font-heading mt-1">{stat.value}</div>
+              <p className="text-xs text-muted-foreground/80 mt-1 font-medium">
                 {stat.description}
               </p>
             </CardContent>
@@ -422,13 +427,15 @@ export default function Dashboard() {
                   <Button
                     key={action.title}
                     variant="outline"
-                    className="h-auto p-4 flex flex-col items-center space-y-2 hover:shadow-md transition-all"
+                    className="h-auto p-4 flex flex-col items-center space-y-2 bg-white/50 dark:bg-zinc-900/50 hover:bg-primary/5 border border-border/60 hover:border-primary/30 transition-all duration-300 rounded-xl hover:-translate-y-1 hover:shadow-md group"
                     onClick={() => navigate(action.href)}
                   >
-                    <IconComponent className={`h-5 w-5 ${action.color}`} />
+                    <div className={`p-2.5 rounded-xl bg-primary/10 ${action.color} group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
                     <div className="text-center">
-                      <div className="font-medium text-sm">{action.title}</div>
-                      <div className="text-xs text-muted-foreground">{action.description}</div>
+                      <div className="font-heading font-semibold text-sm text-foreground">{action.title}</div>
+                      <div className="text-xs text-muted-foreground font-medium mt-0.5">{action.description}</div>
                     </div>
                   </Button>
                 );
@@ -470,10 +477,10 @@ export default function Dashboard() {
                 {restaurants.map((restaurant) => (
                   <div
                     key={restaurant.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-white/50 dark:bg-zinc-900/50 hover:bg-accent/10 transition-colors duration-200"
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/30">
                         <img
                           src={restaurant.image_url}
                           alt={restaurant.name}
@@ -481,19 +488,33 @@ export default function Dashboard() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium truncate">{restaurant.name}</h4>
-                        <p className="text-xs text-muted-foreground">{restaurant.cuisine_type}</p>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold font-heading truncate">{restaurant.name}</h4>
+                          <span 
+                            className={`h-2 w-2 rounded-full ${
+                              restaurant.open 
+                                ? "bg-green-500 animate-pulse-glow-green" 
+                                : "bg-red-500 animate-pulse-glow-red"
+                            }`} 
+                            title={restaurant.open ? "Aberto ao Público" : "Fechado no momento"}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">{restaurant.cuisine_type}</p>
                       </div>
                     </div>
                     <div className="flex items-center flex-shrink-0">
                       <Button
                         size="sm"
-                        variant={restaurant.open ? "destructive" : "default"}
-                        className={restaurant.open ? "bg-green-600 hover:bg-green-700" : ""}
+                        variant="outline"
+                        className={`transition-all duration-300 font-semibold rounded-lg ${
+                          restaurant.open 
+                            ? "border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700 dark:text-green-400" 
+                            : "border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                        }`}
                         onClick={() => toggleRestaurantStatus(restaurant.id, restaurant.open)}
                       >
-                        <Power className="h-3 w-3 mr-1" />
-                        {restaurant.open ? "Fechar" : "Abrir"}
+                        <Power className="h-3.5 w-3.5 mr-1.5" />
+                        {restaurant.open ? "Aberto" : "Fechado"}
                       </Button>
                     </div>
                   </div>
@@ -536,71 +557,61 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Métricas Principais */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Card className="border-primary/20">
-                    <CardContent className="pt-4 pb-3 px-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Receita Hoje</p>
-                          <p className="text-lg font-bold text-primary">
-                            {ordersSummary.todayRevenue.toLocaleString('pt-BR', { 
-                              style: 'currency', 
-                              currency: 'BRL' 
-                            })}
-                          </p>
-                        </div>
-                        <DollarSign className="h-8 w-8 text-primary opacity-20" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 text-primary opacity-10">
+                      <DollarSign className="h-10 w-10" />
+                    </div>
+                    <p className="text-xs font-semibold text-muted-foreground">Receita Hoje</p>
+                    <p className="text-xl font-black font-heading text-primary mt-1">
+                      {ordersSummary.todayRevenue.toLocaleString('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL' 
+                      })}
+                    </p>
+                  </div>
 
-                  <Card className="border-blue-500/20">
-                    <CardContent className="pt-4 pb-3 px-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Ticket Médio</p>
-                          <p className="text-lg font-bold text-blue-600">
-                            {ordersSummary.averageTicket.toLocaleString('pt-BR', { 
-                              style: 'currency', 
-                              currency: 'BRL' 
-                            })}
-                          </p>
-                        </div>
-                        <TrendingUp className="h-8 w-8 text-blue-600 opacity-20" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 text-amber-500 opacity-10">
+                      <TrendingUp className="h-10 w-10" />
+                    </div>
+                    <p className="text-xs font-semibold text-muted-foreground">Ticket Médio</p>
+                    <p className="text-xl font-black font-heading text-amber-600 dark:text-amber-500 mt-1">
+                      {ordersSummary.averageTicket.toLocaleString('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL' 
+                      })}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Status dos Pedidos */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-white/50 dark:bg-zinc-900/50 hover:bg-accent/10 transition-colors duration-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      <span className="text-sm font-medium">Novos</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                      <span className="text-sm font-semibold font-heading">Novos</span>
                     </div>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                    <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15 rounded-lg font-bold px-2.5 py-0.5">
                       {ordersSummary.newOrders}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-white/50 dark:bg-zinc-900/50 hover:bg-accent/10 transition-colors duration-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                      <span className="text-sm font-medium">Em Preparo</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+                      <span className="text-sm font-semibold font-heading">Em Preparo</span>
                     </div>
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100/15 rounded-lg font-bold px-2.5 py-0.5">
                       {ordersSummary.inPreparation}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-white/50 dark:bg-zinc-900/50 hover:bg-accent/10 transition-colors duration-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span className="text-sm font-medium">Prontos</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse-glow-green" />
+                      <span className="text-sm font-semibold font-heading">Prontos</span>
                     </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/15 rounded-lg font-bold px-2.5 py-0.5">
                       {ordersSummary.ready}
                     </Badge>
                   </div>
