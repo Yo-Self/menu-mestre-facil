@@ -30,6 +30,7 @@ interface DishRow {
   restaurant_id: string;
   category_id: string | null;
   ingredients?: string | null;
+  stock_quantity?: number | null;
 }
 
 interface DishCategory {
@@ -56,6 +57,8 @@ export default function EditDishPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [trackStock, setTrackStock] = useState(false);
+  const [stockQuantity, setStockQuantity] = useState("10");
   const [dishData, setDishData] = useState<DishRow | null>(null);
 
   useEffect(() => {
@@ -80,6 +83,8 @@ export default function EditDishPage() {
       setIngredients(dish.ingredients || "");
       setIsAvailable(Boolean(dish.is_available));
       setIsFeatured(Boolean(dish.is_featured));
+      setTrackStock(dish.stock_quantity !== undefined && dish.stock_quantity !== null);
+      setStockQuantity(dish.stock_quantity !== undefined && dish.stock_quantity !== null ? String(dish.stock_quantity) : "10");
 
       // Buscar as categorias do prato
       const { data: dishCategories, error: categoriesError } = await supabase
@@ -156,6 +161,7 @@ export default function EditDishPage() {
           category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
           is_available: isAvailable,
           is_featured: isFeatured,
+          stock_quantity: trackStock ? parseInt(stockQuantity) || 0 : null,
         })
         .eq("id", id);
 
@@ -339,6 +345,35 @@ export default function EditDishPage() {
                   onCheckedChange={setIsFeatured}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Controlar Estoque</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ativar limite de estoque para este prato
+                  </p>
+                </div>
+                <Switch
+                  checked={trackStock}
+                  onCheckedChange={setTrackStock}
+                />
+              </div>
+
+              {trackStock && (
+                <div className="space-y-2 pt-2 pl-4 border-l-2 border-primary/20 animate-in fade-in slide-in-from-left-2 duration-300">
+                  <Label htmlFor="stock">Quantidade em Estoque</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 10"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value)}
+                    required={trackStock}
+                    className="max-w-[200px]"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

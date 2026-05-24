@@ -861,6 +861,9 @@ export type Database = {
           whatsapp_custom_message: string | null
           whatsapp_enabled: boolean | null
           whatsapp_phone: string | null
+          has_tables: boolean | null
+          tables_count: number | null
+          table_categories: string | null
         }
         Insert: {
           address?: string | null
@@ -887,6 +890,9 @@ export type Database = {
           whatsapp_custom_message?: string | null
           whatsapp_enabled?: boolean | null
           whatsapp_phone?: string | null
+          has_tables?: boolean | null
+          tables_count?: number | null
+          table_categories?: string | null
         }
         Update: {
           address?: string | null
@@ -913,6 +919,9 @@ export type Database = {
           whatsapp_custom_message?: string | null
           whatsapp_enabled?: boolean | null
           whatsapp_phone?: string | null
+          has_tables?: boolean | null
+          tables_count?: number | null
+          table_categories?: string | null
         }
         Relationships: [
           {

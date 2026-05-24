@@ -19,7 +19,8 @@ import {
   ShoppingCart,
   Clock,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Boxes
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,14 @@ interface OrdersSummary {
   averageTicket: number;
 }
 
+interface StockSummary {
+  trackedItemsCount: number;
+  outOfStockCount: number;
+  lowStockCount: number;
+  okStockCount: number;
+  lowStockItems: { id: string; name: string; stock_quantity: number | null }[];
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { activities, loading: activitiesLoading, refreshActivities } = useActivities(8);
@@ -71,6 +80,14 @@ export default function Dashboard() {
     averageTicket: 0,
   });
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [stockSummary, setStockSummary] = useState<StockSummary>({
+    trackedItemsCount: 0,
+    outOfStockCount: 0,
+    lowStockCount: 0,
+    okStockCount: 0,
+    lowStockItems: [],
+  });
+  const [loadingStock, setLoadingStock] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -153,7 +170,58 @@ export default function Dashboard() {
     fetchStats();
     fetchRestaurants();
     fetchOrdersSummary();
+    fetchStockSummary();
   }, []);
+
+  const fetchStockSummary = async () => {
+    setLoadingStock(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userRestaurants } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (!userRestaurants || userRestaurants.length === 0) {
+        setLoadingStock(false);
+        return;
+      }
+
+      const restaurantIds = userRestaurants.map(r => r.id);
+
+      const { data: dishes, error } = await supabase
+        .from("dishes")
+        .select("id, name, stock_quantity")
+        .in("restaurant_id", restaurantIds);
+
+      if (error) throw error;
+
+      if (dishes) {
+        const tracked = dishes.filter(d => d.stock_quantity !== null);
+        const outOfStock = tracked.filter(d => d.stock_quantity! <= 0);
+        const lowStock = tracked.filter(d => d.stock_quantity! > 0 && d.stock_quantity! <= 5);
+        const okStock = tracked.filter(d => d.stock_quantity! > 5);
+        const warningItems = tracked
+          .filter(d => d.stock_quantity! <= 5)
+          .sort((a, b) => (a.stock_quantity || 0) - (b.stock_quantity || 0))
+          .slice(0, 5);
+
+        setStockSummary({
+          trackedItemsCount: tracked.length,
+          outOfStockCount: outOfStock.length,
+          lowStockCount: lowStock.length,
+          okStockCount: okStock.length,
+          lowStockItems: warningItems,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar resumo de estoque:", error);
+    } finally {
+      setLoadingStock(false);
+    }
+  };
 
   const fetchOrdersSummary = async () => {
     setLoadingOrders(true);
@@ -411,7 +479,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Ações Rápidas</CardTitle>
@@ -639,6 +707,107 @@ export default function Dashboard() {
                     Ver Todos os Pedidos
                   </Button>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card: Status do Estoque */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Status do Estoque</CardTitle>
+              <CardDescription>
+                Controle de estoque dos pratos
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchStockSummary}
+              disabled={loadingStock}
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingStock ? 'animate-spin' : ''}`} />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-between">
+            {loadingStock ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Carregando estoque...</span>
+              </div>
+            ) : stockSummary.trackedItemsCount === 0 ? (
+              <div className="text-center py-8 flex-1 flex flex-col items-center justify-center">
+                <Boxes className="h-12 w-12 text-muted-foreground/60 mb-2" />
+                <p className="text-sm text-muted-foreground font-semibold">Sem Controle de Estoque</p>
+                <p className="text-xs text-muted-foreground/80 mt-1 max-w-[200px] mx-auto">
+                  Ative o controle de estoque nas configurações de seus pratos.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4 rounded-xl text-xs font-bold w-full"
+                  onClick={() => navigate("/dashboard/dishes")}
+                >
+                  Ir para Pratos
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Visual grid status */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-xl border border-red-500/20 bg-red-500/5 text-center relative overflow-hidden">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Esgotados</p>
+                    <p className={`text-lg font-black font-heading text-red-600 dark:text-red-400 mt-1 ${stockSummary.outOfStockCount > 0 ? 'animate-pulse' : ''}`}>
+                      {stockSummary.outOfStockCount}
+                    </p>
+                  </div>
+                  
+                  <div className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Baixo</p>
+                    <p className="text-lg font-black font-heading text-amber-600 dark:text-amber-500 mt-1">
+                      {stockSummary.lowStockCount}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-green-500/20 bg-green-500/5 text-center">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Estável</p>
+                    <p className="text-lg font-black font-heading text-green-600 dark:text-green-400 mt-1">
+                      {stockSummary.okStockCount}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warning List */}
+                <div className="space-y-2">
+                  <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avisos importantes</h5>
+                  
+                  {stockSummary.lowStockItems.length === 0 ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 bg-green-500/5 border border-green-500/10 p-3 rounded-xl font-semibold text-center">
+                      ✓ Estoques estáveis!
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto scrollbar-thin">
+                      {stockSummary.lowStockItems.map((item) => (
+                        <div 
+                          key={item.id} 
+                          className="flex justify-between items-center text-xs p-2 bg-background border border-border/50 rounded-xl hover:bg-accent/5 cursor-pointer transition-colors duration-200"
+                          onClick={() => navigate(`/dashboard/dishes/${item.id}/edit`)}
+                        >
+                          <span className="font-semibold text-foreground truncate max-w-[120px]">{item.name}</span>
+                          <Badge variant={item.stock_quantity! <= 0 ? "destructive" : "secondary"} className="font-bold text-[9px] px-2 py-0.5 rounded-lg border-0">
+                            {item.stock_quantity! <= 0 ? "Sem estoque" : `${item.stock_quantity} un`}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t flex justify-between items-center text-xs text-muted-foreground font-medium">
+                  <span>Monitorados:</span>
+                  <span className="font-bold text-foreground">{stockSummary.trackedItemsCount} pratos</span>
+                </div>
               </div>
             )}
           </CardContent>

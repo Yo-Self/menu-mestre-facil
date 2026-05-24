@@ -62,7 +62,13 @@ export function DashboardLayout() {
                   }}
                 />
               )}
-              <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary transition-colors rounded-full">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => window.open("/dashboard/pos/waiter", "_blank")} 
+                title="Modo Garçom"
+                className="hover:bg-primary/10 hover:text-primary transition-colors rounded-full"
+              >
                 <User className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">

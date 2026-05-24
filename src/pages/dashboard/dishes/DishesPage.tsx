@@ -17,6 +17,7 @@ interface Dish {
   is_available: boolean;
   restaurant_id: string;
   category_id: string | null;
+  stock_quantity: number | null;
   created_at: string;
   dish_categories: {
     categories: {
@@ -224,6 +225,11 @@ export default function DishesPage() {
                         <Badge variant={dish.is_available ? "default" : "outline"}>
                           {dish.is_available ? "Disponível" : "Indisponível"}
                         </Badge>
+                        {dish.stock_quantity !== undefined && dish.stock_quantity !== null && (
+                          <Badge variant={dish.stock_quantity > 0 ? "secondary" : "destructive"} className={dish.stock_quantity <= 0 ? "animate-pulse" : ""}>
+                            {dish.stock_quantity > 0 ? `Estoque: ${dish.stock_quantity}` : "Sem Estoque"}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <Button

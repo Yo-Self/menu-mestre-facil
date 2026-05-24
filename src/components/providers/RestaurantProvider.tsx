@@ -12,7 +12,18 @@ interface RestaurantProviderProps {
 }
 
 export function RestaurantProvider({ children }: RestaurantProviderProps) {
-  const [currentRestaurantId, setCurrentRestaurantId] = useState<string | null>(null);
+  const [currentRestaurantId, setCurrentRestaurantIdState] = useState<string | null>(() => {
+    return localStorage.getItem("currentRestaurantId");
+  });
+
+  const setCurrentRestaurantId = (id: string | null) => {
+    setCurrentRestaurantIdState(id);
+    if (id) {
+      localStorage.setItem("currentRestaurantId", id);
+    } else {
+      localStorage.removeItem("currentRestaurantId");
+    }
+  };
 
   return (
     <RestaurantContext.Provider value={{ currentRestaurantId, setCurrentRestaurantId }}>

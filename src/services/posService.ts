@@ -165,7 +165,7 @@ export async function createPOSOrder(
           ? { name: customerName || "", phone: customerPhone || "" }
           : null,
       total_price: totalPrice,
-      status: "finished", // POS orders are paid instantly
+      status: payments.length > 0 ? "finished" : "new", // POS orders are paid instantly or sent to preparation
       origin: "pos",
     })
     .select()
@@ -194,20 +194,22 @@ export async function createPOSOrder(
     throw itemsError;
   }
 
-  // 4. Insert Order Payments
-  const orderPaymentsInsert = payments.map((payment) => ({
-    order_id: order.id,
-    method: payment.method,
-    amount: payment.amount,
-  }));
+  // 4. Insert Order Payments (only if payments were provided)
+  if (payments.length > 0) {
+    const orderPaymentsInsert = payments.map((payment) => ({
+      order_id: order.id,
+      method: payment.method,
+      amount: payment.amount,
+    }));
 
-  const { error: paymentsError } = await supabase.from("order_payments").insert(orderPaymentsInsert);
+    const { error: paymentsError } = await supabase.from("order_payments").insert(orderPaymentsInsert);
 
-  if (paymentsError) {
-    console.error("Error creating POS order payments:", paymentsError);
-    // Cleanup
-    await supabase.from("orders").delete().eq("id", order.id);
-    throw paymentsError;
+    if (paymentsError) {
+      console.error("Error creating POS order payments:", paymentsError);
+      // Cleanup
+      await supabase.from("orders").delete().eq("id", order.id);
+      throw paymentsError;
+    }
   }
 
   // 5. Decrement Stock for sold items (if stock_quantity is set)

@@ -99,21 +99,31 @@ export default function POSTerminal() {
 
   const [viewMode, setViewMode] = useState<"grid" | "tables">("grid");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [tablesList, setTablesList] = useState<any[]>([
-    { name: "Balcão", status: "free" },
-    { name: "Mesa 01", status: "busy" },
-    { name: "Mesa 02", status: "free" },
-    { name: "Mesa 03", status: "busy" },
-    { name: "Mesa 04", status: "free" },
-    { name: "Mesa 05", status: "free" },
-    { name: "Mesa 06", status: "free" },
-    { name: "Mesa 07", status: "busy" },
-    { name: "Mesa 08", status: "free" },
-    { name: "Mesa 09", status: "free" },
-    { name: "Mesa 10", status: "free" }
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [tablesConfig, setTablesConfig] = useState<any[]>([
+    { name: "Balcão", zone: "Balcão" },
+    { name: "Mesa 01", zone: "Salão Principal" },
+    { name: "Mesa 02", zone: "Salão Principal" },
+    { name: "Mesa 03", zone: "Salão Principal" },
+    { name: "Mesa 04", zone: "Salão Principal" },
+    { name: "Mesa 05", zone: "Salão Principal" },
+    { name: "Mesa 06", zone: "Salão Principal" },
+    { name: "Mesa 07", zone: "Varanda" },
+    { name: "Mesa 08", zone: "Varanda" },
+    { name: "Mesa 09", zone: "Varanda" },
+    { name: "Mesa 10", zone: "Varanda" },
+    { name: "Mesa 11", zone: "Varanda" },
+    { name: "Mesa 12", zone: "Varanda" }
   ]);
 
   const printAreaRef = useRef<HTMLDivElement>(null);
+
+  // States for Table Details Dialog
+  const [selectedTableForDetails, setSelectedTableForDetails] = useState<any>(null);
+  const [tableDetailsModalOpen, setTableDetailsModalOpen] = useState(false);
+  const [tableActiveOrders, setTableActiveOrders] = useState<any[]>([]);
+  const [loadingTableDetails, setLoadingTableDetails] = useState(false);
+  const [activeOrderIdsBeingClosed, setActiveOrderIdsBeingClosed] = useState<string[]>([]);
 
   useEffect(() => {
     if (!currentRestaurantId) {
@@ -199,12 +209,54 @@ export default function POSTerminal() {
       // 0. Fetch restaurant details
       const { data: rest, error: restErr } = await supabase
         .from("restaurants")
-        .select("name")
+        .select("name, has_tables, tables_count, table_categories")
         .eq("id", currentRestaurantId!)
         .single();
 
       if (!restErr && rest) {
         setRestaurantName(rest.name);
+        
+        const hasTbls = rest.has_tables ?? true;
+        if (hasTbls) {
+          const count = rest.tables_count ?? 12;
+          const categoriesRaw = rest.table_categories || "Balcão, Salão Principal, Varanda";
+          const categoriesList = categoriesRaw.split(",").map(c => c.trim()).filter(Boolean);
+          
+          const newTablesConfig: any[] = [];
+          
+          // Always add Balcão first if "Balcão" is in the categories or as a default zone
+          const hasBalcaoZone = categoriesList.some(c => c.toLowerCase() === "balcão");
+          if (hasBalcaoZone) {
+            newTablesConfig.push({ name: "Balcão", zone: "Balcão" });
+          }
+          
+          // Distribute the table numbers among the rest of the categories
+          const restCategories = categoriesList.filter(c => c.toLowerCase() !== "balcão");
+          if (restCategories.length > 0) {
+            let tableIndex = 1;
+            for (let i = 0; i < count; i++) {
+              const zoneName = restCategories[i % restCategories.length];
+              const tableNumStr = String(tableIndex).padStart(2, "0");
+              newTablesConfig.push({
+                name: `Mesa ${tableNumStr}`,
+                zone: zoneName
+              });
+              tableIndex++;
+            }
+          } else {
+            // Fallback if only Balcão or empty
+            for (let i = 1; i <= count; i++) {
+              newTablesConfig.push({
+                name: `Mesa ${String(i).padStart(2, "0")}`,
+                zone: "Salão Principal"
+              });
+            }
+          }
+          setTablesConfig(newTablesConfig);
+        } else {
+          // If has_tables is false, only Balcão exists
+          setTablesConfig([{ name: "Balcão", zone: "Balcão" }]);
+        }
       }
 
       // 1. Fetch categories
@@ -232,6 +284,17 @@ export default function POSTerminal() {
         price: Math.round((dish.price || 0) * 100)
       }));
       setDishes(dishesInCents);
+
+      // 3. Fetch active orders to determine table occupancy dynamically
+      const { data: activeOrds, error: ordsErr } = await supabase
+        .from("orders")
+        .select("id, table_name, status, total_price, created_at")
+        .eq("restaurant_id", currentRestaurantId!)
+        .in("status", ["new", "in_preparation", "ready"]);
+
+      if (!ordsErr) {
+        setActiveOrders(activeOrds || []);
+      }
     } catch (err) {
       console.error("Erro ao carregar dados do PDV:", err);
       toast({
@@ -595,9 +658,92 @@ export default function POSTerminal() {
       setCustomerName("");
       setCustomerPhone("");
       setPayments([]);
+
+      // If we are closing table orders, update their status to "finished" in Supabase
+      if (activeOrderIdsBeingClosed.length > 0) {
+        await supabase
+          .from("orders")
+          .update({ status: "finished" })
+          .in("id", activeOrderIdsBeingClosed);
+        setActiveOrderIdsBeingClosed([]);
+      }
+      
+      // Reload active orders to update table occupancy dynamically
+      await loadPOSData();
     } catch (err: any) {
       toast({
         title: "Erro ao registrar venda",
+        description: err.message || "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleSendToKitchen = async () => {
+    if (!activeSession) return;
+    if (cart.length === 0) return;
+
+    setSavingOrder(true);
+    try {
+      const orderItemsInput: POSOrderItemInput[] = cart.map(item => ({
+        dish_id: item.dish.id,
+        quantity: item.quantity,
+        price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
+        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
+      }));
+
+      if (!isOnline) {
+        const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
+        offlineQueue.push({
+          id: `OFF-${Date.now()}`,
+          restaurant_id: currentRestaurantId,
+          pos_session_id: activeSession.id,
+          table_name: tableName,
+          items: orderItemsInput,
+          payments: [],
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
+
+        toast({
+          title: "Pedido Offline Salvo!",
+          description: "O caixa está offline. O pedido foi salvo localmente.",
+        });
+
+        setCart([]);
+        setTableName("Balcão");
+        setCustomerName("");
+        setCustomerPhone("");
+        return;
+      }
+
+      await createPOSOrder(
+        currentRestaurantId!,
+        activeSession.id,
+        tableName,
+        customerName || null,
+        customerPhone || null,
+        orderItemsInput,
+        []
+      );
+
+      toast({
+        title: "Pedido Enviado!",
+        description: `Os itens foram enviados para preparação da cozinha na ${tableName}.`,
+      });
+
+      setCart([]);
+      setTableName("Balcão");
+      setCustomerName("");
+      setCustomerPhone("");
+
+      // Reload active orders to update table occupancy dynamically
+      await loadPOSData();
+    } catch (err: any) {
+      toast({
+        title: "Erro ao enviar pedido",
         description: err.message || "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
@@ -751,6 +897,294 @@ export default function POSTerminal() {
     return labels[method] || method;
   };
 
+  const getTableStatus = (tableNameToCheck: string) => {
+    const tableOrds = activeOrders.filter(
+      o => o.table_name === tableNameToCheck && ["new", "in_preparation", "ready"].includes(o.status)
+    );
+    // Sort oldest first
+    const sorted = [...tableOrds].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    return {
+      isBusy: sorted.length > 0,
+      activeOrdersCount: sorted.length,
+      orders: sorted
+    };
+  };
+
+  const fetchTableDetails = async (tableNameToFetch: string) => {
+    setLoadingTableDetails(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          created_at,
+          total_price,
+          status,
+          customer_info,
+          order_items (
+            id,
+            quantity,
+            price_at_time_of_order,
+            selected_complements,
+            dish:dishes (
+              id,
+              name,
+              price,
+              image_url
+            )
+          )
+        `)
+        .eq("restaurant_id", currentRestaurantId!)
+        .eq("table_name", tableNameToFetch)
+        .in("status", ["new", "in_preparation", "ready"]);
+
+      if (error) throw error;
+      setTableActiveOrders(data || []);
+    } catch (err: any) {
+      console.error("Erro ao buscar detalhes da mesa:", err);
+      toast({
+        title: "Erro ao buscar consumo",
+        description: err.message || "Não foi possível carregar os pedidos ativos da mesa.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingTableDetails(false);
+    }
+  };
+
+  const handleImportTableConsumption = (tableNameToImport: string, ordersToImport: any[]) => {
+    try {
+      if (ordersToImport.length === 0) {
+        toast({
+          title: "Aviso",
+          description: "Não há consumo ativo nesta mesa para importar.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const importedCartItems: CartItem[] = [];
+      
+      ordersToImport.forEach(order => {
+        (order.order_items || []).forEach((item: any) => {
+          const complements = (item.selected_complements as any[]) || [];
+          const complementsSum = complements.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+          const baseDishPrice = item.price_at_time_of_order - complementsSum;
+          
+          const dishObj = {
+            id: item.dish_id,
+            name: item.dish?.name || "Produto",
+            price: baseDishPrice,
+            image_url: item.dish?.image_url
+          };
+          
+          const cartItem: CartItem = {
+            id: `${Date.now()}-${item.id}-${Math.random()}`,
+            dish: dishObj,
+            quantity: item.quantity,
+            selected_complements: complements.map((c: any) => ({
+              complement_id: c.complement_id || c.id,
+              name: c.name,
+              price: c.price
+            }))
+          };
+          
+          importedCartItems.push(cartItem);
+        });
+      });
+
+      setCart(importedCartItems);
+      setTableName(tableNameToImport);
+      
+      // Track which orders are being closed so we finalize them on checkout
+      setActiveOrderIdsBeingClosed(ordersToImport.map(o => o.id));
+      
+      setTableDetailsModalOpen(false);
+      setViewMode("grid");
+
+      toast({
+        title: "Consumo Importado!",
+        description: `Carregamos os itens da ${tableNameToImport} no carrinho. Finalize a venda para fechar a conta.`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Erro ao importar",
+        description: "Falha ao processar itens da mesa.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleReleaseTable = async (tableNameToRelease: string, ordersToRelease: any[]) => {
+    if (ordersToRelease.length === 0) return;
+    
+    if (!window.confirm(`Tem certeza que deseja liberar a ${tableNameToRelease} manualmente?\nIsso marcará todos os ${ordersToRelease.length} pedidos ativos dela como concluídos sem registrar pagamento no caixa.`)) {
+      return;
+    }
+
+    try {
+      const orderIds = ordersToRelease.map(o => o.id);
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "finished" })
+        .in("id", orderIds);
+
+      if (error) throw error;
+
+      toast({
+        title: "Mesa Liberada!",
+        description: `A ${tableNameToRelease} foi liberada e seus pedidos foram finalizados.`,
+      });
+
+      setTableDetailsModalOpen(false);
+      await loadPOSData(); // Reload table map occupancy dynamically
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Erro ao liberar mesa",
+        description: err.message || "Ocorreu um erro ao liberar a mesa.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const renderTableMap = () => {
+    const stats = (() => {
+      let total = tablesConfig.length;
+      let occupied = 0;
+      let free = 0;
+      let totalActiveRevenue = 0;
+      
+      tablesConfig.forEach(t => {
+        const { isBusy, orders } = getTableStatus(t.name);
+        if (isBusy) {
+          occupied++;
+          totalActiveRevenue += orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+        } else {
+          free++;
+        }
+      });
+      
+      return { total, occupied, free, totalActiveRevenue };
+    })();
+
+    return (
+      <div className="flex-1 flex flex-col space-y-6">
+        {/* Stats Header */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="bg-white/40 dark:bg-zinc-900/40 border-border/50 backdrop-blur-md p-4 flex flex-col justify-between rounded-2xl shadow-sm border">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">Total de Mesas</span>
+            <span className="text-xl font-black font-heading mt-1 text-foreground">{stats.total}</span>
+          </Card>
+          <Card className="bg-emerald-500/5 border-emerald-500/20 backdrop-blur-md p-4 flex flex-col justify-between rounded-2xl shadow-sm border">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Mesas Livres</span>
+            <span className="text-xl font-black font-heading text-emerald-600 dark:text-emerald-400 mt-1">{stats.free}</span>
+          </Card>
+          <Card className="bg-amber-500/5 border-amber-500/20 backdrop-blur-md p-4 flex flex-col justify-between rounded-2xl shadow-sm border">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Mesas Ocupadas</span>
+            <span className="text-xl font-black font-heading text-amber-600 dark:text-amber-400 mt-1">{stats.occupied}</span>
+          </Card>
+          <Card className="bg-primary/5 border-primary/20 backdrop-blur-md p-4 flex flex-col justify-between rounded-2xl shadow-sm border">
+            <span className="text-[10px] font-bold text-primary uppercase">Consumo Ativo</span>
+            <span className="text-xl font-black font-heading text-primary mt-1">
+              {(stats.totalActiveRevenue / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </span>
+          </Card>
+        </div>
+
+        {/* Zones & Tables Grid */}
+        <div className="flex-1 overflow-y-auto max-h-[500px] xl:max-h-[calc(100vh-21rem)] pr-1 space-y-6">
+          {Array.from(new Set(tablesConfig.map(t => t.zone))).map((zone) => {
+            const zoneTables = tablesConfig.filter(t => t.zone === zone);
+            const zoneIcon = zone === "Balcão" ? "🏪" : zone === "Salão Principal" ? "🛋️" : "🌅";
+            
+            return (
+              <div key={zone} className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-border/40 pb-1.5">
+                  <span className="text-base">{zoneIcon}</span>
+                  <h3 className="font-heading font-black text-xs uppercase tracking-wider text-muted-foreground">{zone}</h3>
+                  <Badge variant="secondary" className="text-[9px] font-bold rounded-lg px-2 py-0.5 ml-1">
+                    {zoneTables.length} {zoneTables.length === 1 ? "mesa" : "mesas"}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-4">
+                  {zoneTables.map((table) => {
+                    const { isBusy, activeOrdersCount, orders } = getTableStatus(table.name);
+                    const isCurrentTable = tableName === table.name;
+                    
+                    let elapsedMinutes = 0;
+                    let totalConsumption = 0;
+                    if (isBusy && orders.length > 0) {
+                      const oldestOrderTime = new Date(orders[0].created_at).getTime();
+                      elapsedMinutes = Math.max(0, Math.floor((Date.now() - oldestOrderTime) / 60000));
+                      totalConsumption = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+                    }
+
+                    return (
+                      <Card
+                        key={table.name}
+                        className={`cursor-pointer border-2 transition-all duration-300 flex flex-col justify-between p-4 rounded-2xl relative overflow-hidden h-32 hover:-translate-y-1 hover:shadow-lg ${
+                          isCurrentTable
+                            ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
+                            : isBusy
+                            ? "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50 hover:bg-amber-500/10 shadow-sm"
+                            : "border-border/50 bg-white/40 dark:bg-zinc-900/40 hover:border-emerald-500/40 hover:bg-emerald-500/5"
+                        }`}
+                        onClick={() => {
+                          if (isBusy) {
+                            setSelectedTableForDetails(table);
+                            fetchTableDetails(table.name);
+                            setTableDetailsModalOpen(true);
+                          } else {
+                            setTableName(table.name);
+                            setViewMode("grid");
+                            toast({
+                              title: `Mesa Selecionada`,
+                              description: `Você está lançando para: ${table.name}`,
+                            });
+                          }
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <h4 className="font-heading font-black text-sm text-foreground">{table.name}</h4>
+                          <span className={`h-2 w-2 rounded-full inline-block ${isBusy ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                        </div>
+                        
+                        {isBusy ? (
+                          <div className="space-y-1 mt-1.5">
+                            <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                              <span>⏳ Consumindo:</span>
+                              <span>{elapsedMinutes} min</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1 pt-1 border-t border-border/30">
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase">{activeOrdersCount} {activeOrdersCount === 1 ? 'ped.' : 'peds.'}</span>
+                              <span className="font-heading font-black text-xs text-amber-600 dark:text-amber-400">
+                                {(totalConsumption / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col mt-auto">
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Livre</span>
+                            <span className="text-[8px] text-muted-foreground">Toque para abrir</span>
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -780,15 +1214,6 @@ export default function POSTerminal() {
             </Button>
             <h2 className="text-2xl font-black font-heading text-primary">Terminal de Vendas</h2>
           </div>
-
-          <Button
-            variant={viewMode === "tables" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode(prev => prev === "grid" ? "tables" : "grid")}
-            className="rounded-xl font-bold text-xs h-9 transition-all duration-300 gap-1.5 flex items-center shrink-0 border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary"
-          >
-            <span>{viewMode === "tables" ? "Menu de Pratos 🍔" : "Mapa de Mesas 🗺️"}</span>
-          </Button>
           
           {/* Quick status bar */}
           <div className="hidden sm:flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/40 text-xs font-semibold">
@@ -803,80 +1228,75 @@ export default function POSTerminal() {
           </div>
         </div>
 
-        {/* Filter Toolbar (Search & Category tags) */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou descrição do prato..."
-              className="pl-10 focus-visible:ring-primary h-11"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        {/* Tab Segmented Control */}
+        <div className="flex bg-muted/60 p-1 rounded-xl w-fit border border-border/40 gap-1">
+          <Button
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+            className={`font-heading font-black text-xs px-5 h-8 rounded-lg transition-all duration-300 ${
+              viewMode === "grid" 
+                ? "bg-white dark:bg-zinc-900 shadow-sm text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🍔 Cardápio / Pratos
+          </Button>
+          <Button
+            variant={viewMode === "tables" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("tables")}
+            className={`font-heading font-black text-xs px-5 h-8 rounded-lg transition-all duration-300 ${
+              viewMode === "tables" 
+                ? "bg-white dark:bg-zinc-900 shadow-sm text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🗺️ Mapa de Mesas
+          </Button>
         </div>
 
-        {/* Category Horizontal Filter */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-          <Button
-            variant={selectedCategoryId === null ? "default" : "outline"}
-            className="rounded-full font-semibold text-xs h-9 px-4 flex-shrink-0"
-            onClick={() => setSelectedCategoryId(null)}
-          >
-            Todos os Itens
-          </Button>
-          {categories.map((cat) => (
-            <Button
-              key={cat.id}
-              variant={selectedCategoryId === cat.id ? "default" : "outline"}
-              className="rounded-full font-semibold text-xs h-9 px-4 flex-shrink-0"
-              onClick={() => setSelectedCategoryId(cat.id)}
-            >
-              {cat.name}
-            </Button>
-          ))}
-        </div>
+        {viewMode === "grid" && (
+          <>
+            {/* Filter Toolbar (Search & Category tags) */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou descrição do prato..."
+                  className="pl-10 focus-visible:ring-primary h-11"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Category Horizontal Filter */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+              <Button
+                variant={selectedCategoryId === null ? "default" : "outline"}
+                className="rounded-full font-semibold text-xs h-9 px-4 flex-shrink-0"
+                onClick={() => setSelectedCategoryId(null)}
+              >
+                Todos os Itens
+              </Button>
+              {categories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={selectedCategoryId === cat.id ? "default" : "outline"}
+                  className="rounded-full font-semibold text-xs h-9 px-4 flex-shrink-0"
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                >
+                  {cat.name}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Products Grid / Table Map Branch */}
         {viewMode === "tables" ? (
-          <div className="flex-1 overflow-y-auto max-h-[500px] xl:max-h-[calc(100vh-21rem)] pr-1">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-4">
-              {tablesList.map((table) => {
-                const isTableBusy = table.status === "busy";
-                const isCurrentTable = tableName === table.name;
-                
-                return (
-                  <Card
-                    key={table.name}
-                    className={`cursor-pointer border-2 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center rounded-2xl relative overflow-hidden h-32 hover:-translate-y-1 hover:shadow-lg ${
-                      isCurrentTable
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
-                        : isTableBusy
-                        ? "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50"
-                        : "border-border/50 bg-white/40 dark:bg-zinc-900/40 hover:border-emerald-500/40"
-                    }`}
-                    onClick={() => {
-                      setTableName(table.name);
-                      setViewMode("grid");
-                      toast({
-                        title: `Comanda Selecionada`,
-                        description: `Você está lançando para: ${table.name}`,
-                      });
-                    }}
-                  >
-                    <div className="absolute top-2 right-2">
-                      <span className={`h-2.5 w-2.5 rounded-full inline-block ${isTableBusy ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-                    </div>
-                    
-                    <h3 className="font-heading font-black text-lg text-foreground mb-1">{table.name}</h3>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isTableBusy ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {isTableBusy ? 'Ocupada / Consumindo' : 'Livre'}
-                    </p>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
+          renderTableMap()
         ) : filteredDishes.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-12 text-center">
             <Tags className="h-12 w-12 text-muted-foreground/60 mb-2" />
@@ -887,7 +1307,7 @@ export default function POSTerminal() {
           <div className="flex-1 overflow-y-auto max-h-[500px] xl:max-h-[calc(100vh-21rem)] pr-1">
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
               {filteredDishes.map((dish) => {
-                const isOutOfStock = dish.stock_quantity !== null && dish.stock_quantity <= 0;
+                const isOutOfStock = dish.stock_quantity !== null && dish.stock_quantity !== undefined && dish.stock_quantity <= 0;
                 
                 return (
                   <Card
@@ -895,7 +1315,7 @@ export default function POSTerminal() {
                     className={`cursor-pointer hover:border-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 overflow-hidden flex flex-col border border-border/50 bg-white/40 dark:bg-zinc-900/40 relative group ${isOutOfStock ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : ''}`}
                     onClick={() => !isOutOfStock && handleProductClick(dish)}
                   >
-                    {dish.stock_quantity !== null && (
+                    {dish.stock_quantity !== null && dish.stock_quantity !== undefined && (
                       <div className="absolute top-2 right-2 z-10">
                         {isOutOfStock ? (
                           <Badge className="bg-red-600 text-white font-extrabold text-[9px] rounded-lg border-0 shadow-sm">Esgotado</Badge>
@@ -1077,16 +1497,161 @@ export default function POSTerminal() {
             </span>
           </div>
 
-          <Button
-            className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-black font-heading rounded-xl shadow-lg h-12 flex items-center justify-center gap-2 group transition-all duration-300 hover:scale-[1.02]"
-            onClick={openCheckout}
-            disabled={cart.length === 0}
-          >
-            <Calculator className="h-5 w-5" />
-            Finalizar Venda (F2)
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 font-bold font-heading rounded-xl h-12 flex items-center justify-center gap-2 group transition-all duration-300"
+              onClick={handleSendToKitchen}
+              disabled={cart.length === 0 || savingOrder}
+            >
+              <span>🍳 Mandar p/ Cozinha</span>
+            </Button>
+
+            <Button
+              className="bg-primary hover:bg-primary-hover text-primary-foreground font-black font-heading rounded-xl shadow-lg h-12 flex items-center justify-center gap-2 group transition-all duration-300 hover:scale-[1.02]"
+              onClick={openCheckout}
+              disabled={cart.length === 0 || savingOrder}
+            >
+              <Calculator className="h-5 w-5" />
+              Cobrar Venda (F2)
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {/* TABLE DETAILS DIALOG */}
+      <Dialog open={tableDetailsModalOpen} onOpenChange={setTableDetailsModalOpen}>
+        <DialogContent className="sm:max-w-[550px] rounded-2xl overflow-hidden p-0 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="p-6 pb-4 border-b bg-muted/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="font-heading font-black text-xl text-foreground flex items-center gap-2">
+                  <span>🛋️</span> {selectedTableForDetails?.name}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Resumo do consumo ativo e comandas registradas
+                </DialogDescription>
+              </div>
+              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs font-black rounded-lg px-2.5 py-1">
+                ⏳ Ocupada
+              </Badge>
+            </div>
+          </DialogHeader>
+
+          {loadingTableDetails ? (
+            <div className="p-12 flex flex-col items-center justify-center text-center">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-sm text-muted-foreground mt-2">Carregando consumo da mesa...</span>
+            </div>
+          ) : tableActiveOrders.length === 0 ? (
+            <div className="p-8 flex flex-col items-center justify-center text-center">
+              <p className="text-sm font-semibold text-muted-foreground">Nenhum pedido ativo encontrado para esta mesa.</p>
+              <Button size="sm" variant="outline" className="mt-4" onClick={() => setTableDetailsModalOpen(false)}>
+                Fechar
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="p-6 space-y-4 max-h-[380px] overflow-y-auto pr-2 scrollbar-thin">
+                {tableActiveOrders.map((order, orderIdx) => {
+                  const orderDate = new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+                  
+                  return (
+                    <Card key={order.id} className="border border-border/50 bg-muted/10 overflow-hidden rounded-xl">
+                      <div className="p-3 bg-muted/20 border-b border-border/30 flex items-center justify-between text-xs">
+                        <span className="font-bold text-muted-foreground">Pedido #{orderIdx + 1} - {orderDate}</span>
+                        <Badge variant="outline" className="font-semibold rounded-lg bg-background text-[10px] text-primary uppercase">
+                          {order.status === "new" ? "Novo" : order.status === "in_preparation" ? "Na Cozinha" : "Pronto"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="p-3 divide-y divide-border/20">
+                        {(order.order_items || []).map((item: any) => {
+                          const itemComplements = (item.selected_complements as any[]) || [];
+                          const complementsSum = itemComplements.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+                          const itemTotal = (item.price_at_time_of_order * item.quantity);
+
+                          return (
+                            <div key={item.id} className="py-2 first:pt-0 last:pb-0 flex justify-between gap-4 text-xs font-semibold">
+                              <div className="min-w-0 flex-1">
+                                <span className="font-bold text-foreground">{item.quantity}x {item.dish?.name || "Produto"}</span>
+                                {itemComplements.length > 0 && (
+                                  <p className="text-[10px] text-muted-foreground/80 font-medium mt-0.5">
+                                    + {itemComplements.map(c => c.name).join(", ")}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="font-bold text-primary text-right">
+                                {(itemTotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="p-3 bg-muted/5 border-t border-border/20 flex items-center justify-between text-xs">
+                        <span className="font-bold text-muted-foreground">Total do Pedido:</span>
+                        <span className="font-heading font-black text-sm text-foreground">
+                          {(order.total_price / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Accumulator Summary */}
+              <div className="px-6 py-4 bg-muted/20 border-t border-b flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase">Valor Total Acumulado:</span>
+                <span className="text-xl font-heading font-black text-primary">
+                  {(tableActiveOrders.reduce((sum, o) => sum + (o.total_price || 0), 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              </div>
+
+              <DialogFooter className="p-6 bg-muted/10 gap-2 sm:gap-0">
+                <div className="flex flex-wrap w-full gap-2 justify-between">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="font-bold rounded-xl px-4 h-9"
+                    onClick={() => handleReleaseTable(selectedTableForDetails?.name, tableActiveOrders)}
+                  >
+                    Liberar Mesa
+                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="font-bold rounded-xl px-4 h-9"
+                      onClick={() => {
+                        setTableName(selectedTableForDetails.name);
+                        setTableDetailsModalOpen(false);
+                        setViewMode("grid");
+                        toast({
+                          title: `Mesa Ativa`,
+                          description: `Lançando novos itens para a ${selectedTableForDetails.name}`,
+                        });
+                      }}
+                    >
+                      Lançar Mais Itens
+                    </Button>
+                    
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="font-black font-heading rounded-xl px-4 h-9 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                      onClick={() => handleImportTableConsumption(selectedTableForDetails?.name, tableActiveOrders)}
+                    >
+                      Fechar Conta (Importar)
+                    </Button>
+                  </div>
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 1. COMPLEMENTS MODAL */}
       <Dialog open={complementsModalOpen} onOpenChange={setComplementsModalOpen}>

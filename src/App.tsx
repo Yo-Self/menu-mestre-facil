@@ -36,6 +36,7 @@ import MenuImportPage from "./pages/dashboard/MenuImportPage";
 import OrdersPage from "./pages/dashboard/orders/OrdersPage";
 import POSDashboard from "./pages/dashboard/pos/POSDashboard";
 import POSTerminal from "./pages/dashboard/pos/POSTerminal";
+import POSWaiterTerminal from "./pages/dashboard/pos/POSWaiterTerminal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,11 @@ const App = () => (
                         <Route path="pos" element={<POSDashboard />} />
                         <Route path="pos/terminal" element={<POSTerminal />} />
                       </Route>
+                      <Route path="/dashboard/pos/waiter" element={
+                        <AuthGuard>
+                          <POSWaiterTerminal />
+                        </AuthGuard>
+                      } />
                       <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>        </RestaurantProvider>

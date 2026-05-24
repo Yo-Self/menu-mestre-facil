@@ -81,6 +81,12 @@ export default function EditRestaurantPage() {
   const [addressActive, setAddressActive] = useState(false);
   const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  
+  // Table configuration states
+  const [hasTables, setHasTables] = useState(true);
+  const [tablesCount, setTablesCount] = useState(12);
+  const [tableCategories, setTableCategories] = useState("Balcão, Salão Principal, Varanda");
+  
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -123,6 +129,9 @@ export default function EditRestaurantPage() {
         longitude: data.longitude,
       });
       setAddressActive(!!data.address_active);
+      setHasTables(data.has_tables ?? true);
+      setTablesCount(data.tables_count ?? 12);
+      setTableCategories(data.table_categories || "Balcão, Salão Principal, Varanda");
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -167,6 +176,9 @@ export default function EditRestaurantPage() {
           address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
           table_payment: tablePaymentEnabled,
           online_payment: onlinePaymentEnabled,
+          has_tables: hasTables,
+          tables_count: tablesCount,
+          table_categories: tableCategories,
         })
         .eq("id", id);
 
@@ -408,6 +420,68 @@ export default function EditRestaurantPage() {
                   <p className="text-sm text-muted-foreground">
                     Digite o número completo com código do país e DDD (ex: 5511999999999)
                   </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 font-bold">
+                  🛋️ Configuração de Mesas / Comandas
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Gerencie se este restaurante utiliza mesas e como elas são organizadas no mapa do PDV
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="has_tables" className="flex items-center gap-2">
+                    Possui Mesas / Comandas
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ativa o mapa de mesas e gerenciamento de mesas no PDV
+                  </p>
+                </div>
+                <Switch
+                  id="has_tables"
+                  checked={hasTables}
+                  onCheckedChange={setHasTables}
+                />
+              </div>
+
+              {hasTables && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-primary/20 space-y-2 md:space-y-0">
+                  <div className="space-y-2">
+                    <Label htmlFor="tables_count">Quantidade de Mesas</Label>
+                    <Input
+                      id="tables_count"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={tablesCount}
+                      onChange={(e) => setTablesCount(parseInt(e.target.value) || 0)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Número total de mesas físicas (ex: 12)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="table_categories">Zonas / Categorias das Mesas</Label>
+                    <Input
+                      id="table_categories"
+                      type="text"
+                      value={tableCategories}
+                      onChange={(e) => setTableCategories(e.target.value)}
+                      placeholder="Ex: Salão Principal, Varanda, Balcão"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nomes das zonas físicas separadas por vírgula
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

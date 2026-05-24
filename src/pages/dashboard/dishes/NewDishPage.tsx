@@ -26,6 +26,8 @@ export default function NewDishPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [trackStock, setTrackStock] = useState(false);
+  const [stockQuantity, setStockQuantity] = useState("10");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -123,6 +125,7 @@ export default function NewDishPage() {
           restaurant_id: restaurants[0].id,
           is_available: isAvailable,
           is_featured: isFeatured,
+          stock_quantity: trackStock ? parseInt(stockQuantity) || 0 : null,
         })
         .select()
         .single();
@@ -294,6 +297,35 @@ export default function NewDishPage() {
                   onCheckedChange={setIsFeatured}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Controlar Estoque</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ativar limite de estoque para este prato
+                  </p>
+                </div>
+                <Switch
+                  checked={trackStock}
+                  onCheckedChange={setTrackStock}
+                />
+              </div>
+
+              {trackStock && (
+                <div className="space-y-2 pt-2 pl-4 border-l-2 border-primary/20 animate-in fade-in slide-in-from-left-2 duration-300">
+                  <Label htmlFor="stock">Quantidade em Estoque</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 10"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value)}
+                    required={trackStock}
+                    className="max-w-[200px]"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">
