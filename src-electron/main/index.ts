@@ -5,6 +5,22 @@ import icon from '../../resources/icon.png?asset'
 import { PrintManager } from './printing/print-manager'
 import { ThermalPrinterManager } from './printing/thermal-printer'
 
+process.on('uncaughtException', (err) => {
+  const fs = require('fs')
+  const path = require('path')
+  try {
+    fs.writeFileSync(path.join(app.getPath('userData'), 'uncaught-error.log'), String(err.stack || err))
+  } catch(e) {}
+})
+
+process.on('unhandledRejection', (err) => {
+  const fs = require('fs')
+  const path = require('path')
+  try {
+    fs.writeFileSync(path.join(app.getPath('userData'), 'unhandled-rejection.log'), String((err as any)?.stack || err))
+  } catch(e) {}
+})
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -37,6 +53,9 @@ function createWindow(): void {
   }
 }
 
+// Disable V8 compile hints which cause crashes on macOS ARM64 in recent Electron versions
+app.commandLine.appendSwitch('disable-features', 'v8_compile_hints')
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -65,6 +84,12 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+}).catch(err => {
+  console.error('Failed to initialize app:', err)
+  // Don't quit silently, log it to a file
+  const fs = require('fs')
+  const path = require('path')
+  fs.writeFileSync(path.join(app.getPath('userData'), 'init-error.log'), String(err.stack || err))
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

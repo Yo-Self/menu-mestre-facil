@@ -31,3 +31,12 @@ dist-ssr
 
 # Generated configuration files
 public/js/config.js
+# Electron Build Outputs
+out/
+release/
+.electron-vite/
+
+# Dev & Backup Files
+check_logs.sh
+*_backup.*
+

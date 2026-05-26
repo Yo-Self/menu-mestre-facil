@@ -4,25 +4,25 @@ directories:
   output: release
   buildResources: resources
 files:
-  - out/**/*
-  - resources/**/*
-  - package.json
+  - "out"
 asarUnpack:
   - resources/**
 win:
-  executableName: menu-mestre-facil
   target:
     - nsis
+  executableName: menu-mestre-facil
 nsis:
-  artifactName: ${productName}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: Menu Mestre Facil
+  uninstallDisplayName: Menu Mestre Facil
   createDesktopShortcut: always
 mac:
   category: public.app-category.business
+  identity: "-"
+  hardenedRuntime: true
   extendInfo:
-    - NSCameraUsageDescription: O aplicativo precisa de acesso à câmera para ler QR Codes.
-    - NSDocumentsFolderUsageDescription: O aplicativo solicita acesso para salvar arquivos de relatórios.
+    NSCameraUsageDescription: O aplicativo precisa de acesso à câmera para ler QR Codes.
+    NSDocumentsFolderUsageDescription: O aplicativo solicita acesso para salvar arquivos de relatórios.
   notarize: false
 dmg:
   artifactName: ${productName}-${version}.${ext}
