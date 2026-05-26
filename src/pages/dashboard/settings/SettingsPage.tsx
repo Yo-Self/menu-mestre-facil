@@ -50,6 +50,40 @@ export default function SettingsPage() {
     }
   }, [isDesktop, getPrinters]);
 
+  // Lógica de Inicialização Automática
+  const [autoStart, setAutoStart] = useState(false);
+
+  useEffect(() => {
+    if (isDesktop && (window as any).api?.getAutoStart) {
+      (window as any).api.getAutoStart().then((enabled: boolean) => {
+        setAutoStart(enabled);
+      });
+    }
+  }, [isDesktop]);
+
+  const handleToggleAutoStart = async (checked: boolean) => {
+    if (isDesktop && (window as any).api?.setAutoStart) {
+      try {
+        const success = await (window as any).api.setAutoStart(checked);
+        if (success) {
+          setAutoStart(checked);
+          toast({
+            title: checked ? "Inicialização automática ativada!" : "Inicialização automática desativada!",
+            description: checked
+              ? "O aplicativo agora abrirá automaticamente quando o Windows for iniciado."
+              : "O aplicativo não abrirá mais automaticamente ao ligar o computador."
+          });
+        }
+      } catch (err: any) {
+        toast({
+          title: "Erro ao configurar inicialização",
+          description: err.message,
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const handleSavePrinter = () => {
     localStorage.setItem("thermal_printer", selectedPrinter);
     localStorage.setItem("thermal_paper_width", paperWidth);
@@ -458,6 +492,41 @@ export default function SettingsPage() {
                   <Button variant="outline" onClick={handleTestPrint}>
                     Imprimir Cupom de Teste
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* Inicialização Automática (Apenas no Desktop) */}
+        {isDesktop && (
+          <>
+            <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-yellow-500 animate-pulse" />
+                  Inicialização Automática
+                </CardTitle>
+                <CardDescription>
+                  Configure se o aplicativo deve abrir automaticamente quando você ligar o computador.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-start" className="font-heading font-black">
+                      Iniciar com o Windows
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Abre o Menu Mestre Fácil em segundo plano ao inicializar o sistema operacional.
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-start"
+                    checked={autoStart}
+                    onCheckedChange={handleToggleAutoStart}
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -134,6 +134,20 @@ export default function POSTerminal() {
   }, [currentRestaurantId]);
 
   useEffect(() => {
+    // Entrar em tela cheia no Electron ao abrir o caixa do PDV
+    if (typeof window !== "undefined" && (window as any).api?.setFullscreen) {
+      (window as any).api.setFullscreen(true);
+    }
+
+    // Sair da tela cheia automaticamente ao fechar o caixa ou voltar para outra página
+    return () => {
+      if (typeof window !== "undefined" && (window as any).api?.setFullscreen) {
+        (window as any).api.setFullscreen(false);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     filterProducts();
   }, [searchQuery, selectedCategoryId, dishes]);
 

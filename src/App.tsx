@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { RestaurantProvider } from "./components/providers/RestaurantProvider";
@@ -41,12 +41,23 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Detecta se a aplicação está rodando dentro do Electron
+const isElectron = typeof window !== "undefined" && window.navigator.userAgent.toLowerCase().includes("electron");
+
+// Componente wrapper para escolher dinamicamente o roteador
+const AppRouter = ({ children }: { children: React.ReactNode }) => {
+  if (isElectron) {
+    return <HashRouter>{children}</HashRouter>;
+  }
+  return <BrowserRouter basename="/">{children}</BrowserRouter>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename="/">
+      <AppRouter>
         <RestaurantProvider>
                     <Routes>
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -82,8 +93,12 @@ const App = () => (
                         <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
                         <Route path="import-menu" element={<MenuImportPage />} />
                         <Route path="pos" element={<POSDashboard />} />
-                        <Route path="pos/terminal" element={<POSTerminal />} />
                       </Route>
+                      <Route path="/dashboard/pos/terminal" element={
+                        <AuthGuard>
+                          <POSTerminal />
+                        </AuthGuard>
+                      } />
                       <Route path="/dashboard/pos/waiter" element={
                         <AuthGuard>
                           <POSWaiterTerminal />
@@ -92,7 +107,7 @@ const App = () => (
                       <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>        </RestaurantProvider>
-      </BrowserRouter>
+      </AppRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -30,7 +30,9 @@ function createWindow(): void {
     autoHideMenuBar: false, // Deixar ativo para menu da aplicação
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: require('fs').existsSync(join(__dirname, '../preload/index.mjs'))
+        ? join(__dirname, '../preload/index.mjs')
+        : join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
@@ -73,6 +75,29 @@ app.whenReady().then(() => {
   // Registrar handlers de impressão nativa e térmica
   PrintManager.registerHandlers()
   ThermalPrinterManager.registerHandlers()
+
+  // Configurações de inicialização automática no Windows
+  ipcMain.handle('get-auto-start', () => {
+    return app.getLoginItemSettings().openAtLogin
+  })
+
+  ipcMain.handle('set-auto-start', (_, enable: boolean) => {
+    app.setLoginItemSettings({
+      openAtLogin: enable,
+      path: app.getPath('exe') // Garante o caminho correto do executável em produção
+    })
+    return true
+  })
+
+  // Controle de tela cheia para o PDV
+  ipcMain.handle('set-fullscreen', (_, enable: boolean) => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+    if (win) {
+      win.setFullScreen(enable)
+      win.setMenuBarVisibility(!enable) // Oculta a barra de menu em tela cheia
+    }
+    return true
+  })
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))

@@ -10,7 +10,14 @@ const api = {
   print: (html: string, options?: any) => ipcRenderer.invoke('print', html, options),
   
   // Realiza a impressão térmica de um cupom POS (ESC/POS)
-  printThermal: (receiptData: any, options?: any) => ipcRenderer.invoke('print-thermal', receiptData, options)
+  printThermal: (receiptData: any, options?: any) => ipcRenderer.invoke('print-thermal', receiptData, options),
+  
+  // Configurações de inicialização automática no Windows
+  getAutoStart: () => ipcRenderer.invoke('get-auto-start'),
+  setAutoStart: (enable: boolean) => ipcRenderer.invoke('set-auto-start', enable),
+  
+  // Controle de tela cheia
+  setFullscreen: (enable: boolean) => ipcRenderer.invoke('set-fullscreen', enable)
 }
 
 // Expõe as APIs caso o isolamento de contexto esteja ativo (padrão seguro)

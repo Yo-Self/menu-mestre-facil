@@ -12,6 +12,9 @@ win:
     - nsis
   executableName: menu-mestre-facil
 nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  runAfterFinish: true
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: Menu Mestre Facil
   uninstallDisplayName: Menu Mestre Facil
