@@ -117,8 +117,13 @@ export default function POSDashboard() {
       if (error) throw error;
       setRestaurants(data || []);
 
-      if (data && data.length > 0 && !currentRestaurantId) {
-        setCurrentRestaurantId(data[0].id);
+      if (data && data.length > 0) {
+        const isValid = data.some((r) => r.id === currentRestaurantId);
+        if (!currentRestaurantId || !isValid) {
+          setCurrentRestaurantId(data[0].id);
+        }
+      } else if (!data || data.length === 0) {
+        setCurrentRestaurantId(null);
       }
     } catch (err) {
       console.error("Erro ao buscar restaurantes:", err);

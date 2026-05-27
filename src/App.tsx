@@ -62,49 +62,41 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/auth" element={<AuthPage />} />
-                      <Route path="/dashboard" element={
+                      <Route element={
                         <AuthGuard>
                           <DashboardLayout />
                         </AuthGuard>
                       }>
-                        <Route index element={<Dashboard />} />
-                        <Route path="restaurants" element={<RestaurantsPage />} />
-                        <Route path="restaurants/new" element={<NewRestaurantPage />} />
-                        <Route path="restaurants/:id" element={<RestaurantDetailPage />} />
-                        <Route path="restaurants/:id/edit" element={<EditRestaurantPage />} />
-                        <Route path="restaurants/:id/reports" element={<ReportsPage />} />
-                        <Route path="restaurants/:id/hours" element={<RestaurantHoursPage />} />
-                        <Route path="menus" element={<MenusPage />} />
-                        <Route path="menus/new" element={<NewMenuPage />} />
-                        <Route path="menus/:id" element={<MenuDetailPage />} />
-                        <Route path="menus/:id/edit" element={<EditMenuPage />} />
-                        <Route path="categories" element={<CategoriesPage />} />
-                        <Route path="categories/new" element={<NewCategoryPage />} />
-                        <Route path="categories/:id/edit" element={<EditCategoryPage />} />
-                        <Route path="categories/:id/dishes" element={<CategoryDishesPage />} />
-                        <Route path="categories/:id/order" element={<CategoryDishesOrderPage />} />
-                        <Route path="categories/:id/preview" element={<CategoryPreviewPage />} />
-                        <Route path="dishes" element={<DishesPage />} />
-                        <Route path="dishes/new" element={<NewDishPage />} />
-                        <Route path="dishes/:id/edit" element={<EditDishPage />} />
-                        <Route path="dishes/:id/complements" element={<ManageComplementsPage />} />
-                        <Route path="complements" element={<ComplementsPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        <Route path="waiter-call-test" element={<WaiterCallTestPage />} />
-                        <Route path="import-menu" element={<MenuImportPage />} />
-                        <Route path="pos" element={<POSDashboard />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/dashboard/restaurants" element={<RestaurantsPage />} />
+                        <Route path="/dashboard/restaurants/new" element={<NewRestaurantPage />} />
+                        <Route path="/dashboard/restaurants/:id" element={<RestaurantDetailPage />} />
+                        <Route path="/dashboard/restaurants/:id/edit" element={<EditRestaurantPage />} />
+                        <Route path="/dashboard/restaurants/:id/reports" element={<ReportsPage />} />
+                        <Route path="/dashboard/restaurants/:id/hours" element={<RestaurantHoursPage />} />
+                        <Route path="/dashboard/menus" element={<MenusPage />} />
+                        <Route path="/dashboard/menus/new" element={<NewMenuPage />} />
+                        <Route path="/dashboard/menus/:id" element={<MenuDetailPage />} />
+                        <Route path="/dashboard/menus/:id/edit" element={<EditMenuPage />} />
+                        <Route path="/dashboard/categories" element={<CategoriesPage />} />
+                        <Route path="/dashboard/categories/new" element={<NewCategoryPage />} />
+                        <Route path="/dashboard/categories/:id/edit" element={<EditCategoryPage />} />
+                        <Route path="/dashboard/categories/:id/dishes" element={<CategoryDishesPage />} />
+                        <Route path="/dashboard/categories/:id/order" element={<CategoryDishesOrderPage />} />
+                        <Route path="/dashboard/categories/:id/preview" element={<CategoryPreviewPage />} />
+                        <Route path="/dashboard/dishes" element={<DishesPage />} />
+                        <Route path="/dashboard/dishes/new" element={<NewDishPage />} />
+                        <Route path="/dashboard/dishes/:id/edit" element={<EditDishPage />} />
+                        <Route path="/dashboard/dishes/:id/complements" element={<ManageComplementsPage />} />
+                        <Route path="/dashboard/complements" element={<ComplementsPage />} />
+                        <Route path="/dashboard/settings" element={<SettingsPage />} />
+                        <Route path="/dashboard/waiter-call-test" element={<WaiterCallTestPage />} />
+                        <Route path="/dashboard/import-menu" element={<MenuImportPage />} />
+                        <Route path="/dashboard/pos" element={<POSDashboard />} />
+                        <Route path="/dashboard/pos/terminal" element={<POSTerminal />} />
+                        <Route path="/dashboard/pos/waiter" element={<POSWaiterTerminal />} />
+                        <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                       </Route>
-                      <Route path="/dashboard/pos/terminal" element={
-                        <AuthGuard>
-                          <POSTerminal />
-                        </AuthGuard>
-                      } />
-                      <Route path="/dashboard/pos/waiter" element={
-                        <AuthGuard>
-                          <POSWaiterTerminal />
-                        </AuthGuard>
-                      } />
-                      <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>        </RestaurantProvider>
       </AppRouter>
