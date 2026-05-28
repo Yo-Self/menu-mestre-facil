@@ -89,7 +89,8 @@ export default function POSTerminal() {
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [restaurantName, setRestaurantName] = useState("Menu Mestre Fácil");
+  const [restaurantName, setRestaurantName] = useState("Gestor Menu");
+  const [restaurantLogo, setRestaurantLogo] = useState("");
   const [receiptSnapshot, setReceiptSnapshot] = useState<{
     items: CartItem[];
     subtotal: number;
@@ -223,12 +224,13 @@ export default function POSTerminal() {
       // 0. Fetch restaurant details
       const { data: rest, error: restErr } = await supabase
         .from("restaurants")
-        .select("name, has_tables, tables_count, table_categories")
+        .select("name, has_tables, tables_count, table_categories, image_url")
         .eq("id", currentRestaurantId!)
         .single();
 
       if (!restErr && rest) {
         setRestaurantName(rest.name);
+        setRestaurantLogo(rest.image_url || "");
         
         const hasTbls = rest.has_tables ?? true;
         if (hasTbls) {
@@ -605,6 +607,21 @@ export default function POSTerminal() {
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
       }));
 
+      // Gerar senha da fila se a configuração estiver ativa
+      let queuePassword = null;
+      if (localStorage.getItem("thermal_print_password") === "true") {
+        const today = new Date().toLocaleDateString('pt-BR');
+        const lastDate = localStorage.getItem("queue_date") || "";
+        let currentCounter = parseInt(localStorage.getItem("queue_counter") || "0", 10);
+        if (lastDate !== today) {
+          currentCounter = 0;
+          localStorage.setItem("queue_date", today);
+        }
+        currentCounter += 1;
+        localStorage.setItem("queue_counter", currentCounter.toString());
+        queuePassword = currentCounter.toString().padStart(3, '0');
+      }
+
       if (!isOnline) {
         // Save local queue
         const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
@@ -615,7 +632,12 @@ export default function POSTerminal() {
           table_name: tableName,
           items: orderItemsInput,
           payments: payments,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          customer_info: {
+            name: customerName || "",
+            phone: customerPhone || "",
+            queue_password: queuePassword
+          }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
 
@@ -626,7 +648,12 @@ export default function POSTerminal() {
 
         setCreatedOrder({
           id: `OFF-${Date.now()}`,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          customer_info: {
+            name: customerName || "",
+            phone: customerPhone || "",
+            queue_password: queuePassword
+          }
         });
         setReceiptSnapshot({
           items: [...cart],
@@ -651,7 +678,8 @@ export default function POSTerminal() {
         customerName || null,
         customerPhone || null,
         orderItemsInput,
-        payments
+        payments,
+        queuePassword
       );
 
       setCreatedOrder(finalOrder);
@@ -708,6 +736,21 @@ export default function POSTerminal() {
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
       }));
 
+      // Gerar senha da fila se a configuração estiver ativa
+      let queuePassword = null;
+      if (localStorage.getItem("thermal_print_password") === "true") {
+        const today = new Date().toLocaleDateString('pt-BR');
+        const lastDate = localStorage.getItem("queue_date") || "";
+        let currentCounter = parseInt(localStorage.getItem("queue_counter") || "0", 10);
+        if (lastDate !== today) {
+          currentCounter = 0;
+          localStorage.setItem("queue_date", today);
+        }
+        currentCounter += 1;
+        localStorage.setItem("queue_counter", currentCounter.toString());
+        queuePassword = currentCounter.toString().padStart(3, '0');
+      }
+
       if (!isOnline) {
         const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
         offlineQueue.push({
@@ -717,7 +760,12 @@ export default function POSTerminal() {
           table_name: tableName,
           items: orderItemsInput,
           payments: [],
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          customer_info: {
+            name: customerName || "",
+            phone: customerPhone || "",
+            queue_password: queuePassword
+          }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
 
@@ -740,7 +788,8 @@ export default function POSTerminal() {
         customerName || null,
         customerPhone || null,
         orderItemsInput,
-        []
+        [],
+        queuePassword
       );
 
       toast({
@@ -775,6 +824,9 @@ export default function POSTerminal() {
     const formattedDate = new Date(createdOrder?.created_at || Date.now()).toLocaleString("pt-BR");
     const tblName = receiptSnapshot?.tableName || tableName;
     const custName = receiptSnapshot?.customerName || customerName;
+    const queuePassword = createdOrder?.customer_info && typeof createdOrder.customer_info === 'object'
+      ? (createdOrder.customer_info as any).queue_password
+      : null;
 
     // Create a hidden iframe for isolated print
     let iframe = document.getElementById('print-iframe') as HTMLIFrameElement;
@@ -851,10 +903,18 @@ export default function POSTerminal() {
         </head>
         <body>
           <div class="text-center">
+            ${restaurantLogo ? `<div style="margin-bottom: 6px;"><img src="${restaurantLogo}" style="max-width: 60px; max-height: 60px; object-fit: contain;" /></div>` : ''}
             <h3 style="margin: 0 0 4px 0; font-size: 14px; text-transform: uppercase;">${restaurantName}</h3>
             <p style="margin: 0 0 2px 0; font-size: 10px; font-weight: bold;">Comprovante de Venda</p>
             <p style="margin: 0; font-size: 9px; color: #555;">ID: ${orderId.substring(0, 8)}...</p>
           </div>
+
+          ${queuePassword ? `
+            <div class="border-t-dashed my-2"></div>
+            <div class="text-center" style="padding: 6px 0;">
+              <span style="font-size: 24px; font-weight: 900; font-family: sans-serif;">SENHA: ${queuePassword}</span>
+            </div>
+          ` : ''}
 
           <div class="border-t-dashed my-2"></div>
 
@@ -884,7 +944,7 @@ export default function POSTerminal() {
           <div class="border-t-dashed my-2" style="margin-top: 15px;"></div>
           <div class="text-center" style="font-size: 9px; color: #555; margin-top: 8px;">
             <p style="margin: 0;">Obrigado pela preferência!</p>
-            <p style="margin: 2px 0 0 0;">Menu Mestre Fácil</p>
+            <p style="margin: 2px 0 0 0;">Gestor Menu</p>
           </div>
         </body>
       </html>
@@ -896,6 +956,136 @@ export default function POSTerminal() {
       if (iframe.contentWindow) {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
+
+        // Print kitchen receipt if active
+        if (localStorage.getItem("thermal_print_kitchen") === "true") {
+          setTimeout(() => {
+            printKitchenReceipt();
+          }, 1000);
+        }
+      }
+    }, 250);
+  };
+
+  const printKitchenReceipt = () => {
+    if (!createdOrder) return;
+
+    const items = receiptSnapshot?.items || cart;
+    const orderId = createdOrder?.id || "";
+    const formattedDate = new Date(createdOrder?.created_at || Date.now()).toLocaleString("pt-BR");
+    const tblName = receiptSnapshot?.tableName || tableName;
+    const custName = receiptSnapshot?.customerName || customerName;
+    const queuePassword = createdOrder?.customer_info && typeof createdOrder.customer_info === 'object'
+      ? (createdOrder.customer_info as any).queue_password
+      : null;
+
+    let kitchenIframe = document.getElementById('print-kitchen-iframe') as HTMLIFrameElement;
+    if (!kitchenIframe) {
+      kitchenIframe = document.createElement('iframe');
+      kitchenIframe.id = 'print-kitchen-iframe';
+      kitchenIframe.style.position = 'fixed';
+      kitchenIframe.style.right = '0';
+      kitchenIframe.style.bottom = '0';
+      kitchenIframe.style.width = '0';
+      kitchenIframe.style.height = '0';
+      kitchenIframe.style.border = '0';
+      document.body.appendChild(kitchenIframe);
+    }
+
+    const iframeDoc = kitchenIframe.contentWindow?.document || kitchenIframe.contentDocument;
+    if (!iframeDoc) return;
+
+    const itemsHtml = items.map((item: any) => {
+      let compsText = "";
+      if (item.selected_complements && item.selected_complements.length > 0) {
+        compsText = `<div style="font-size: 11px; font-weight: bold; color: #333; padding-left: 5px;">+ ${item.selected_complements.map((c: any) => c.name).join(", ")}</div>`;
+      }
+      
+      let notesText = "";
+      if (item.notes) {
+        notesText = `<div style="font-size: 12px; font-weight: bold; color: red; margin-top: 3px; padding-left: 5px;">⚠️ OBS: ${item.notes}</div>`;
+      }
+
+      return `
+        <div style="margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 6px;">
+          <div style="font-size: 14px; font-weight: bold;">
+            ${item.quantity} x [ ${item.dish?.name || item.dish_name} ]
+          </div>
+          ${compsText}
+          ${notesText}
+        </div>
+      `;
+    }).join("");
+
+    iframeDoc.open();
+    iframeDoc.write(`
+      <html>
+        <head>
+          <title>Cozinha - ${restaurantName}</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body { 
+              background: white; 
+              color: black;
+              padding: 6mm 4mm;
+              margin: 0;
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 12px;
+              width: 72mm;
+              box-sizing: border-box;
+            }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .border-t-dashed { border-top: 1px dashed black; }
+            .my-2 { margin-top: 8px; margin-bottom: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center">
+            <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: bold;">--- VIA COZINHA ---</h3>
+            <p style="margin: 0; font-size: 10px;">ID: ${orderId.substring(0, 8)}...</p>
+          </div>
+
+          <div class="border-t-dashed my-2"></div>
+
+          ${queuePassword ? `
+            <div class="text-center" style="padding: 4px 0;">
+              <span style="font-size: 24px; font-weight: bold;">SENHA: ${queuePassword}</span>
+            </div>
+            <div class="border-t-dashed my-2"></div>
+          ` : ''}
+
+          <div style="font-size: 11px; line-height: 1.4;">
+            <p style="margin: 2px 0; font-weight: bold; font-size: 13px;">Mesa/Comanda: ${tblName}</p>
+            <p style="margin: 2px 0;">Cliente: ${custName || "Consumidor"}</p>
+            <p style="margin: 2px 0;">Hora: ${formattedDate}</p>
+          </div>
+
+          <div class="border-t-dashed my-2"></div>
+
+          <div style="font-size: 11px;">
+            <div style="font-weight: bold; margin-bottom: 8px; font-size: 11px; text-transform: uppercase;">
+              ITENS PARA PREPARAÇÃO
+            </div>
+            ${itemsHtml}
+          </div>
+
+          <div class="border-t-dashed my-2"></div>
+          <div class="text-center" style="font-size: 10px; font-weight: bold; margin-top: 8px;">
+            <p style="margin: 0;">--- FIM VIA COZINHA ---</p>
+          </div>
+        </body>
+      </html>
+    `);
+    iframeDoc.close();
+
+    setTimeout(() => {
+      if (kitchenIframe.contentWindow) {
+        kitchenIframe.contentWindow.focus();
+        kitchenIframe.contentWindow.print();
       }
     }, 250);
   };

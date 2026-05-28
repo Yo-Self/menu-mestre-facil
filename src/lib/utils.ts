@@ -68,3 +68,72 @@ export function generateOrganizationUrl(organizationSlug: string): string {
 export function generatePublicMenuUrl(organizationSlug: string, restaurantSlug: string): string {
   return `/menu/${organizationSlug}/${restaurantSlug}`;
 }
+
+// ─── Reports helpers ──────────────────────────────────────────────────────────
+
+export type ReportPreset = 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'prevMonth' | 'ytd' | 'custom';
+
+export function getPresetRange(preset: ReportPreset): { start: Date; end: Date } {
+  const now = new Date();
+  const start = new Date();
+  const end = new Date();
+
+  switch (preset) {
+    case 'today':
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      break;
+    case 'yesterday':
+      start.setDate(now.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(now.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      break;
+    case 'last7':
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      break;
+    case 'thisMonth':
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      break;
+    case 'prevMonth': {
+      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      start.setTime(new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime());
+      start.setHours(0, 0, 0, 0);
+      end.setTime(firstOfThisMonth.getTime() - 1);
+      break;
+    }
+    case 'ytd':
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      break;
+    default:
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+  }
+
+  return { start, end };
+}
+
+/** Returns the equivalent prior period (same length, immediately before). */
+export function getPrevPeriodRange(start: Date, end: Date): { start: Date; end: Date } {
+  const durationMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  return { start: prevStart, end: prevEnd };
+}
+
+export function formatCurrencyBRL(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+export function calcPercentChange(current: number, prev: number): number | null {
+  if (prev === 0) return null;
+  return ((current - prev) / prev) * 100;
+}
+

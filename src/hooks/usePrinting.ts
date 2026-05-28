@@ -83,11 +83,21 @@ export function usePrinting() {
         // Montar a estrutura de itens para a biblioteca electron-pos-printer
         const items: any[] = []
 
-        // Cabeçalho
+        // Cabeçalho - Logo do Restaurante
+        if (order.restaurant_logo) {
+          items.push({
+            type: 'image',
+            path: order.restaurant_logo,
+            position: 'center',
+            style: 'width: 60px; height: 60px; margin-bottom: 5px; object-fit: contain;'
+          })
+        }
+
+        // Cabeçalho - Nome do Restaurante
         items.push({
           type: 'text',
-          value: '--- MENU MESTRE FÁCIL ---',
-          style: 'font-weight: bold; font-size: 16px; margin-bottom: 5px;',
+          value: '--- GESTOR MENU ---',
+          style: 'font-weight: bold; font-size: 16px; margin-bottom: 3px;',
           position: 'center'
         })
 
@@ -107,6 +117,16 @@ export function usePrinting() {
           style: 'font-weight: bold; font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;',
           position: 'center'
         })
+
+        // Senha Sequencial de Fila
+        if (order.queue_password) {
+          items.push({
+            type: 'text',
+            value: `SENHA: ${order.queue_password}`,
+            style: 'font-weight: 900; font-size: 22px; padding: 8px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;',
+            position: 'center'
+          })
+        }
 
         const dateStr = order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')
         items.push({
@@ -293,9 +313,11 @@ export function usePrinting() {
           </style>
         </head>
         <body>
-          <div class="center bold">--- MENU MESTRE FÁCIL ---</div>
+          ${order.restaurant_logo ? `<div class="center" style="margin-bottom: 8px;"><img src="${order.restaurant_logo}" style="max-width: 60px; max-height: 60px; object-fit: contain;" /></div>` : ''}
+          <div class="center bold">--- GESTOR MENU ---</div>
           <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
           <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
+          ${order.queue_password ? `<div class="center bold" style="font-size: 26px; padding: 10px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;">SENHA: ${order.queue_password}</div>` : ''}
           <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div>Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
           <div class="bold" style="margin-top: 10px;">PRODUTOS:</div>
@@ -315,10 +337,189 @@ export function usePrinting() {
     }
   }, [isDesktop, printHtml])
 
+  // Função para impressão térmica da cozinha
+  const printKitchenThermalCupom = useCallback(async (
+    order: any, 
+    options?: { printerName: string; width?: string }
+  ) => {
+    if (isDesktop) {
+      try {
+        if (!options?.printerName) {
+          return { success: false, error: 'Selecione uma impressora térmica nas configurações' }
+        }
+
+        const items: any[] = []
+
+        // Cabeçalho da Cozinha
+        items.push({
+          type: 'text',
+          value: '--- VIA COZINHA ---',
+          style: 'font-weight: bold; font-size: 16px; margin-bottom: 5px;',
+          position: 'center'
+        })
+
+        if (order.restaurant_name) {
+          items.push({
+            type: 'text',
+            value: order.restaurant_name.toUpperCase(),
+            style: 'font-weight: bold; font-size: 12px; margin-bottom: 10px;',
+            position: 'center'
+          })
+        }
+
+        items.push({
+          type: 'text',
+          value: `PEDIDO: #${order.display_id || order.id.slice(0, 8)}`,
+          style: 'font-weight: bold; font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;',
+          position: 'center'
+        })
+
+        if (order.queue_password) {
+          items.push({
+            type: 'text',
+            value: `SENHA: ${order.queue_password}`,
+            style: 'font-weight: 900; font-size: 20px; padding: 6px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;',
+            position: 'center'
+          })
+        }
+
+        const dateStr = order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')
+        items.push({
+          type: 'text',
+          value: `Hora: ${dateStr}`,
+          style: 'font-size: 11px; margin-top: 5px; margin-bottom: 5px;',
+          position: 'left'
+        })
+
+        items.push({
+          type: 'text',
+          value: `Mesa/Local: ${order.table_name || 'Balcão'}`,
+          style: 'font-weight: bold; font-size: 13px;',
+          position: 'left'
+        })
+
+        items.push({
+          type: 'text',
+          value: `Cliente: ${order.customer_name || 'Consumidor'}`,
+          style: 'font-size: 12px; margin-bottom: 10px;',
+          position: 'left'
+        })
+
+        items.push({
+          type: 'text',
+          value: 'ITENS PARA PREPARAÇÃO',
+          style: 'font-weight: bold; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 8px;',
+          position: 'left'
+        })
+
+        if (order.items && order.items.length > 0) {
+          order.items.forEach((item: any) => {
+            items.push({
+              type: 'text',
+              value: `${item.quantity}x [ ${item.dish_name || item.name} ]`,
+              style: 'font-weight: bold; font-size: 14px; margin-bottom: 2px;',
+              position: 'left'
+            })
+
+            // Complementos
+            if (item.complements && item.complements.length > 0) {
+              item.complements.forEach((comp: any) => {
+                items.push({
+                  type: 'text',
+                  value: `  + ${comp.name}`,
+                  style: 'font-size: 11px; font-weight: bold; padding-left: 10px;',
+                  position: 'left'
+                })
+              })
+            }
+
+            // Observação do item
+            if (item.notes) {
+              items.push({
+                type: 'text',
+                value: `  ⚠️ OBS: ${item.notes}`,
+                style: 'font-weight: bold; font-size: 12px; color: #ff0000; padding-left: 10px; margin-top: 2px; margin-bottom: 5px;',
+                position: 'left'
+              })
+            }
+            
+            // Separador sutil de item
+            items.push({
+              type: 'text',
+              value: '--------------------------------',
+              style: 'font-size: 10px; color: #888;',
+              position: 'center'
+            })
+          })
+        }
+
+        // Rodapé de Controle
+        items.push({
+          type: 'text',
+          value: '--- FIM VIA COZINHA ---',
+          style: 'font-style: italic; font-size: 11px; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;',
+          position: 'center'
+        })
+
+        return await window.api.printThermal({
+          printerName: options.printerName,
+          items
+        }, {
+          width: options.width ?? '300px'
+        })
+
+      } catch (error: any) {
+        console.error('Erro na impressão térmica da cozinha:', error)
+        return { success: false, error: error.message }
+      }
+    }
+
+    // Fallback de navegador para impressão de cozinha
+    try {
+      const kitchenHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: monospace; font-size: 14px; width: 300px; padding: 10px; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .border { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin: 10px 0; }
+            .item-title { font-size: 16px; font-weight: bold; margin-top: 8px; }
+            .obs { font-weight: bold; color: red; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold" style="font-size: 16px;">--- VIA COZINHA ---</div>
+          <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
+          <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
+          ${order.queue_password ? `<div class="center bold" style="font-size: 24px; padding: 5px 0;">SENHA: ${order.queue_password}</div><div class="border"></div>` : ''}
+          <div>Mesa/Local: <strong>${order.table_name || 'Balcão'}</strong></div>
+          <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
+          <div>Hora: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          
+          <div class="border" style="font-weight: bold;">ITENS PARA PREPARAÇÃO:</div>
+          ${order.items?.map((item: any) => `
+            <div class="item-title">${item.quantity}x [ ${item.dish_name || item.name} ]</div>
+            ${item.complements?.map((c: any) => `<div style="padding-left: 15px; font-weight: bold;">+ ${c.name}</div>`).join('') || ''}
+            ${item.notes ? `<div class="obs" style="padding-left: 15px; margin-top: 5px;">⚠️ OBS: ${item.notes}</div>` : ''}
+            <div style="border-top: 1px solid #ccc; margin: 5px 0;"></div>
+          `).join('')}
+          <div class="center" style="margin-top: 20px; font-style: italic;">--- FIM VIA COZINHA ---</div>
+        </body>
+        </html>
+      `
+      return await printHtml(kitchenHtml)
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }, [isDesktop, printHtml])
+
   return {
     isDesktop,
     getPrinters,
     printHtml,
-    printThermalCupom
+    printThermalCupom,
+    printKitchenThermalCupom
   }
 }

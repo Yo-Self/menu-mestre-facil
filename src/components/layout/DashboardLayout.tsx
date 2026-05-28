@@ -42,10 +42,10 @@ export function DashboardLayout() {
           <div className="flex items-center gap-2 mr-2">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse hidden sm:block" />
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent font-heading font-extrabold tracking-wide hidden sm:block">
-              MENU MESTRE
+              GESTOR MENU
             </span>
             <span className="h-6 w-6 rounded-lg bg-primary/10 flex sm:hidden items-center justify-center font-bold text-xs text-primary">
-              M
+              G
             </span>
           </div>
         </div>

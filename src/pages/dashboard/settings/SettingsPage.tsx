@@ -36,6 +36,26 @@ export default function SettingsPage() {
   const [printers, setPrinters] = useState<any[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState(localStorage.getItem("thermal_printer") || "");
   const [paperWidth, setPaperWidth] = useState(localStorage.getItem("thermal_paper_width") || "80mm");
+  const [printQueuePassword, setPrintQueuePassword] = useState(localStorage.getItem("thermal_print_password") === "true");
+  const [printKitchenReceipt, setPrintKitchenReceipt] = useState(localStorage.getItem("thermal_print_kitchen") === "true");
+
+  const handleTogglePrintPassword = (checked: boolean) => {
+    setPrintQueuePassword(checked);
+    localStorage.setItem("thermal_print_password", checked ? "true" : "false");
+    toast({
+      title: checked ? "Senha no cupom ativada!" : "Senha no cupom desativada!",
+      description: checked ? "Os próximos cupons gerados incluirão uma senha sequencial para o painel." : "Os cupons não terão mais senha de fila."
+    });
+  };
+
+  const handleTogglePrintKitchen = (checked: boolean) => {
+    setPrintKitchenReceipt(checked);
+    localStorage.setItem("thermal_print_kitchen", checked ? "true" : "false");
+    toast({
+      title: checked ? "Cupom da cozinha ativado!" : "Cupom da cozinha desativado!",
+      description: checked ? "O sistema imprimirá a via da cozinha automaticamente após o cupom de venda." : "Não será mais impresso o cupom da cozinha."
+    });
+  };
 
   useEffect(() => {
     if (isDesktop) {
@@ -87,9 +107,11 @@ export default function SettingsPage() {
   const handleSavePrinter = () => {
     localStorage.setItem("thermal_printer", selectedPrinter);
     localStorage.setItem("thermal_paper_width", paperWidth);
+    localStorage.setItem("thermal_print_password", printQueuePassword ? "true" : "false");
+    localStorage.setItem("thermal_print_kitchen", printKitchenReceipt ? "true" : "false");
     toast({
       title: "Configurações de impressão salvas!",
-      description: "Sua impressora térmica padrão foi configurada com sucesso.",
+      description: "Suas preferências de impressão foram configuradas com sucesso.",
     });
   };
 
@@ -113,7 +135,7 @@ export default function SettingsPage() {
       address: "Rua do Sucesso, 123 - Centro",
       total_price: 4990, // preço no banco está em centavos (R$ 49,90)
       payment_method: "pix",
-      restaurant_name: "Menu Mestre Fácil",
+      restaurant_name: "Gestor Menu",
       items: [
         { quantity: 2, dish_name: "X-Burger Gourmet", unit_price: 1995, complements: [{ name: "Queijo Cheddar", price: 200 }], notes: "Sem cebola" },
         { quantity: 1, dish_name: "Refrigerante Lata", unit_price: 800 }
@@ -438,21 +460,21 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Impressora Térmica (Apenas no Desktop) */}
-        {isDesktop && (
-          <>
-            <Separator />
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Printer className="h-5 w-5" />
-                  Impressora Térmica (Desktop)
-                </CardTitle>
-                <CardDescription>
-                  Configure e teste a impressora para impressão silenciosa e automática de cupons de pedido.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        {/* Configurações de Impressão */}
+        <Separator />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Configurações de Impressão
+            </CardTitle>
+            <CardDescription>
+              Configure como deseja gerenciar a impressão de cupons de venda e produção.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isDesktop && (
+              <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="printer-select">Selecione a Impressora Alvo</Label>
@@ -487,16 +509,51 @@ export default function SettingsPage() {
 
                 <div className="flex gap-3 pt-2">
                   <Button onClick={handleSavePrinter}>
-                    Salvar Configurações
+                    Salvar Impressora
                   </Button>
                   <Button variant="outline" onClick={handleTestPrint}>
                     Imprimir Cupom de Teste
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+                <Separator />
+              </>
+            )}
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="print-password" className="font-heading font-black">
+                    Adicionar Senha ao Cupom
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Insere uma senha sequencial destacada para organizar a fila e chamar o cliente em um painel visual.
+                  </p>
+                </div>
+                <Switch
+                  id="print-password"
+                  checked={printQueuePassword}
+                  onCheckedChange={handleTogglePrintPassword}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="print-kitchen" className="font-heading font-black">
+                    Imprimir Cupom da Cozinha
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Imprime automaticamente um resumo simplificado do pedido (sem preços) logo após o cupom principal para enviar à cozinha.
+                  </p>
+                </div>
+                <Switch
+                  id="print-kitchen"
+                  checked={printKitchenReceipt}
+                  onCheckedChange={handleTogglePrintKitchen}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Inicialização Automática (Apenas no Desktop) */}
         {isDesktop && (
@@ -519,7 +576,7 @@ export default function SettingsPage() {
                       Iniciar com o Windows
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Abre o Menu Mestre Fácil em segundo plano ao inicializar o sistema operacional.
+                      Abre o Gestor Menu em segundo plano ao inicializar o sistema operacional.
                     </p>
                   </div>
                   <Switch

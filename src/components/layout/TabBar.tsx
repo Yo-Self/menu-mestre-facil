@@ -12,7 +12,9 @@ import {
   Plus,
   Calculator,
   ClipboardList,
+  BarChart2,
 } from "lucide-react";
+
 
 import {
   Dialog,
@@ -38,6 +40,7 @@ const staticMenuItems = [
   { title: "Complementos", url: "/dashboard/complements", icon: Plus },
   { title: "PDV", url: "/dashboard/pos", icon: Calculator },
   // "Pedidos" is injected dynamically below
+  { title: "Relatórios", url: "/dashboard/reports", icon: BarChart2 },
   { title: "Importar", url: "/dashboard/import-menu", icon: Download },
   { title: "Ajustes", url: "/dashboard/settings", icon: Settings },
 ];

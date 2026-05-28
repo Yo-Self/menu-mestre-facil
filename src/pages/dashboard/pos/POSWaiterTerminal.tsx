@@ -912,7 +912,7 @@ export default function POSWaiterTerminal() {
           </div>
           <div>
             <h1 className="font-heading font-black text-sm md:text-base text-foreground tracking-tight leading-none">
-              Menu Mestre Fácil
+              Gestor Menu
             </h1>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Terminal do Garçom

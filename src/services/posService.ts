@@ -145,7 +145,8 @@ export async function createPOSOrder(
   customerName: string | null,
   customerPhone: string | null,
   items: POSOrderItemInput[],
-  payments: POSOrderPaymentInput[]
+  payments: POSOrderPaymentInput[],
+  queuePassword?: string | null
 ) {
   // 1. Calculate total price (cents)
   const totalPrice = items.reduce(
@@ -161,11 +162,15 @@ export async function createPOSOrder(
       pos_session_id: sessionId,
       table_name: tableName || "Balcão",
       customer_info:
-        customerName || customerPhone
-          ? { name: customerName || "", phone: customerPhone || "" }
+        customerName || customerPhone || queuePassword
+          ? { 
+              name: customerName || "", 
+              phone: customerPhone || "",
+              queue_password: queuePassword || null
+            }
           : null,
       total_price: totalPrice,
-      status: payments.length > 0 ? "finished" : "new", // POS orders are paid instantly or sent to preparation
+      status: "new", // All POS orders are sent to the kitchen for preparation first, even if paid at checkout
       origin: "pos",
     })
     .select()

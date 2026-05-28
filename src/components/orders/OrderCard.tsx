@@ -25,6 +25,8 @@ import {
 } from '../../components/ui/dropdown-menu'
 import { OrderStatus, OrderWithItems } from '../../types/orders'
 import { usePrinting } from '../../hooks/usePrinting'
+import { useRestaurant } from '../../hooks/useRestaurant'
+import { supabase } from '../../integrations/supabase/client'
 
 interface OrderCardProps {
   order: OrderWithItems
@@ -67,11 +69,43 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     return () => clearInterval(interval)
   }, [order.created_at])
 
-  const { isDesktop, printThermalCupom } = usePrinting()
+  const { restaurant } = useRestaurant(order.restaurant_id)
+  const { isDesktop, printThermalCupom, printKitchenThermalCupom } = usePrinting()
 
   const handlePrint = async () => {
     // Busca a impressora padrão salva nas configurações locais
     const printerName = localStorage.getItem('thermal_printer') || ''
+
+    let queuePassword = order.customer_info && typeof order.customer_info === 'object'
+      ? (order.customer_info as any).queue_password
+      : null;
+
+    if (localStorage.getItem("thermal_print_password") === "true" && !queuePassword) {
+      const today = new Date().toLocaleDateString('pt-BR');
+      const lastDate = localStorage.getItem("queue_date") || "";
+      let currentCounter = parseInt(localStorage.getItem("queue_counter") || "0", 10);
+      if (lastDate !== today) {
+        currentCounter = 0;
+        localStorage.setItem("queue_date", today);
+      }
+      currentCounter += 1;
+      localStorage.setItem("queue_counter", currentCounter.toString());
+      queuePassword = currentCounter.toString().padStart(3, '0');
+
+      try {
+        const currentInfo = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : {};
+        const updatedInfo = { ...currentInfo, queue_password: queuePassword };
+        
+        await supabase
+          .from("orders")
+          .update({ customer_info: updatedInfo })
+          .eq("id", order.id);
+
+        order.customer_info = updatedInfo;
+      } catch (err) {
+        console.error("Erro ao salvar senha no pedido:", err);
+      }
+    }
     
     // Formatar os dados do pedido do banco (centavos) para o formato amigável do cupom (decimal)
     const orderData = {
@@ -84,6 +118,9 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       table_name: order.table_name,
       total_price: order.total_price / 100, // conversão de centavos
       payment_method: order.payment_method || 'card',
+      restaurant_name: restaurant?.name || 'Gestor Menu',
+      restaurant_logo: restaurant?.image_url || '',
+      queue_password: queuePassword,
       items: order.order_items.map((item: any) => ({
         quantity: item.quantity,
         dish_name: item.dishes?.name || 'Prato',
@@ -98,9 +135,12 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       }))
     }
 
+    const paperWidth = localStorage.getItem('thermal_paper_width') || '80mm'
+    const widthInPixels = paperWidth === '58mm' ? '210px' : '300px'
+
     const result = await printThermalCupom(orderData, {
       printerName: printerName,
-      width: '300px'
+      width: widthInPixels
     })
 
     if (!result.success) {
@@ -109,6 +149,20 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       } else {
         alert(`Erro na impressão: ${result.error}`)
       }
+      return
+    }
+
+    // Se estiver ativa a impressão da cozinha, imprime a via da cozinha em seguida
+    if (localStorage.getItem("thermal_print_kitchen") === "true") {
+      setTimeout(async () => {
+        const kitchenResult = await printKitchenThermalCupom(orderData, {
+          printerName: printerName,
+          width: widthInPixels
+        })
+        if (!kitchenResult.success) {
+          console.error("Erro ao imprimir cupom da cozinha:", kitchenResult.error)
+        }
+      }, 1000)
     }
   }
   
@@ -249,6 +303,17 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               <Badge variant="outline" className="text-[10px] font-bold font-heading px-1.5 py-0">
                 #{order.id.slice(-6)}
               </Badge>
+              {(() => {
+                const info = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : null;
+                if (info && info.queue_password) {
+                  return (
+                    <Badge variant="outline" className="text-[10px] font-black bg-rose-500 text-white dark:bg-rose-600 border-0 px-2 py-0.5 animate-pulse rounded-lg">
+                      Senha: {info.queue_password}
+                    </Badge>
+                  )
+                }
+                return null;
+              })()}
               {getDeliveryTypeBadge()}
               {getTimerBadge()}
               {order.stripe_payment_intent_id && (

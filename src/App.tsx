@@ -37,10 +37,13 @@ import SettingsPage from "./pages/dashboard/settings/SettingsPage";
 import WaiterCallTestPage from "./pages/dashboard/WaiterCallTestPage";
 import MenuImportPage from "./pages/dashboard/MenuImportPage";
 import OrdersPage from "./pages/dashboard/orders/OrdersPage";
+import OrderPresentationPage from "./pages/dashboard/orders/OrderPresentationPage";
 import POSDashboard from "./pages/dashboard/pos/POSDashboard";
 import POSTerminal from "./pages/dashboard/pos/POSTerminal";
 import POSWaiterTerminal from "./pages/dashboard/pos/POSWaiterTerminal";
+import ReportsGlobalPage from "./pages/dashboard/reports/ReportsGlobalPage";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -68,6 +71,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/orders/:restaurantId/presentation" element={<OrderPresentationPage />} />
                 <Route element={
                   <AuthGuard>
                     <DashboardLayout />
@@ -101,6 +105,8 @@ const App = () => (
                   <Route path="/dashboard/pos" element={<POSDashboard />} />
                   <Route path="/dashboard/pos/terminal" element={<POSTerminal />} />
                   <Route path="/dashboard/pos/waiter" element={<POSWaiterTerminal />} />
+                  <Route path="/dashboard/reports" element={<ReportsGlobalPage />} />
+
                   <Route path="/orders/:restaurantId" element={<OrdersPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />

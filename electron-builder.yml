@@ -1,5 +1,5 @@
 appId: com.menumestre.facil
-productName: Menu Mestre Fácil
+productName: Gestor Menu
 directories:
   output: release
   buildResources: resources
@@ -16,8 +16,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   runAfterFinish: true
   artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: Menu Mestre Facil
-  uninstallDisplayName: Menu Mestre Facil
+  shortcutName: Gestor Menu
+  uninstallDisplayName: Gestor Menu
   createDesktopShortcut: always
 mac:
   category: public.app-category.business

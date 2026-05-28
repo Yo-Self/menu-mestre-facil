@@ -57,6 +57,8 @@
     "cmdk": "^0.2.0",
     "electron-pos-printer": "^1.4.0",
     "electron-updater": "^6.3.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.294.0",
     "pica": "^9.0.1",
     "posthog-js": "^1.376.3",
@@ -65,9 +67,11 @@
     "react-hook-form": "^7.48.2",
     "react-image-crop": "^11.0.10",
     "react-router-dom": "^6.20.1",
+    "recharts": "^3.8.1",
     "sonner": "^1.2.4",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {
