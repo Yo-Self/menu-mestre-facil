@@ -2,6 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PostHogProvider } from "./components/providers/PostHogProvider";
+import { PageViewTracker } from "./components/providers/PageViewTracker";
+import { ErrorBoundary } from "./components/error/ErrorBoundary";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
@@ -57,49 +60,55 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AppRouter>
-        <RestaurantProvider>
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/auth" element={<AuthPage />} />
-                      <Route element={
-                        <AuthGuard>
-                          <DashboardLayout />
-                        </AuthGuard>
-                      }>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/dashboard/restaurants" element={<RestaurantsPage />} />
-                        <Route path="/dashboard/restaurants/new" element={<NewRestaurantPage />} />
-                        <Route path="/dashboard/restaurants/:id" element={<RestaurantDetailPage />} />
-                        <Route path="/dashboard/restaurants/:id/edit" element={<EditRestaurantPage />} />
-                        <Route path="/dashboard/restaurants/:id/reports" element={<ReportsPage />} />
-                        <Route path="/dashboard/restaurants/:id/hours" element={<RestaurantHoursPage />} />
-                        <Route path="/dashboard/menus" element={<MenusPage />} />
-                        <Route path="/dashboard/menus/new" element={<NewMenuPage />} />
-                        <Route path="/dashboard/menus/:id" element={<MenuDetailPage />} />
-                        <Route path="/dashboard/menus/:id/edit" element={<EditMenuPage />} />
-                        <Route path="/dashboard/categories" element={<CategoriesPage />} />
-                        <Route path="/dashboard/categories/new" element={<NewCategoryPage />} />
-                        <Route path="/dashboard/categories/:id/edit" element={<EditCategoryPage />} />
-                        <Route path="/dashboard/categories/:id/dishes" element={<CategoryDishesPage />} />
-                        <Route path="/dashboard/categories/:id/order" element={<CategoryDishesOrderPage />} />
-                        <Route path="/dashboard/categories/:id/preview" element={<CategoryPreviewPage />} />
-                        <Route path="/dashboard/dishes" element={<DishesPage />} />
-                        <Route path="/dashboard/dishes/new" element={<NewDishPage />} />
-                        <Route path="/dashboard/dishes/:id/edit" element={<EditDishPage />} />
-                        <Route path="/dashboard/dishes/:id/complements" element={<ManageComplementsPage />} />
-                        <Route path="/dashboard/complements" element={<ComplementsPage />} />
-                        <Route path="/dashboard/settings" element={<SettingsPage />} />
-                        <Route path="/dashboard/waiter-call-test" element={<WaiterCallTestPage />} />
-                        <Route path="/dashboard/import-menu" element={<MenuImportPage />} />
-                        <Route path="/dashboard/pos" element={<POSDashboard />} />
-                        <Route path="/dashboard/pos/terminal" element={<POSTerminal />} />
-                        <Route path="/dashboard/pos/waiter" element={<POSWaiterTerminal />} />
-                        <Route path="/orders/:restaurantId" element={<OrdersPage />} />
-                      </Route>
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>        </RestaurantProvider>
-      </AppRouter>
+      <PostHogProvider>
+        <ErrorBoundary>
+          <AppRouter>
+            <PageViewTracker />
+            <RestaurantProvider>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route element={
+                  <AuthGuard>
+                    <DashboardLayout />
+                  </AuthGuard>
+                }>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard/restaurants" element={<RestaurantsPage />} />
+                  <Route path="/dashboard/restaurants/new" element={<NewRestaurantPage />} />
+                  <Route path="/dashboard/restaurants/:id" element={<RestaurantDetailPage />} />
+                  <Route path="/dashboard/restaurants/:id/edit" element={<EditRestaurantPage />} />
+                  <Route path="/dashboard/restaurants/:id/reports" element={<ReportsPage />} />
+                  <Route path="/dashboard/restaurants/:id/hours" element={<RestaurantHoursPage />} />
+                  <Route path="/dashboard/menus" element={<MenusPage />} />
+                  <Route path="/dashboard/menus/new" element={<NewMenuPage />} />
+                  <Route path="/dashboard/menus/:id" element={<MenuDetailPage />} />
+                  <Route path="/dashboard/menus/:id/edit" element={<EditMenuPage />} />
+                  <Route path="/dashboard/categories" element={<CategoriesPage />} />
+                  <Route path="/dashboard/categories/new" element={<NewCategoryPage />} />
+                  <Route path="/dashboard/categories/:id/edit" element={<EditCategoryPage />} />
+                  <Route path="/dashboard/categories/:id/dishes" element={<CategoryDishesPage />} />
+                  <Route path="/dashboard/categories/:id/order" element={<CategoryDishesOrderPage />} />
+                  <Route path="/dashboard/categories/:id/preview" element={<CategoryPreviewPage />} />
+                  <Route path="/dashboard/dishes" element={<DishesPage />} />
+                  <Route path="/dashboard/dishes/new" element={<NewDishPage />} />
+                  <Route path="/dashboard/dishes/:id/edit" element={<EditDishPage />} />
+                  <Route path="/dashboard/dishes/:id/complements" element={<ManageComplementsPage />} />
+                  <Route path="/dashboard/complements" element={<ComplementsPage />} />
+                  <Route path="/dashboard/settings" element={<SettingsPage />} />
+                  <Route path="/dashboard/waiter-call-test" element={<WaiterCallTestPage />} />
+                  <Route path="/dashboard/import-menu" element={<MenuImportPage />} />
+                  <Route path="/dashboard/pos" element={<POSDashboard />} />
+                  <Route path="/dashboard/pos/terminal" element={<POSTerminal />} />
+                  <Route path="/dashboard/pos/waiter" element={<POSWaiterTerminal />} />
+                  <Route path="/orders/:restaurantId" element={<OrdersPage />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </RestaurantProvider>
+          </AppRouter>
+        </ErrorBoundary>
+      </PostHogProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

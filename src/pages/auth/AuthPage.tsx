@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Analytics } from "@/services/analytics";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
@@ -63,11 +64,16 @@ export default function AuthPage() {
 
       if (profileError) throw profileError;
 
+      // Telemetria de sucesso de cadastro
+      Analytics.trackSignup(user.id, email);
+
       toast({
         title: "Conta criada com sucesso!",
         description: "Verifique seu email para confirmar a conta.",
       });
     } catch (error: any) {
+      // Telemetria de erro de cadastro
+      Analytics.trackError(error, { email, action: 'signup' });
       toast({
         title: "Erro ao criar conta",
         description: error.message,
@@ -83,15 +89,22 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: { user, session }, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
+      // Telemetria de sucesso de login
+      if (user) {
+        Analytics.trackLogin(user.id, email);
+      }
+
       navigate("/dashboard");
     } catch (error: any) {
+      // Telemetria de erro de login
+      Analytics.trackError(error, { email, action: 'signin' });
       toast({
         title: "Erro ao fazer login",
         description: error.message,

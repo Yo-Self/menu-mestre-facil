@@ -7,6 +7,8 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, UploadCloud, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
+import { Analytics } from '@/services/analytics';
+import posthog from 'posthog-js';
 
 // Tipagem para os dados que esperamos receber do scraper
 interface ScrapedMenuItem {
@@ -44,6 +46,9 @@ export default function MenuImportPage() {
     setIsLoading(true);
     setError(null);
     setScrapedData(null);
+    
+    // Telemetria do início da raspagem
+    Analytics.trackImportStart(url);
 
     try {
       const { data, error: functionError } = await supabase.functions.invoke('scrape-ifood', {
@@ -59,6 +64,10 @@ export default function MenuImportPage() {
       }
 
       setScrapedData(data);
+      
+      // Telemetria do sucesso da raspagem
+      Analytics.trackImportSuccess(url, data.menu_items?.length || 0);
+
       toast({
         title: "Dados extraídos com sucesso!",
         description: "Revise as informações abaixo antes de importar.",
@@ -67,6 +76,9 @@ export default function MenuImportPage() {
     } catch (err: any) {
       setError(`Falha ao buscar dados do cardápio: ${err.message}. Verifique a URL e a estrutura da página.`);
       console.error(err);
+      
+      // Telemetria da falha na raspagem
+      Analytics.trackImportFailed(url, err.message);
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +99,17 @@ export default function MenuImportPage() {
         throw rpcError;
       }
 
+      // Telemetria de sucesso na inserção do banco de dados
+      try {
+        posthog.capture('menu_imported_db_success', {
+          restaurant_name: scrapedData.restaurant_name,
+          items_count: scrapedData.menu_items?.length || 0,
+          url
+        });
+      } catch (phErr) {
+        console.error(phErr);
+      }
+
       toast({
         title: 'Cardápio importado com sucesso!',
         description: 'O novo restaurante e seu cardápio foram adicionados.',
@@ -100,6 +123,10 @@ export default function MenuImportPage() {
     } catch (err: any) {
       setError(`Erro ao importar o cardápio: ${err.message}`);
       console.error(err);
+      
+      // Telemetria de falha de banco de dados
+      Analytics.trackError(err, { url, context: 'menu_db_import_failed' });
+
       toast({
         title: 'Erro na importação',
         description: 'Não foi possível importar o cardápio. Verifique os dados e tente novamente.',

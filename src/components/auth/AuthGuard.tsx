@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import posthog from "posthog-js";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -20,6 +21,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
         if (mounted) {
           if (session) {
             setAuthenticated(true);
+            
+            // Identifica o usuário no PostHog
+            if (session.user) {
+              posthog.identify(session.user.id, {
+                email: session.user.email,
+                name: session.user.user_metadata?.name || 'Administrador',
+                role: 'manager'
+              });
+            }
           } else {
             navigate("/auth");
           }
@@ -43,10 +53,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
         if (mounted) {
           if (event === "SIGNED_IN" && session) {
             setAuthenticated(true);
-            // Não redirecionar automaticamente para dashboard
-            // navigate("/dashboard");
+            
+            // Identifica o usuário no PostHog no evento de SIGNED_IN
+            if (session.user) {
+              posthog.identify(session.user.id, {
+                email: session.user.email,
+                name: session.user.user_metadata?.name || 'Administrador',
+                role: 'manager'
+              });
+            }
           } else if (event === "SIGNED_OUT") {
             setAuthenticated(false);
+            posthog.reset(); // Reseta telemetria ao deslogar
             navigate("/auth");
           }
         }
