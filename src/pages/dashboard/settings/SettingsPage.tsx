@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, User, Bell, Shield, Palette, Globe, Zap, Printer } from "lucide-react";
+import { Settings, User, Bell, Shield, Palette, Globe, Zap, Printer, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export default function SettingsPage() {
     slug: "",
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Lógica de Impressora Desktop
   const { isDesktop, getPrinters, printThermalCupom } = usePrinting();
@@ -348,6 +350,26 @@ export default function SettingsPage() {
             </Card>
           </>
         )}
+
+        <Separator />
+
+        {/* Importação */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Importação de Dados
+            </CardTitle>
+            <CardDescription>
+              Importe cardápios e dados de outras plataformas (iFood, MenuDino).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => navigate("/dashboard/import-menu")}>
+              Acessar Ferramenta de Importação
+            </Button>
+          </CardContent>
+        </Card>
 
         <Separator />
 

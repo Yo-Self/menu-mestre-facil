@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard, ShoppingCart, BarChart, Clock } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Menu, FolderOpen, UtensilsCrossed, Bell, MessageCircle, Power, CreditCard, ShoppingCart, BarChart, Clock, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -173,8 +173,15 @@ export default function RestaurantDetailPage() {
       title: "Visualizar Relatórios",
       description: "Relatórios de pedidos e vendas",
       icon: BarChart,
-      href: `/dashboard/restaurants/${id}/reports`,
+      href: `/dashboard/reports`,
       color: "text-blue-600",
+    },
+    {
+      title: "Gerenciar Estoque",
+      description: "Controle de estoque de pratos",
+      icon: Boxes,
+      href: "/dashboard/stock",
+      color: "text-amber-600",
     },
     {
       title: "Gerenciar Menus",

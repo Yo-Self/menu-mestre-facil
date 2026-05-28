@@ -13,6 +13,7 @@ import {
   Calculator,
   ClipboardList,
   BarChart2,
+  Boxes,
 } from "lucide-react";
 
 
@@ -41,7 +42,7 @@ const staticMenuItems = [
   { title: "PDV", url: "/dashboard/pos", icon: Calculator },
   // "Pedidos" is injected dynamically below
   { title: "Relatórios", url: "/dashboard/reports", icon: BarChart2 },
-  { title: "Importar", url: "/dashboard/import-menu", icon: Download },
+  { title: "Estoque", url: "/dashboard/stock", icon: Boxes },
   { title: "Ajustes", url: "/dashboard/settings", icon: Settings },
 ];
 

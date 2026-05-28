@@ -747,9 +747,9 @@ export default function Dashboard() {
                   variant="outline" 
                   size="sm" 
                   className="mt-4 rounded-xl text-xs font-bold w-full"
-                  onClick={() => navigate("/dashboard/dishes")}
+                  onClick={() => navigate("/dashboard/stock")}
                 >
-                  Ir para Pratos
+                  Gerenciar Estoque
                 </Button>
               </div>
             ) : (
@@ -808,6 +808,15 @@ export default function Dashboard() {
                   <span>Monitorados:</span>
                   <span className="font-bold text-foreground">{stockSummary.trackedItemsCount} pratos</span>
                 </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-2"
+                  onClick={() => navigate("/dashboard/stock")}
+                >
+                  <Boxes className="h-4 w-4 mr-2" />
+                  Gerenciar Estoque Completo
+                </Button>
               </div>
             )}
           </CardContent>
