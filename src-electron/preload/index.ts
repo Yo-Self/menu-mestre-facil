@@ -17,7 +17,22 @@ const api = {
   setAutoStart: (enable: boolean) => ipcRenderer.invoke('set-auto-start', enable),
   
   // Controle de tela cheia
-  setFullscreen: (enable: boolean) => ipcRenderer.invoke('set-fullscreen', enable)
+  setFullscreen: (enable: boolean) => ipcRenderer.invoke('set-fullscreen', enable),
+
+  // Escuta as atualizações de status do auto-updater
+  onUpdaterStatus: (callback: (data: any) => void) => {
+    const listener = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('updater-status', listener)
+    return () => {
+      ipcRenderer.removeListener('updater-status', listener)
+    }
+  },
+
+  // Solicita a instalação imediata do update
+  installUpdate: () => ipcRenderer.send('install-update'),
+
+  // Retorna a versão atual do app a partir do package.json em execução
+  getAppVersion: () => ipcRenderer.invoke('get-app-version')
 }
 
 // Expõe as APIs caso o isolamento de contexto esteja ativo (padrão seguro)

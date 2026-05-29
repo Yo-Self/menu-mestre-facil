@@ -1,6 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
+import log from 'electron-log'
 import icon from '../../resources/icon.png?asset'
 import { PrintManager } from './printing/print-manager'
 import { ThermalPrinterManager } from './printing/thermal-printer'
@@ -61,6 +63,64 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Inicializa o autoUpdater passando a janela principal
+  setupAutoUpdater(mainWindow)
+}
+
+// Configura os logs para o autoUpdater
+log.transports.file.level = 'info'
+autoUpdater.logger = log
+
+function setupAutoUpdater(mainWindow: BrowserWindow): void {
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  // Handlers para os eventos de atualização
+  autoUpdater.on('checking-for-update', () => {
+    mainWindow.webContents.send('updater-status', { status: 'checking' })
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow.webContents.send('updater-status', {
+      status: 'available',
+      version: info.version
+    })
+  })
+
+  autoUpdater.on('update-not-available', () => {
+    mainWindow.webContents.send('updater-status', { status: 'up-to-date' })
+  })
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    mainWindow.webContents.send('updater-status', {
+      status: 'downloading',
+      percent: progressObj.percent
+    })
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    mainWindow.webContents.send('updater-status', {
+      status: 'downloaded',
+      version: info.version
+    })
+  })
+
+  autoUpdater.on('error', (err) => {
+    mainWindow.webContents.send('updater-status', {
+      status: 'error',
+      message: err == null ? 'unknown' : (err.stack || err).toString()
+    })
+  })
+
+  // Checar se há atualizações
+  if (!is.dev) {
+    autoUpdater.checkForUpdatesAndNotify()
+    // Checar a cada 30 minutos
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify()
+    }, 30 * 60 * 1000)
+  }
 }
 
 // Disable V8 compile hints which cause crashes on macOS ARM64 in recent Electron versions
@@ -109,6 +169,15 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // IPC para o autoUpdater
+  ipcMain.on('install-update', () => {
+    autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion()
+  })
 
   createWindow()
 

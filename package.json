@@ -55,6 +55,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
+    "electron-log": "^5.4.4",
     "electron-pos-printer": "^1.4.0",
     "electron-updater": "^6.3.0",
     "jspdf": "^4.2.1",

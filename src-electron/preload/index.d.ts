@@ -41,10 +41,20 @@ export interface ThermalPrintData {
   items: ThermalPrintItem[]
 }
 
+export interface UpdaterStatus {
+  status: 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  percent?: number
+  message?: string
+}
+
 export interface CustomAPI {
   getPrinters: () => Promise<PrinterInfo[]>
   print: (html: string, options?: PrintOptions) => Promise<{ success: boolean; error?: string }>
   printThermal: (receiptData: ThermalPrintData, options?: any) => Promise<{ success: boolean; error?: string }>
+  onUpdaterStatus: (callback: (data: UpdaterStatus) => void) => () => void
+  installUpdate: () => void
+  getAppVersion: () => Promise<string>
 }
 
 declare global {

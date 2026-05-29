@@ -40,5 +40,6 @@ appImage:
   artifactName: ${productName}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://menumestrefacil.com/updates
+  provider: github
+  owner: Yo-Self
+  repo: menu-mestre-facil
