@@ -8,6 +8,7 @@ files:
 asarUnpack:
   - resources/**
 win:
+  icon: resources/icon.png
   target:
     - nsis
   executableName: menu-mestre-facil

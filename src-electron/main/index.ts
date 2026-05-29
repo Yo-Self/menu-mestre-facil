@@ -42,7 +42,15 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    const url = details.url
+    const isInternal = url.startsWith('file://') || 
+                      (is.dev && process.env['ELECTRON_RENDERER_URL'] && url.startsWith(process.env['ELECTRON_RENDERER_URL']))
+                      
+    if (isInternal) {
+      return { action: 'allow' }
+    }
+
+    shell.openExternal(url)
     return { action: 'deny' }
   })
 

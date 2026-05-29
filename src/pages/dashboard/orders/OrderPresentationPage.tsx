@@ -247,7 +247,7 @@ export default function OrderPresentationPage() {
 
   return (
     <div 
-      className={`min-h-screen p-8 font-sans overflow-hidden select-none flex flex-col justify-between transition-colors duration-500 ${
+      className={`h-screen p-8 font-sans overflow-hidden select-none flex flex-col justify-between transition-colors duration-500 ${
         isDark 
           ? "dark bg-[#0e0e0e] text-[#e5e2e1]" 
           : "bg-slate-50 text-slate-800"
@@ -266,9 +266,9 @@ export default function OrderPresentationPage() {
 
       {promoVideoUrl && promoVideoOrientation === 'horizontal' ? (
         /* SPECIAL HORIZONTAL VIDEO LAYOUT: SIDE-BY-SIDE SPLIT FROM THE VERY TOP */
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8 h-full pb-8 relative z-10">
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8 h-full pb-8 relative z-10 overflow-hidden">
           {/* Left Column: Branding Header + Preparing */}
-          <div className="flex flex-col h-full gap-6">
+          <div className="flex flex-col h-full gap-6 overflow-hidden">
             {/* Header Branding (Only on the left side) */}
             <header className="flex items-center gap-6 py-2 border-b border-slate-200 dark:border-zinc-800/80 pb-4 relative z-10">
               {restaurant?.image_url ? (
@@ -307,7 +307,7 @@ export default function OrderPresentationPage() {
                 </span>
               </div>
 
-              <div className="flex-grow p-6 overflow-y-auto flex flex-col gap-4 max-h-[calc(100vh-280px)] custom-scrollbar">
+              <div className="flex-grow p-6 overflow-y-auto flex flex-col gap-4 min-h-0 custom-scrollbar">
                 {preparingOrders.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {preparingOrders.map((order, index) => {
@@ -342,9 +342,9 @@ export default function OrderPresentationPage() {
           </div>
 
           {/* Right Column: Massive Widescreen Video + Ready List */}
-          <div className="flex flex-col h-full gap-6">
+          <div className="flex flex-col h-full gap-6 overflow-hidden">
             {/* Promotional Video - Ocupa toda a parte de cima ao lado do header sem cabeçalhos textuais para tamanho máximo */}
-            <section className="flex flex-col bg-white/80 dark:bg-zinc-950/60 border border-slate-200/80 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm dark:shadow-none glow-video relative h-[300px] lg:h-[495px] shrink-0">
+            <section className="flex flex-col bg-white/80 dark:bg-zinc-950/60 border border-slate-200/80 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm dark:shadow-none glow-video relative w-full aspect-video shrink-0">
               <div className="flex-grow flex items-center justify-center overflow-hidden bg-black relative w-full h-full">
                 {promoVideoType === 'youtube' ? (() => {
                   const videoId = extractYouTubeId(promoVideoUrl)
@@ -389,7 +389,7 @@ export default function OrderPresentationPage() {
                 </span>
               </div>
 
-              <div className="flex-grow p-6 overflow-y-auto flex flex-col gap-4 max-h-[calc(100vh-660px)] custom-scrollbar">
+              <div className="flex-grow p-6 overflow-y-auto flex flex-col gap-4 min-h-0 custom-scrollbar">
                 {readyOrders.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {readyOrders.map((order, index) => {

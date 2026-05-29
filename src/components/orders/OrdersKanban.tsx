@@ -537,7 +537,15 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/orders/${restaurantId}/presentation`, '_blank')}
+                onClick={() => {
+                  const isElectron = typeof window !== 'undefined' && window.navigator.userAgent.toLowerCase().includes('electron');
+                  if (isElectron) {
+                    const base = window.location.origin + window.location.pathname;
+                    window.open(`${base}#/orders/${restaurantId}/presentation`, '_blank');
+                  } else {
+                    window.open(`/orders/${restaurantId}/presentation`, '_blank');
+                  }
+                }}
                 className="flex items-center gap-2 rounded-xl transition-all duration-300 hover:bg-primary/5 hover:text-primary hover:border-primary/40 hover:scale-105 font-bold shrink-0 h-9"
               >
                 Apresentar pedidos 📺
