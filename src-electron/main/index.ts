@@ -108,9 +108,17 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('error', (err) => {
+    const errMsg = err == null ? 'unknown' : (err.stack || err).toString()
+    const isSignatureError = errMsg.includes('signature') || 
+                             errMsg.includes('validation') || 
+                             errMsg.includes('ShipIt') || 
+                             errMsg.includes('código') ||
+                             errMsg.includes('requirements')
+    
     mainWindow.webContents.send('updater-status', {
       status: 'error',
-      message: err == null ? 'unknown' : (err.stack || err).toString()
+      message: errMsg,
+      isSignatureError
     })
   })
 
@@ -182,6 +190,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-app-version', () => {
     return app.getVersion()
+  })
+
+  // Abre links no navegador padrão do sistema de forma segura
+  ipcMain.on('open-external', (_, url: string) => {
+    shell.openExternal(url)
   })
 
   createWindow()

@@ -79,7 +79,7 @@ export default function UpdateNotification() {
               {updater.status === 'available' && 'Nova atualização disponível!'}
               {updater.status === 'downloading' && 'Baixando atualização...'}
               {updater.status === 'downloaded' && 'Atualização pronta!'}
-              {updater.status === 'error' && 'Erro na atualização'}
+              {updater.status === 'error' && (updater.isSignatureError ? 'Assinatura Pendente (macOS)' : 'Erro na atualização')}
             </h4>
             <button 
               onClick={handleClose} 
@@ -100,9 +100,13 @@ export default function UpdateNotification() {
               <p>A versão {updater.version} foi baixada e está pronta para ser instalada.</p>
             )}
             {updater.status === 'error' && (
-              <p className="text-rose-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap">
-                {updater.message || 'Falha ao atualizar aplicativo.'}
-              </p>
+              updater.isSignatureError ? (
+                <p>O macOS requer um certificado Apple pago para atualizações silenciosas automáticas. Baixe e instale manualmente de forma segura.</p>
+              ) : (
+                <p className="text-rose-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap">
+                  {updater.message || 'Falha ao atualizar aplicativo.'}
+                </p>
+              )
             )}
           </div>
 
@@ -130,6 +134,21 @@ export default function UpdateNotification() {
             >
               <CheckCircle className="w-4 h-4" />
               Reiniciar e Atualizar
+            </button>
+          )}
+
+          {/* Botão de download manual para erro de assinatura no macOS */}
+          {updater.status === 'error' && updater.isSignatureError && (
+            <button
+              onClick={() => {
+                if (window.api && typeof window.api.openExternal === 'function') {
+                  window.api.openExternal('https://github.com/Yo-Self/menu-mestre-facil/releases/latest')
+                }
+              }}
+              className="mt-3 w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-xs py-2 px-3 rounded-lg shadow-lg shadow-indigo-950/20 transition-all flex items-center justify-center gap-1.5 animate-pulse"
+            >
+              <Download className="w-4 h-4" />
+              Baixar Manualmente (.dmg)
             </button>
           )}
         </div>

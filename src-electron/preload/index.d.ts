@@ -46,6 +46,7 @@ export interface UpdaterStatus {
   version?: string
   percent?: number
   message?: string
+  isSignatureError?: boolean
 }
 
 export interface CustomAPI {
@@ -55,6 +56,7 @@ export interface CustomAPI {
   onUpdaterStatus: (callback: (data: UpdaterStatus) => void) => () => void
   installUpdate: () => void
   getAppVersion: () => Promise<string>
+  openExternal: (url: string) => void
 }
 
 declare global {

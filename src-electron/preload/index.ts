@@ -32,7 +32,10 @@ const api = {
   installUpdate: () => ipcRenderer.send('install-update'),
 
   // Retorna a versão atual do app a partir do package.json em execução
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+  // Abre um link externo no navegador do usuário de forma segura
+  openExternal: (url: string) => ipcRenderer.send('open-external', url)
 }
 
 // Expõe as APIs caso o isolamento de contexto esteja ativo (padrão seguro)

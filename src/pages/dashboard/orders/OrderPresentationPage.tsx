@@ -466,7 +466,7 @@ export default function OrderPresentationPage() {
             {/* Header Branding (Only on the left side) */}
             <header className="flex items-center gap-8 md:gap-10 py-4 border-b border-slate-200 dark:border-zinc-800/80 pb-6 relative z-10">
               {restaurant?.image_url ? (
-                <div className="relative group shrink-0">
+                <div className="relative group shrink-0 ml-3">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-xl blur opacity-40 group-hover:opacity-75 transition duration-300" />
                   <img 
                     src={restaurant.image_url} 
@@ -475,7 +475,7 @@ export default function OrderPresentationPage() {
                   />
                 </div>
               ) : (
-                <div className="h-24 w-24 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 shadow-inner">
+                <div className="h-24 w-24 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 shadow-inner ml-3">
                   <Utensils className="h-12 w-12 text-amber-500" />
                 </div>
               )}
@@ -626,7 +626,7 @@ export default function OrderPresentationPage() {
           <header className="flex flex-col sm:flex-row justify-between items-center w-full py-6 mb-10 border-b border-slate-200 dark:border-zinc-800/80 pb-8 relative z-10">
             <div className="flex items-center gap-8 md:gap-10">
               {restaurant?.image_url ? (
-                <div className="relative group shrink-0">
+                <div className="relative group shrink-0 ml-3">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-xl blur opacity-40 group-hover:opacity-75 transition duration-300" />
                   <img 
                     src={restaurant.image_url} 
@@ -635,7 +635,7 @@ export default function OrderPresentationPage() {
                   />
                 </div>
               ) : (
-                <div className="h-24 w-24 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 shadow-inner">
+                <div className="h-24 w-24 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 shadow-inner ml-3">
                   <Utensils className="h-12 w-12 text-amber-500" />
                 </div>
               )}
