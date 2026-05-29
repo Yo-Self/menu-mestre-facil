@@ -18,7 +18,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-
 import {
   Dialog,
   DialogContent,
@@ -44,7 +43,7 @@ const staticMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Restaurantes", url: "/dashboard/restaurants", icon: Store },
   { title: "Cardápio", url: "/dashboard/menus", icon: Menu, isCardapio: true },
-  { title: "PDV", url: "/dashboard/pos", icon: Calculator },
+  { title: "PDV/Caixa", url: "/dashboard/pos", icon: Calculator },
   // "Pedidos" is injected dynamically below
   { title: "Menu Físico", url: "/dashboard/physical-menu", icon: Printer },
   { title: "Relatórios", url: "/dashboard/reports", icon: BarChart2 },
@@ -56,7 +55,7 @@ export function TabBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  
+
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -121,29 +120,34 @@ export function TabBar() {
   return (
     <>
       <div className="flex-1 overflow-hidden relative mx-4 pt-2">
-        <div 
+        <div
           ref={scrollContainerRef}
           onWheel={handleWheel}
           className="flex gap-1 overflow-x-auto hide-scrollbar h-full items-end"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          <style dangerouslySetInnerHTML={{__html: `
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
             .hide-scrollbar::-webkit-scrollbar {
               display: none;
             }
-          `}} />
-          
+          `,
+            }}
+          />
+
           {menuItems.map((item, index) => {
             const IconComponent = item.icon;
             const active = (item as any).isOrders
               ? isOrdersActive
               : (item as any).isCardapio
-              ? isCardapioActive
-              : isActive(item.url);
+                ? isCardapioActive
+                : isActive(item.url);
 
-            const baseClasses = "group relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 select-none whitespace-nowrap min-w-max border-t border-x rounded-t-xl shrink-0";
-            
-            const activeClasses = active 
+            const baseClasses =
+              "group relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 select-none whitespace-nowrap min-w-max border-t border-x rounded-t-xl shrink-0";
+
+            const activeClasses = active
               ? "bg-background text-primary border-border z-10 before:absolute before:-bottom-[1px] before:left-0 before:right-0 before:h-[2px] before:bg-background"
               : "bg-muted/30 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground z-0 border-b-border border-b";
 
@@ -155,7 +159,9 @@ export function TabBar() {
                   className={`${baseClasses} ${activeClasses}`}
                   title={item.title}
                 >
-                  <IconComponent className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                  <IconComponent
+                    className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                  />
                   <span className="font-heading">{item.title}</span>
                 </button>
               );
@@ -169,27 +175,36 @@ export function TabBar() {
                       className={`${baseClasses} ${activeClasses} flex items-center gap-1.5 outline-none`}
                       title={item.title}
                     >
-                      <IconComponent className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                      <IconComponent
+                        className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                      />
                       <span className="font-heading">{item.title}</span>
                       <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64 p-2 rounded-xl border-border/60 backdrop-blur-md bg-background/95 shadow-lg">
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-64 p-2 rounded-xl border-border/60 backdrop-blur-md bg-background/95 shadow-lg"
+                  >
                     <DropdownMenuItem asChild>
                       <NavLink
                         to="/dashboard/menus"
                         className={({ isActive }) =>
                           `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
-                            isActive 
-                              ? "bg-primary/10 text-primary font-medium" 
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           }`
                         }
                       >
                         <Menu className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-sm font-semibold leading-tight font-heading">Cardápios</div>
-                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Gerencie seus cardápios digitais</div>
+                          <div className="text-sm font-semibold leading-tight font-heading">
+                            Cardápios
+                          </div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            Gerencie seus cardápios digitais
+                          </div>
                         </div>
                       </NavLink>
                     </DropdownMenuItem>
@@ -198,16 +213,20 @@ export function TabBar() {
                         to="/dashboard/categories"
                         className={({ isActive }) =>
                           `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
-                            isActive 
-                              ? "bg-primary/10 text-primary font-medium" 
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           }`
                         }
                       >
                         <FolderOpen className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-sm font-semibold leading-tight font-heading">Categorias</div>
-                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Organize pratos por categoria</div>
+                          <div className="text-sm font-semibold leading-tight font-heading">
+                            Categorias
+                          </div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            Organize pratos por categoria
+                          </div>
                         </div>
                       </NavLink>
                     </DropdownMenuItem>
@@ -216,16 +235,20 @@ export function TabBar() {
                         to="/dashboard/dishes"
                         className={({ isActive }) =>
                           `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
-                            isActive 
-                              ? "bg-primary/10 text-primary font-medium" 
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           }`
                         }
                       >
                         <UtensilsCrossed className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-sm font-semibold leading-tight font-heading">Pratos</div>
-                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Cadastre e edite seus pratos</div>
+                          <div className="text-sm font-semibold leading-tight font-heading">
+                            Pratos
+                          </div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            Cadastre e edite seus pratos
+                          </div>
                         </div>
                       </NavLink>
                     </DropdownMenuItem>
@@ -234,16 +257,20 @@ export function TabBar() {
                         to="/dashboard/complements"
                         className={({ isActive }) =>
                           `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
-                            isActive 
-                              ? "bg-primary/10 text-primary font-medium" 
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           }`
                         }
                       >
                         <Plus className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-sm font-semibold leading-tight font-heading">Complementos</div>
-                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Gerencie opcionais e adicionais</div>
+                          <div className="text-sm font-semibold leading-tight font-heading">
+                            Complementos
+                          </div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            Gerencie opcionais e adicionais
+                          </div>
                         </div>
                       </NavLink>
                     </DropdownMenuItem>
@@ -259,7 +286,9 @@ export function TabBar() {
                 className={`${baseClasses} ${activeClasses}`}
                 title={item.title}
               >
-                <IconComponent className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                <IconComponent
+                  className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                />
                 <span className="font-heading">{item.title}</span>
               </NavLink>
             );

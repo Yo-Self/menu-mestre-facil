@@ -51,6 +51,43 @@ interface Dish {
   dish_categories: {
     category_id: string;
   }[];
+  dish_complement_groups?: {
+    complement_groups: {
+      id: string;
+      name: string;
+      complements: {
+        id: string;
+        name: string;
+        price: number;
+      }[];
+    } | null;
+  }[];
+}
+
+interface DishCategoryLink {
+  dish_id: string;
+  category_id: string;
+}
+
+interface DishComplementGroupRow {
+  dish_id: string;
+  position: number | null;
+  complement_groups: {
+    id: string;
+    title: string;
+    description: string | null;
+    required: boolean;
+    max_selections: number;
+  } | null;
+}
+
+interface ComplementRow {
+  id: string;
+  group_id: string;
+  name: string;
+  price: number;
+  is_active: boolean;
+  position: number | null;
 }
 
 interface Menu {
@@ -97,6 +134,7 @@ export default function PhysicalMenuPage() {
   const [showPrices, setShowPrices] = useState(true);
   const [showImages, setShowImages] = useState(false);
   const [showBorders, setShowBorders] = useState(true);
+  const [showComplements, setShowComplements] = useState(false);
   const [onlyAvailable, setOnlyAvailable] = useState(true);
   const [showWatermark, setShowWatermark] = useState(false);
   
@@ -159,22 +197,35 @@ export default function PhysicalMenuPage() {
 
         const { data: dishData, error: dishError } = await supabase
           .from("dishes")
-          .select(`
-            id,
-            name,
-            description,
-            price,
-            image_url,
-            is_available,
-            category_id,
-            dish_categories (
-              category_id
-            )
-          `)
+          .select("id, name, description, price, image_url, is_available, category_id")
           .eq("restaurant_id", selectedRestaurantId);
 
         if (dishError) throw dishError;
-        setDishes(dishData as unknown as Dish[] || []);
+
+        const baseDishes = (dishData || []) as Dish[];
+        const dishIds = baseDishes.map(dish => dish.id);
+
+        let categoryLinks: DishCategoryLink[] = [];
+        if (dishIds.length > 0) {
+          const { data: linkData, error: linkError } = await supabase
+            .from("dish_categories")
+            .select("dish_id, category_id")
+            .in("dish_id", dishIds)
+            .order("position", { ascending: true });
+
+          if (linkError) throw linkError;
+          categoryLinks = (linkData || []) as DishCategoryLink[];
+        }
+
+        const dishesWithCategories = baseDishes.map(dish => ({
+          ...dish,
+          dish_categories: categoryLinks
+            .filter(link => link.dish_id === dish.id)
+            .map(link => ({ category_id: link.category_id })),
+          dish_complement_groups: [],
+        }));
+
+        setDishes(dishesWithCategories);
 
         const { data: menuData, error: menuError } = await supabase
           .from("menus")
@@ -197,6 +248,103 @@ export default function PhysicalMenuPage() {
 
     fetchRestaurantData();
   }, [selectedRestaurantId]);
+
+  useEffect(() => {
+    if (!selectedRestaurantId || dishes.length === 0) return;
+
+    if (!showComplements) {
+      setDishes(prev => prev.map(dish => ({
+        ...dish,
+        dish_complement_groups: [],
+      })));
+      return;
+    }
+
+    const fetchComplementsForCurrentDishes = async () => {
+      try {
+        const dishIds = dishes.map(dish => dish.id);
+        const { data, error } = await supabase
+          .from("dish_complement_groups")
+          .select(`
+            dish_id,
+            position,
+            complement_groups (
+              id,
+              title,
+              description,
+              required,
+              max_selections
+            )
+          `)
+          .in("dish_id", dishIds)
+          .order("position", { ascending: true, nullsFirst: true });
+
+        if (error) throw error;
+
+        const complementMap = new Map<string, DishComplementGroupRow[]>();
+        (data || []).forEach((row) => {
+          const entry = row as DishComplementGroupRow;
+          if (!entry.complement_groups) return;
+
+          const current = complementMap.get(entry.dish_id) || [];
+          current.push(entry);
+          complementMap.set(entry.dish_id, current);
+        });
+
+        const groupIds = Array.from(
+          new Set(
+            Array.from(complementMap.values())
+              .flat()
+              .map(entry => entry.complement_groups?.id)
+              .filter((groupId): groupId is string => Boolean(groupId))
+          )
+        );
+
+        const complementsByGroup = new Map<string, ComplementRow[]>();
+
+        if (groupIds.length > 0) {
+          const { data: complementData, error: complementError } = await supabase
+            .from("complements")
+            .select("id, group_id, name, price, is_active, position")
+            .eq("is_active", true)
+            .in("group_id", groupIds)
+            .order("position", { ascending: true, nullsFirst: true });
+
+          if (complementError) throw complementError;
+
+          (complementData || []).forEach((row) => {
+            const complement = row as ComplementRow;
+            const current = complementsByGroup.get(complement.group_id) || [];
+            current.push(complement);
+            complementsByGroup.set(complement.group_id, current);
+          });
+        }
+
+        setDishes(prev => prev.map(dish => ({
+          ...dish,
+          dish_complement_groups: (complementMap.get(dish.id) || []).map(entry => ({
+            dish_id: entry.dish_id,
+            position: entry.position,
+            complement_groups: entry.complement_groups
+              ? {
+                  id: entry.complement_groups.id,
+                  name: entry.complement_groups.title,
+                  complements: complementsByGroup.get(entry.complement_groups.id) || [],
+                }
+              : null,
+          })),
+        })));
+      } catch (error: any) {
+        toast({
+          title: "Erro ao carregar complementos",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchComplementsForCurrentDishes();
+  }, [selectedRestaurantId, showComplements, dishes.length]);
 
   // Active Restaurant Object
   const selectedRestaurant = useMemo(() => {
@@ -319,7 +467,7 @@ export default function PhysicalMenuPage() {
             <div class="dish-item">
               <div class="dish-header">
                 ${showImages && dish.image_url ? `
-                  <img class="dish-img" src="${dish.image_url}" alt="${dish.name}" />
+                  <img class="dish-img" src="${dish.image_url}" alt="${dish.name}" onerror="this.onerror=null; this.src='${logoUrl}';" />
                 ` : ""}
                 <div class="dish-text-wrapper">
                   <div class="dish-title-row">
@@ -328,6 +476,21 @@ export default function PhysicalMenuPage() {
                     ${showPrices ? `<span class="dish-price">R$ ${dish.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>` : ""}
                   </div>
                   ${showDescriptions && dish.description ? `<p class="dish-description">${dish.description}</p>` : ""}
+                  ${showComplements && dish.dish_complement_groups && dish.dish_complement_groups.length > 0 ? `
+                    <div class="dish-complements" style="margin-top: 4px;">
+                      ${dish.dish_complement_groups.map((dcg: any) => {
+                        if (!dcg.complement_groups) return '';
+                        return `
+                          <div style="font-size: ${Math.max(8, fontSize - 3)}px; color: #6b7280; margin-top: 2px; line-height: 1.2;">
+                            <span style="font-weight: 600;">${dcg.complement_groups.name}:</span> 
+                            ${dcg.complement_groups.complements.map((comp: any) => 
+                              `${comp.name} (+R$ ${comp.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+                            ).join(", ")}
+                          </div>
+                        `;
+                      }).join("")}
+                    </div>
+                  ` : ""}
                 </div>
               </div>
             </div>
@@ -1025,6 +1188,12 @@ export default function PhysicalMenuPage() {
                   <Switch id="show-prices" checked={showPrices} onCheckedChange={setShowPrices} />
                 </div>
 
+                {/* Complements */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="show-complements" className="cursor-pointer">Exibir Adicionais / Complementos</Label>
+                  <Switch id="show-complements" checked={showComplements} onCheckedChange={setShowComplements} />
+                </div>
+
                 {/* Watermark toggle */}
                 {selectedTemplate !== "thermal" && (
                   <div className="flex items-center justify-between">
@@ -1308,6 +1477,7 @@ export default function PhysicalMenuPage() {
                                 <img 
                                   src={dish.image_url} 
                                   alt={dish.name} 
+                                  onError={(e) => { if (selectedRestaurant?.image_url) e.currentTarget.src = selectedRestaurant.image_url; }}
                                   className="w-full h-24 object-cover flex-shrink-0 border-b border-slate-100" 
                                 />
                               )}
@@ -1317,6 +1487,7 @@ export default function PhysicalMenuPage() {
                                 <img 
                                   src={dish.image_url} 
                                   alt={dish.name} 
+                                  onError={(e) => { if (selectedRestaurant?.image_url) e.currentTarget.src = selectedRestaurant.image_url; }}
                                   className={`flex-shrink-0 object-cover border shadow-sm ${
                                     selectedTemplate === "gourmet" 
                                       ? "h-11 w-11 rounded-full border-2" 
@@ -1377,6 +1548,24 @@ export default function PhysicalMenuPage() {
                                   >
                                     {dish.description}
                                   </p>
+                                )}
+                                {showComplements && dish.dish_complement_groups && dish.dish_complement_groups.length > 0 && (
+                                  <div className="mt-1 flex flex-col gap-0.5">
+                                    {dish.dish_complement_groups.map((dcg, idx) => {
+                                      if (!dcg.complement_groups) return null;
+                                      return (
+                                        <div key={idx} className="text-[10px] text-muted-foreground leading-tight" style={{ fontSize: `${Math.max(8, fontSize - 3)}px` }}>
+                                          <span className="font-semibold">{dcg.complement_groups.name}:</span>{' '}
+                                          {dcg.complement_groups.complements.map((c: any, cIdx: number) => (
+                                            <span key={c.id}>
+                                              {c.name} (+R$ {c.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})
+                                              {cIdx < dcg.complement_groups!.complements.length - 1 ? ", " : ""}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 )}
                               </div>
                               {/* Quick omit dish hover button */}
