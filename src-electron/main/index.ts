@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { autoUpdater } from 'electron-updater'
+import pkg from 'electron-updater'
+const { autoUpdater } = pkg
 import log from 'electron-log'
 import icon from '../../resources/icon.png?asset'
 import { PrintManager } from './printing/print-manager'
