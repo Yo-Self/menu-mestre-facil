@@ -129,5 +129,40 @@ export const Analytics = {
     } catch (e) {
       console.error('Falha ao enviar exceção para a telemetria', e);
     }
+  },
+
+  // --- Relatórios Globais ---
+  trackReportPeriodChanged(periodName: string, isAllRestaurants: boolean) {
+    try {
+      posthog.capture('report_period_changed', { 
+        period_name: periodName, 
+        all_restaurants: isAllRestaurants 
+      });
+    } catch (e) {
+      console.error('Telemetria indisponível', e);
+    }
+  },
+
+  trackReportExported(format: 'pdf' | 'csv' | 'xlsx') {
+    try {
+      posthog.capture('report_exported', { 
+        format
+      });
+    } catch (e) {
+      console.error('Telemetria indisponível', e);
+    }
+  },
+
+  // --- Gestão de Estoque ---
+  trackStockUpdated(dishId: string, newQuantity: number, diff: number) {
+    try {
+      posthog.capture('stock_quantity_updated', { 
+        dish_id: dishId, 
+        new_quantity: newQuantity,
+        difference: diff
+      });
+    } catch (e) {
+      console.error('Telemetria indisponível', e);
+    }
   }
 };

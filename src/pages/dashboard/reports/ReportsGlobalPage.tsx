@@ -6,6 +6,7 @@ import { ReportsDashboard } from '@/components/reports/ReportsDashboard';
 import { useReportData } from '@/hooks/useReportData';
 import { getPresetRange, type ReportPreset } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { Analytics } from '@/services/analytics';
 
 interface Restaurant {
   id: string;
@@ -130,11 +131,13 @@ export default function ReportsGlobalPage() {
 
   const handlePresetChange = (p: ReportPreset) => {
     setPreset(p);
+    Analytics.trackReportPeriodChanged(p, selectedRestaurantId === 'all');
   };
 
   const handleCustomChange = (start: string, end: string) => {
     setCustomStart(start);
     setCustomEnd(end);
+    Analytics.trackReportPeriodChanged('custom', selectedRestaurantId === 'all');
   };
 
   return (

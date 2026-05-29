@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import type { ReportOrder, ReportSummary } from '@/hooks/useReportData';
+import { Analytics } from '@/services/analytics';
 
 interface ExportButtonsProps {
   orders: ReportOrder[];
@@ -88,6 +89,7 @@ export function ExportButtons({ orders, summary, periodLabel }: ExportButtonsPro
     a.download = `relatorio-${periodLabel}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    Analytics.trackReportExported('csv');
     toast({ title: 'CSV exportado', description: 'Arquivo baixado com sucesso.' });
   };
 
@@ -108,6 +110,7 @@ export function ExportButtons({ orders, summary, periodLabel }: ExportButtonsPro
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
       XLSX.writeFile(wb, `relatorio-${periodLabel}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      Analytics.trackReportExported('xlsx');
       toast({ title: 'Excel exportado', description: 'Arquivo .xlsx baixado com sucesso.' });
     } catch {
       toast({ title: 'Erro', description: 'Não foi possível exportar o Excel.', variant: 'destructive' });
@@ -160,6 +163,7 @@ export function ExportButtons({ orders, summary, periodLabel }: ExportButtonsPro
       });
 
       doc.save(`relatorio-${periodLabel}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      Analytics.trackReportExported('pdf');
       toast({ title: 'PDF exportado', description: 'Arquivo PDF baixado com sucesso.' });
     } catch (e) {
       console.error(e);

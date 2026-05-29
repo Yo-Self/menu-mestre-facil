@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Analytics } from '@/services/analytics';
 
 interface Restaurant {
   id: string;
@@ -218,6 +219,10 @@ function StockAdjuster({ dish, onUpdate }: StockAdjusterProps) {
         .update({ stock_quantity: newQty })
         .eq('id', dish.id);
       if (error) throw error;
+      
+      const diff = newQty !== null && dish.stock_quantity !== null ? newQty - dish.stock_quantity : 0;
+      Analytics.trackStockUpdated(dish.id, newQty || 0, diff);
+
       onUpdate(dish.id, newQty);
       toast({ title: 'Estoque atualizado', description: `${dish.name}: ${newQty ?? 'Sem controle'}` });
     } catch {
