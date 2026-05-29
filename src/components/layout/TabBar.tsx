@@ -15,6 +15,7 @@ import {
   BarChart2,
   Boxes,
   Printer,
+  ChevronDown,
 } from "lucide-react";
 
 
@@ -25,6 +26,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,10 +43,7 @@ interface Restaurant {
 const staticMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Restaurantes", url: "/dashboard/restaurants", icon: Store },
-  { title: "Menus", url: "/dashboard/menus", icon: Menu },
-  { title: "Categorias", url: "/dashboard/categories", icon: FolderOpen },
-  { title: "Pratos", url: "/dashboard/dishes", icon: UtensilsCrossed },
-  { title: "Complementos", url: "/dashboard/complements", icon: Plus },
+  { title: "Cardápio", url: "/dashboard/menus", icon: Menu, isCardapio: true },
   { title: "PDV", url: "/dashboard/pos", icon: Calculator },
   // "Pedidos" is injected dynamically below
   { title: "Menu Físico", url: "/dashboard/physical-menu", icon: Printer },
@@ -93,10 +97,16 @@ export function TabBar() {
 
   const isOrdersActive = currentPath.startsWith("/orders/");
 
+  const isCardapioActive =
+    currentPath.startsWith("/dashboard/menus") ||
+    currentPath.startsWith("/dashboard/categories") ||
+    currentPath.startsWith("/dashboard/dishes") ||
+    currentPath.startsWith("/dashboard/complements");
+
   const menuItems = [
-    ...staticMenuItems.slice(0, 7),
+    ...staticMenuItems.slice(0, 4),
     { title: "Pedidos", url: "/orders", icon: ClipboardList, isOrders: true },
-    ...staticMenuItems.slice(7),
+    ...staticMenuItems.slice(4),
   ];
 
   // Handle horizontal scroll with mouse wheel
@@ -127,6 +137,8 @@ export function TabBar() {
             const IconComponent = item.icon;
             const active = (item as any).isOrders
               ? isOrdersActive
+              : (item as any).isCardapio
+              ? isCardapioActive
               : isActive(item.url);
 
             const baseClasses = "group relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 select-none whitespace-nowrap min-w-max border-t border-x rounded-t-xl shrink-0";
@@ -146,6 +158,97 @@ export function TabBar() {
                   <IconComponent className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                   <span className="font-heading">{item.title}</span>
                 </button>
+              );
+            }
+
+            if ((item as any).isCardapio) {
+              return (
+                <DropdownMenu key={item.title}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`${baseClasses} ${activeClasses} flex items-center gap-1.5 outline-none`}
+                      title={item.title}
+                    >
+                      <IconComponent className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                      <span className="font-heading">{item.title}</span>
+                      <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64 p-2 rounded-xl border-border/60 backdrop-blur-md bg-background/95 shadow-lg">
+                    <DropdownMenuItem asChild>
+                      <NavLink
+                        to="/dashboard/menus"
+                        className={({ isActive }) =>
+                          `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
+                            isActive 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          }`
+                        }
+                      >
+                        <Menu className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold leading-tight font-heading">Cardápios</div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Gerencie seus cardápios digitais</div>
+                        </div>
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink
+                        to="/dashboard/categories"
+                        className={({ isActive }) =>
+                          `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
+                            isActive 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          }`
+                        }
+                      >
+                        <FolderOpen className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold leading-tight font-heading">Categorias</div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Organize pratos por categoria</div>
+                        </div>
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink
+                        to="/dashboard/dishes"
+                        className={({ isActive }) =>
+                          `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
+                            isActive 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          }`
+                        }
+                      >
+                        <UtensilsCrossed className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold leading-tight font-heading">Pratos</div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Cadastre e edite seus pratos</div>
+                        </div>
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink
+                        to="/dashboard/complements"
+                        className={({ isActive }) =>
+                          `flex items-start gap-3 p-2 rounded-lg transition-colors cursor-pointer w-full text-left select-none outline-none ${
+                            isActive 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          }`
+                        }
+                      >
+                        <Plus className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold leading-tight font-heading">Complementos</div>
+                          <div className="text-[11px] text-muted-foreground/80 mt-0.5">Gerencie opcionais e adicionais</div>
+                        </div>
+                      </NavLink>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               );
             }
 

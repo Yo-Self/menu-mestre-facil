@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { TabBar } from "@/components/layout/TabBar";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Menu, FolderOpen, UtensilsCrossed, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { WaiterCallNotifications } from "@/components/WaiterCallNotifications";
@@ -21,6 +21,12 @@ export function DashboardLayout() {
   };
 
   const restaurantId = currentRestaurantId || getRestaurantIdFromUrl();
+
+  const isCardapioRoute =
+    location.pathname.startsWith("/dashboard/menus") ||
+    location.pathname.startsWith("/dashboard/categories") ||
+    location.pathname.startsWith("/dashboard/dishes") ||
+    location.pathname.startsWith("/dashboard/complements");
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -78,6 +84,65 @@ export function DashboardLayout() {
           </Button>
         </div>
       </header>
+      
+      {isCardapioRoute && (
+        <div className="bg-background/80 backdrop-blur-md border-b border-border/50 sticky top-16 z-30 transition-all duration-300">
+          <div className="max-w-7xl mx-auto px-6 h-12 flex items-center gap-1 overflow-x-auto hide-scrollbar">
+            <NavLink
+              to="/dashboard/menus"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap select-none ${
+                  isActive || location.pathname.startsWith("/dashboard/menus/")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`
+              }
+            >
+              <Menu className="h-4 w-4" />
+              <span className="font-heading">Cardápios</span>
+            </NavLink>
+            <NavLink
+              to="/dashboard/categories"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap select-none ${
+                  isActive || location.pathname.startsWith("/dashboard/categories/")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`
+              }
+            >
+              <FolderOpen className="h-4 w-4" />
+              <span className="font-heading">Categorias</span>
+            </NavLink>
+            <NavLink
+              to="/dashboard/dishes"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap select-none ${
+                  isActive || location.pathname.startsWith("/dashboard/dishes/")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`
+              }
+            >
+              <UtensilsCrossed className="h-4 w-4" />
+              <span className="font-heading">Pratos</span>
+            </NavLink>
+            <NavLink
+              to="/dashboard/complements"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap select-none ${
+                  isActive || location.pathname.startsWith("/dashboard/complements/")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`
+              }
+            >
+              <Plus className="h-4 w-4" />
+              <span className="font-heading">Complementos</span>
+            </NavLink>
+          </div>
+        </div>
+      )}
       
       <main className="flex-1 p-6 animate-fade-in-up w-full">
         <Outlet />
