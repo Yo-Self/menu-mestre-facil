@@ -5,12 +5,14 @@ import {
   XCircle,
   Clock,
   Star,
+  CreditCard,
 } from 'lucide-react';
 import { KpiCard } from './KpiCard';
 import { RevenueTrendChart } from './RevenueTrendChart';
 import { OrdersByDayChart } from './OrdersByDayChart';
 import { TopItemsChart } from './TopItemsChart';
 import { PeakHoursHeatmap } from './PeakHoursHeatmap';
+import { PaymentMethodsChart } from './PaymentMethodsChart';
 import { ExportButtons } from './ExportButtons';
 import { formatCurrencyBRL } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -147,19 +149,34 @@ export function ReportsDashboard({
         </Card>
       </div>
 
-      {/* ── Peak Hours Heatmap ── */}
-      <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="w-4 h-4 text-primary" />
-            Horários de Pico
-          </CardTitle>
-          <CardDescription className="text-xs">Concentração de pedidos por hora do dia</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PeakHoursHeatmap data={summary.peakHours} loading={loading} />
-        </CardContent>
-      </Card>
+      {/* ── Peak Hours Heatmap + Payment Methods ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              Horários de Pico
+            </CardTitle>
+            <CardDescription className="text-xs">Concentração de pedidos por hora do dia</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PeakHoursHeatmap data={summary.peakHours} loading={loading} />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-primary" />
+              Métodos de Pagamento
+            </CardTitle>
+            <CardDescription className="text-xs">Distribuição e volume das transações por forma de pagamento</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PaymentMethodsChart data={summary.byPaymentMethod} loading={loading} />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ── Order Detail Table ── */}
       {!loading && orders.length > 0 && (

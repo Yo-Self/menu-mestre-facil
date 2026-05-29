@@ -9,6 +9,12 @@ export interface ReportOrderItem {
   dishes: { id: string; name: string; category_id: string | null } | null;
 }
 
+export interface ReportOrderPayment {
+  id: string;
+  method: string;
+  amount: number;
+}
+
 export interface ReportOrder {
   id: string;
   created_at: string;
@@ -19,6 +25,14 @@ export interface ReportOrder {
   origin: string | null;
   restaurant_id: string;
   order_items: ReportOrderItem[];
+  order_payments?: ReportOrderPayment[];
+  stripe_payment_intent_id?: string | null;
+}
+
+export interface PaymentMethodData {
+  method: string;
+  count: number;
+  totalCents: number;
 }
 
 export interface ReportSummary {
@@ -32,6 +46,7 @@ export interface ReportSummary {
   trendByDay: { date: string; revenueCents: number; orders: number }[];
   byDayOfWeek: { day: string; dayIndex: number; orders: number }[];
   peakHours: { hour: number; count: number }[];
+  byPaymentMethod: PaymentMethodData[];
 }
 
 export interface ReportData {
@@ -110,6 +125,66 @@ function aggregateOrders(orders: ReportOrder[]): ReportSummary {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
+  // Payment methods
+  const paymentMap = new Map<string, { method: string; count: number; totalCents: number }>();
+  
+  const translateMethod = (method: string): string => {
+    const map: Record<string, string> = {
+      cash: 'Dinheiro',
+      credit_card: 'Cartão de Crédito',
+      debit_card: 'Cartão de Débito',
+      pix: 'Pix',
+      stripe: 'Stripe (Online)',
+      card: 'Cartão',
+      online: 'Pago pelo App',
+      other: 'Outro/Não especificado'
+    };
+    return map[method] ?? method;
+  };
+
+  orders.forEach(order => {
+    if (order.status === 'cancelled') return;
+
+    const payments = order.order_payments;
+    if (payments && payments.length > 0) {
+      payments.forEach((p: any) => {
+        const methodKey = p.method || 'other';
+        const existing = paymentMap.get(methodKey);
+        if (existing) {
+          existing.count += 1;
+          existing.totalCents += p.amount;
+        } else {
+          paymentMap.set(methodKey, { method: methodKey, count: 1, totalCents: p.amount });
+        }
+      });
+    } else {
+      // Fallback
+      let methodKey = (order as any).payment_method;
+      if (!methodKey) {
+        if (order.stripe_payment_intent_id) {
+          methodKey = 'stripe';
+        } else {
+          methodKey = 'other';
+        }
+      }
+      const existing = paymentMap.get(methodKey);
+      if (existing) {
+        existing.count += 1;
+        existing.totalCents += order.total_price;
+      } else {
+        paymentMap.set(methodKey, { method: methodKey, count: 1, totalCents: order.total_price });
+      }
+    }
+  });
+
+  const byPaymentMethod = Array.from(paymentMap.values())
+    .map(p => ({
+      method: translateMethod(p.method),
+      count: p.count,
+      totalCents: p.totalCents,
+    }))
+    .sort((a, b) => b.totalCents - a.totalCents);
+
   return {
     totalRevenueCents,
     totalOrders,
@@ -121,6 +196,7 @@ function aggregateOrders(orders: ReportOrder[]): ReportSummary {
     trendByDay,
     byDayOfWeek,
     peakHours,
+    byPaymentMethod,
   };
 }
 
@@ -142,6 +218,7 @@ async function fetchOrdersForPeriod(
       customer_info,
       origin,
       restaurant_id,
+      stripe_payment_intent_id,
       order_items (
         id,
         quantity,
@@ -151,6 +228,11 @@ async function fetchOrdersForPeriod(
           name,
           category_id
         )
+      ),
+      order_payments (
+        id,
+        method,
+        amount
       )
     `)
     .in('restaurant_id', restaurantIds)
