@@ -74,6 +74,7 @@ const App = () => (
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/orders/:restaurantId/presentation" element={<OrderPresentationPage />} />
+                <Route path="/tv/:restaurantId" element={<OrderPresentationPage />} />
                 <Route element={
                   <AuthGuard>
                     <DashboardLayout />

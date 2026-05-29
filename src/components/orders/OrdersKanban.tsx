@@ -15,6 +15,7 @@ import { OrderStatus, OrderWithItems } from '../../types/orders'
 import { Button } from '../ui/button'
 import { ArrowLeft, Volume2, VolumeX, Settings } from 'lucide-react'
 import { useRestaurant } from '../../hooks/useRestaurant'
+import { supabase } from '../../integrations/supabase/client'
 import {
   Dialog,
   DialogContent,
@@ -135,26 +136,88 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
   }
 
   const [identifierMode, setIdentifierMode] = useState(localStorage.getItem("queue_identifier_mode") || "senha")
-
-  const handleToggleIdentifierMode = () => {
-    const nextVal = identifierMode === "senha" ? "mesa" : "senha"
-    setIdentifierMode(nextVal)
-    localStorage.setItem("queue_identifier_mode", nextVal)
-  }
-
   const [queueTheme, setQueueTheme] = useState(localStorage.getItem("queue_theme") || "dark")
-
-  const handleToggleQueueTheme = (theme: "dark" | "light") => {
-    setQueueTheme(theme)
-    localStorage.setItem("queue_theme", theme)
-    window.dispatchEvent(new Event('storage'))
-  }
-
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [videoUrl, setVideoUrl] = useState(localStorage.getItem("queue_promo_video_url") || "")
   const [videoType, setVideoType] = useState(localStorage.getItem("queue_promo_video_type") || "youtube")
   const [videoOrientation, setVideoOrientation] = useState(localStorage.getItem("queue_promo_video_orientation") || "vertical")
   const [hasActiveVideo, setHasActiveVideo] = useState(!!localStorage.getItem("queue_promo_video_url"))
+
+  const { restaurant } = useRestaurant(restaurantId)
+
+  // Sincronizar estados locais a partir do banco de dados quando o restaurante carregar
+  React.useEffect(() => {
+    if (restaurant && restaurant.queue_settings) {
+      const settings = restaurant.queue_settings as any
+      if (settings.identifier) {
+        setIdentifierMode(settings.identifier)
+        localStorage.setItem("queue_identifier_mode", settings.identifier)
+      }
+      if (settings.theme) {
+        setQueueTheme(settings.theme)
+        localStorage.setItem("queue_theme", settings.theme)
+      }
+      if (settings.video_url !== undefined) {
+        setVideoUrl(settings.video_url)
+        if (settings.video_url) {
+          localStorage.setItem("queue_promo_video_url", settings.video_url)
+          setHasActiveVideo(true)
+        } else {
+          localStorage.removeItem("queue_promo_video_url")
+          setHasActiveVideo(false)
+        }
+      }
+      if (settings.video_type) {
+        setVideoType(settings.video_type)
+        localStorage.setItem("queue_promo_video_type", settings.video_type)
+      }
+      if (settings.video_orientation) {
+        setVideoOrientation(settings.video_orientation)
+        localStorage.setItem("queue_promo_video_orientation", settings.video_orientation)
+      }
+      window.dispatchEvent(new Event('storage'))
+    }
+  }, [restaurant])
+
+  // Helper para persistir alterações na nuvem (Supabase)
+  const pushQueueSettingsToSupabase = async (updates: any) => {
+    if (!restaurantId) return
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from("restaurants")
+        .select("queue_settings")
+        .eq("id", restaurantId)
+        .single()
+      
+      const currentSettings = (data && data.queue_settings && typeof data.queue_settings === 'object') ? data.queue_settings : {}
+      const newSettings = { ...currentSettings, ...updates }
+
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          queue_settings: newSettings
+        })
+        .eq("id", restaurantId)
+
+      if (error) throw error
+    } catch (err) {
+      console.error("Error pushing queue settings to Supabase:", err)
+    }
+  }
+
+  const handleToggleIdentifierMode = () => {
+    const nextVal = identifierMode === "senha" ? "mesa" : "senha"
+    setIdentifierMode(nextVal)
+    localStorage.setItem("queue_identifier_mode", nextVal)
+    pushQueueSettingsToSupabase({ identifier: nextVal })
+  }
+
+  const handleToggleQueueTheme = (theme: "dark" | "light") => {
+    setQueueTheme(theme)
+    localStorage.setItem("queue_theme", theme)
+    window.dispatchEvent(new Event('storage'))
+    pushQueueSettingsToSupabase({ theme })
+  }
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -181,6 +244,11 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
     setHasActiveVideo(true)
     setSettingsModalOpen(false)
     window.dispatchEvent(new Event('storage'))
+    pushQueueSettingsToSupabase({
+      video_url: videoUrl.trim(),
+      video_type: videoType,
+      video_orientation: videoOrientation
+    })
   }
 
   const handleRemoveVideo = async () => {
@@ -192,9 +260,12 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
     setHasActiveVideo(false)
     setSettingsModalOpen(false)
     window.dispatchEvent(new Event('storage'))
+    pushQueueSettingsToSupabase({
+      video_url: "",
+      video_type: "youtube",
+      video_orientation: "vertical"
+    })
   }
-
-  const { restaurant } = useRestaurant(restaurantId)
 
   const visibleStatusOrder = STATUS_ORDER.filter(status => {
     if (status === 'pending_payment') {

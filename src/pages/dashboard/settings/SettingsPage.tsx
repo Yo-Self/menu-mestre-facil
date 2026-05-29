@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [restaurant, setRestaurant] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     slug: "",
@@ -179,18 +180,28 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setProfile(data);
+      setProfile(profileData);
+
+      // Buscar restaurante vinculado ao proprietário
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      setRestaurant(restaurantData);
+
       setFormData({
-        full_name: data.full_name || "",
-        slug: data.slug || "",
+        full_name: profileData.full_name || "",
+        slug: restaurantData ? (restaurantData.slug || "") : (profileData.slug || ""),
       });
     } catch (error: any) {
       toast({
@@ -209,30 +220,55 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       let slug = formData.slug;
-      if (slug !== profile.slug) {
-        slug = await generateUniqueSlug(generateSlug(slug), 'profiles', profile.id);
+      
+      // 1. Atualizar o slug do perfil se houver alteração
+      let profileSlug = slug;
+      if (profileSlug !== profile.slug) {
+        profileSlug = await generateUniqueSlug(generateSlug(profileSlug), 'profiles', profile.id);
       }
 
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           full_name: formData.full_name,
-          slug,
+          slug: profileSlug,
         })
         .eq("id", profile.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setProfile({ ...profile, full_name: formData.full_name, slug });
+      // 2. Se o usuário possuir um restaurante, atualizar o slug do restaurante no banco
+      if (restaurant) {
+        let restaurantSlug = slug;
+        if (restaurantSlug !== restaurant.slug) {
+          restaurantSlug = await generateUniqueSlug(generateSlug(restaurantSlug), 'restaurants', restaurant.id);
+        }
+
+        const { error: restaurantError } = await supabase
+          .from("restaurants")
+          .update({
+            slug: restaurantSlug,
+          })
+          .eq("id", restaurant.id);
+
+        if (restaurantError) throw restaurantError;
+        
+        setRestaurant({ ...restaurant, slug: restaurantSlug });
+        slug = restaurantSlug; // Mantém sincronizado com o slug do restaurante como principal
+      } else {
+        slug = profileSlug;
+      }
+
+      setProfile({ ...profile, full_name: formData.full_name, slug: profileSlug });
       setFormData({ ...formData, slug });
 
       toast({
-        title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso.",
+        title: "Configurações atualizadas!",
+        description: "Suas informações de perfil e identificador do restaurante foram salvas com sucesso.",
       });
     } catch (error: any) {
       toast({
-        title: "Erro ao atualizar perfil",
+        title: "Erro ao atualizar configurações",
         description: error.message,
         variant: "destructive",
       });
@@ -307,43 +343,55 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Identificador da Organização */}
-        {profile?.is_organization && (
+        {/* Identificador do Restaurante / Organização */}
+        {(profile?.is_organization || restaurant) && (
           <>
             <Separator />
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  Identificador da Organização
+                  <Globe className="h-5 w-5 text-primary" />
+                  Identificador e Endereços (Slug)
                 </CardTitle>
                 <CardDescription>
-                  Gerencie o identificador único da sua organização nas URLs.
+                  Gerencie o identificador único do seu restaurante nas URLs do menu digital e painel da TV.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Identificador (Slug)</Label>
+                  <Label htmlFor="slug" className="font-heading font-black">Identificador (Slug)</Label>
                   <Input
                     id="slug"
                     name="slug"
                     value={formData.slug}
                     onChange={handleChange}
-                    placeholder="ex: minha-empresa"
+                    placeholder="ex: auri-monteiro"
+                    className="max-w-md font-mono text-primary font-bold"
                   />
-                  <p className="text-sm text-muted-foreground">
-                    Este identificador será usado nas URLs dos seus restaurantes.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Este identificador é utilizado para montar as URLs públicas do seu negócio. Ao alterá-lo, seus links antigos de cardápio e TV serão atualizados.
                   </p>
                 </div>
                 
-                <UrlPreview
-                  title="URL da Organização"
-                  description="Link para a página da sua organização"
-                  url={`${baseUrl}/${formData.slug}`}
-                  type="organization"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {restaurant && (
+                    <UrlPreview
+                      title="📺 Painel da TV (Fila de Pedidos)"
+                      description="URL para abrir no navegador da Smart TV LG"
+                      url={`${baseUrl}/tv/${formData.slug}`}
+                      type="organization"
+                    />
+                  )}
+                  
+                  <UrlPreview
+                    title="📱 Cardápio Digital (Clientes)"
+                    description="Link para a página do seu restaurante"
+                    url={restaurant ? `https://yo-self.com/restaurant/${formData.slug}` : `${baseUrl}/${formData.slug}`}
+                    type="organization"
+                  />
+                </div>
                 
-                <Button onClick={handleSaveProfile} disabled={saving}>
+                <Button onClick={handleSaveProfile} disabled={saving} className="rounded-xl font-bold">
                   {saving ? "Salvando..." : "Salvar Identificador"}
                 </Button>
               </CardContent>
