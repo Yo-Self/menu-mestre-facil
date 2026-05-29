@@ -43,3 +43,4 @@ publish:
   provider: github
   owner: Yo-Self
   repo: menu-mestre-facil
+  releaseType: release

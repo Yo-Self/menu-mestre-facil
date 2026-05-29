@@ -116,10 +116,14 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
 
   // Checar se há atualizações
   if (!is.dev) {
-    autoUpdater.checkForUpdatesAndNotify()
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      log.error('Erro ao verificar atualizações na inicialização:', err)
+    })
     // Checar a cada 30 minutos
     setInterval(() => {
-      autoUpdater.checkForUpdatesAndNotify()
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        log.error('Erro ao verificar atualizações no intervalo agendado:', err)
+      })
     }, 30 * 60 * 1000)
   }
 }
