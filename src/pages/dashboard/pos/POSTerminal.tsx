@@ -48,6 +48,7 @@ interface CartItem {
     complement_id: string;
     name: string;
     price: number;
+    group_title?: string;
   }[];
 }
 
@@ -344,6 +345,7 @@ export default function POSTerminal() {
         .from("dish_complement_groups")
         .select(`
           complement_group_id,
+          position,
           complement_group:complement_groups (
             id,
             title,
@@ -352,7 +354,8 @@ export default function POSTerminal() {
             max_selections
           )
         `)
-        .eq("dish_id", dishId);
+        .eq("dish_id", dishId)
+        .order("position", { ascending: true, nullsFirst: true });
 
       if (error) throw error;
 
@@ -457,13 +460,16 @@ export default function POSTerminal() {
       }
     }
 
-    const flatComplements = Object.values(selectedComplementsTemp).flatMap(arr => 
-      arr.map(c => ({
+    const flatComplements = Object.entries(selectedComplementsTemp).flatMap(([groupId, arr]) => {
+      const group = complementGroups.find(g => g.id === groupId);
+      const groupTitle = group ? group.title : "Complementos";
+      return arr.map(c => ({
         complement_id: c.id,
         name: c.name,
         price: c.price,
-      }))
-    );
+        group_title: groupTitle,
+      }));
+    });
 
     addToCart(selectedDishForComplements, flatComplements);
     setComplementsModalOpen(false);
@@ -694,10 +700,12 @@ export default function POSTerminal() {
         setCustomerPhone("");
         setPayments([]);
 
-        // Impressão automática no fechamento offline
-        setTimeout(() => {
-          printReceipt(offlineOrder, snapshot);
-        }, 150);
+        // Impressão automática no fechamento offline se ativada nas configurações
+        if (localStorage.getItem("thermal_print_automatic") === "true") {
+          setTimeout(() => {
+            printReceipt(offlineOrder, snapshot);
+          }, 150);
+        }
         return;
       }
 
@@ -732,10 +740,12 @@ export default function POSTerminal() {
       setCustomerPhone("");
       setPayments([]);
 
-      // Impressão automática no fechamento online
-      setTimeout(() => {
-        printReceipt(finalOrder, snapshot);
-      }, 150);
+      // Impressão automática no fechamento online se ativada nas configurações
+      if (localStorage.getItem("thermal_print_automatic") === "true") {
+        setTimeout(() => {
+          printReceipt(finalOrder, snapshot);
+        }, 150);
+      }
 
       // If we are closing table orders, update their status to "finished" in Supabase
       if (activeOrderIdsBeingClosed.length > 0) {
@@ -902,7 +912,16 @@ export default function POSTerminal() {
       
       let compsText = "";
       if (item.selected_complements && item.selected_complements.length > 0) {
-        compsText = `<div style="font-size: 9px; color: #555; padding-left: 5px; font-style: italic;">+ ${item.selected_complements.map((c: any) => c.name).join(", ")}</div>`;
+        const groups: Record<string, any[]> = {};
+        item.selected_complements.forEach((c: any) => {
+          const title = c.group_title || "Complementos";
+          if (!groups[title]) groups[title] = [];
+          groups[title].push(c);
+        });
+        
+        compsText = Object.entries(groups)
+          .map(([title, comps]) => `<div style="font-size: 8px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${title}:</strong> ${comps.map(c => c.name).join(", ")}</div>`)
+          .join("");
       }
       
       return `
@@ -1074,7 +1093,16 @@ export default function POSTerminal() {
     const itemsHtml = items.map((item: any) => {
       let compsText = "";
       if (item.selected_complements && item.selected_complements.length > 0) {
-        compsText = `<div style="font-size: 11px; font-weight: bold; color: #333; padding-left: 5px;">+ ${item.selected_complements.map((c: any) => c.name).join(", ")}</div>`;
+        const groups: Record<string, any[]> = {};
+        item.selected_complements.forEach((c: any) => {
+          const title = c.group_title || "Complementos";
+          if (!groups[title]) groups[title] = [];
+          groups[title].push(c);
+        });
+        
+        compsText = Object.entries(groups)
+          .map(([title, comps]) => `<div style="font-size: 11px; font-weight: bold; color: #111; padding-left: 5px; margin-top: 2px;"><strong>${title}:</strong> ${comps.map(c => c.name).join(", ")}</div>`)
+          .join("");
       }
       
       let notesText = "";
@@ -1279,7 +1307,8 @@ export default function POSTerminal() {
             selected_complements: complements.map((c: any) => ({
               complement_id: c.complement_id || c.id,
               name: c.name,
-              price: c.price
+              price: c.price,
+              group_title: c.group_title || "Complementos"
             }))
           };
           
@@ -1703,11 +1732,27 @@ export default function POSTerminal() {
                     <h5 className="font-heading font-bold text-xs text-foreground truncate">{item.dish.name}</h5>
                     
                     {/* Complements listed underneath */}
-                    {item.selected_complements.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground/90 mt-0.5 max-w-[200px] leading-tight">
-                        + {item.selected_complements.map(c => c.name).join(", ")}
-                      </p>
-                    )}
+                    {item.selected_complements.length > 0 && (() => {
+                      const groups: Record<string, typeof item.selected_complements> = {};
+                      item.selected_complements.forEach(c => {
+                        const title = c.group_title || "Complementos";
+                        if (!groups[title]) groups[title] = [];
+                        groups[title].push(c);
+                      });
+                      
+                      return (
+                        <div className="mt-1 space-y-1 bg-black/5 dark:bg-white/5 p-1.5 rounded-lg border border-border/30 max-w-[220px]">
+                          {Object.entries(groups).map(([title, comps]) => (
+                            <div key={title} className="text-[9px] leading-tight flex flex-wrap gap-x-1">
+                              <span className="font-bold text-foreground/85 uppercase tracking-wider text-[8px]">{title}:</span>
+                              <span className="text-muted-foreground">
+                                {comps.map(c => c.name).join(", ")}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     <div className="mt-2 flex items-center gap-2.5">
                       <div className="flex items-center border rounded-lg overflow-hidden bg-background h-7">
@@ -1860,18 +1905,31 @@ export default function POSTerminal() {
                       <div className="p-3 divide-y divide-border/20">
                         {(order.order_items || []).map((item: any) => {
                           const itemComplements = (item.selected_complements as any[]) || [];
-                          const complementsSum = itemComplements.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
                           const itemTotal = (item.price_at_time_of_order * item.quantity);
 
                           return (
                             <div key={item.id} className="py-2 first:pt-0 last:pb-0 flex justify-between gap-4 text-xs font-semibold">
                               <div className="min-w-0 flex-1">
                                 <span className="font-bold text-foreground">{item.quantity}x {item.dish?.name || "Produto"}</span>
-                                {itemComplements.length > 0 && (
-                                  <p className="text-[10px] text-muted-foreground/80 font-medium mt-0.5">
-                                    + {itemComplements.map(c => c.name).join(", ")}
-                                  </p>
-                                )}
+                                {itemComplements.length > 0 && (() => {
+                                  const groups: Record<string, any[]> = {};
+                                  itemComplements.forEach(c => {
+                                    const title = c.group_title || "Complementos";
+                                    if (!groups[title]) groups[title] = [];
+                                    groups[title].push(c);
+                                  });
+                                  
+                                  return (
+                                    <div className="text-[9px] text-muted-foreground/80 font-medium mt-0.5 space-y-0.5">
+                                      {Object.entries(groups).map(([title, comps]) => (
+                                        <div key={title} className="flex flex-wrap gap-x-1">
+                                          <strong className="text-foreground/70">{title}:</strong>
+                                          <span>{comps.map(c => c.name).join(", ")}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <span className="font-bold text-primary text-right">
                                 {(itemTotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -2241,11 +2299,25 @@ export default function POSTerminal() {
                           <span>{((unitTotal * item.quantity) / 100).toFixed(2)}</span>
                         </div>
                       </div>
-                      {item.selected_complements.length > 0 && (
-                        <p className="text-[8px] text-muted-foreground ml-1">
-                          + {item.selected_complements.map(c => c.name).join(", ")}
-                        </p>
-                      )}
+                      {item.selected_complements.length > 0 && (() => {
+                        const groups: Record<string, typeof item.selected_complements> = {};
+                        item.selected_complements.forEach(c => {
+                          const title = c.group_title || "Complementos";
+                          if (!groups[title]) groups[title] = [];
+                          groups[title].push(c);
+                        });
+                        
+                        return (
+                          <div className="text-[8px] text-muted-foreground ml-1 font-semibold space-y-0.5">
+                            {Object.entries(groups).map(([title, comps]) => (
+                              <div key={title} className="flex flex-wrap gap-x-1">
+                                <strong className="text-foreground/75">{title}:</strong>
+                                <span>{comps.map(c => c.name).join(", ")}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

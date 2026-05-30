@@ -14,7 +14,8 @@ import {
   Printer,
   Play,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Volume2
 } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/ui/WhatsappIcon'
 import {
@@ -27,6 +28,7 @@ import { OrderStatus, OrderWithItems } from '../../types/orders'
 import { usePrinting } from '../../hooks/usePrinting'
 import { useRestaurant } from '../../hooks/useRestaurant'
 import { supabase } from '../../integrations/supabase/client'
+import { useToast } from '../../hooks/use-toast'
 
 interface OrderCardProps {
   order: OrderWithItems
@@ -53,6 +55,7 @@ const STATUS_COLOR_MAP: Record<OrderStatus, string> = {
 }
 
 export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardProps) {
+  const { toast } = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
   const [elapsedMinutes, setElapsedMinutes] = useState(0)
 
@@ -166,6 +169,34 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     }
   }
   
+  const handleRecallTV = async () => {
+    try {
+      const channel = supabase.channel(`tv_announcements:${order.restaurant_id}`)
+      await channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'announce_order',
+            payload: { orderId: order.id }
+          })
+          supabase.removeChannel(channel)
+        }
+      })
+
+      toast({
+        title: "Pedido Chamado!",
+        description: `O pedido #${order.id.slice(-6)} foi enviado para chamada na TV.`,
+      })
+    } catch (err) {
+      console.error("Erro ao enviar chamada para a TV:", err)
+      toast({
+        title: "Erro ao chamar",
+        description: "Não foi possível enviar a chamada para a TV.",
+        variant: "destructive"
+      })
+    }
+  }
+
   const {
     attributes,
     listeners,
@@ -481,7 +512,33 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
             )}
           </div>
         )}
-        {action && (
+        {currentStatus === 'ready' ? (
+          <div className="flex gap-2 mt-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 font-bold rounded-lg h-8 flex items-center justify-center gap-1.5 text-xs transition-all duration-200"
+              onClick={async (e) => {
+                e.stopPropagation()
+                await handleRecallTV()
+              }}
+            >
+              <Volume2 className="h-3.5 w-3.5" />
+              Chamar na TV
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg h-8 flex items-center justify-center gap-1.5 text-xs transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleStatusChange('finished')
+              }}
+            >
+              <Check className="h-3 w-3 stroke-[3]" />
+              Finalizar
+            </Button>
+          </div>
+        ) : action && (
           <Button
             size="sm"
             className={action.className}

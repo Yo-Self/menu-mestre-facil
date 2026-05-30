@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { TabBar } from "@/components/layout/TabBar";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,22 @@ export function DashboardLayout() {
     location.pathname.startsWith("/dashboard/dishes") ||
     location.pathname.startsWith("/dashboard/complements");
 
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(64);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setHeaderHeight(entry.target.clientHeight);
+      }
+    });
+
+    resizeObserver.observe(headerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -43,8 +59,11 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex flex-col w-full bg-muted/20">
-      <header className="glass-header sticky top-0 z-40 h-16 flex items-center justify-between px-4 transition-all duration-300">
-        <div className="flex items-center shrink-0">
+      <header 
+        ref={headerRef}
+        className="glass-header sticky top-0 z-40 min-h-16 h-auto py-2 flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-4 gap-3 lg:gap-4 transition-all duration-300"
+      >
+        <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto gap-4 shrink-0">
           <div className="flex items-center gap-2 mr-2">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse hidden sm:block" />
             <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent font-heading font-extrabold tracking-wide hidden sm:block">
@@ -54,11 +73,39 @@ export function DashboardLayout() {
               G
             </span>
           </div>
+
+          {/* Compact action buttons for tablet/mobile views */}
+          <div className="flex lg:hidden items-center gap-2 shrink-0">
+            {restaurantId && (
+              <WaiterCallNotifications 
+                restaurantId={restaurantId}
+                onCallAttended={(call) => {
+                  toast({
+                    title: "Chamada atendida!",
+                    description: `Mesa ${call.table_number} foi atendida com sucesso.`,
+                  });
+                }}
+              />
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => window.open("/dashboard/pos/waiter", "_blank")} 
+              title="Modo Garçom"
+              className="hover:bg-primary/10 hover:text-primary transition-colors rounded-full h-8 w-8"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full h-8 w-8">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <TabBar />
         
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Desktop actions layout */}
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
           {restaurantId && (
             <WaiterCallNotifications 
               restaurantId={restaurantId}
@@ -86,8 +133,11 @@ export function DashboardLayout() {
       </header>
       
       {isCardapioRoute && (
-        <div className="bg-background/80 backdrop-blur-md border-b border-border/50 sticky top-16 z-30 transition-all duration-300">
-          <div className="max-w-7xl mx-auto px-6 h-12 flex items-center gap-1 overflow-x-auto hide-scrollbar">
+        <div 
+          className="bg-background/80 backdrop-blur-md border-b border-border/50 sticky z-30 transition-all duration-300"
+          style={{ top: `${headerHeight}px` }}
+        >
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 flex flex-wrap items-center gap-1.5 sm:gap-2 h-auto">
             <NavLink
               to="/dashboard/menus"
               className={({ isActive }) =>

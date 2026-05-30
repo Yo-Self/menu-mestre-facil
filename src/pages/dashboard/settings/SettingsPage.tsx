@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [paperWidth, setPaperWidth] = useState(localStorage.getItem("thermal_paper_width") || "80mm");
   const [printQueuePassword, setPrintQueuePassword] = useState(localStorage.getItem("thermal_print_password") === "true");
   const [printKitchenReceipt, setPrintKitchenReceipt] = useState(localStorage.getItem("thermal_print_kitchen") === "true");
+  const [printAutomaticReceipt, setPrintAutomaticReceipt] = useState(localStorage.getItem("thermal_print_automatic") === "true");
 
   const handleTogglePrintPassword = (checked: boolean) => {
     setPrintQueuePassword(checked);
@@ -57,6 +58,15 @@ export default function SettingsPage() {
     toast({
       title: checked ? "Cupom da cozinha ativado!" : "Cupom da cozinha desativado!",
       description: checked ? "O sistema imprimirá a via da cozinha automaticamente após o cupom de venda." : "Não será mais impresso o cupom da cozinha."
+    });
+  };
+
+  const handleTogglePrintAutomatic = (checked: boolean) => {
+    setPrintAutomaticReceipt(checked);
+    localStorage.setItem("thermal_print_automatic", checked ? "true" : "false");
+    toast({
+      title: checked ? "Impressão automática ativada!" : "Impressão automática desativada!",
+      description: checked ? "Os cupons de venda serão impressos automaticamente ao finalizar o pedido." : "Os cupons do PDV só serão impressos ao clicar no botão manualmente."
     });
   };
 
@@ -112,6 +122,7 @@ export default function SettingsPage() {
     localStorage.setItem("thermal_paper_width", paperWidth);
     localStorage.setItem("thermal_print_password", printQueuePassword ? "true" : "false");
     localStorage.setItem("thermal_print_kitchen", printKitchenReceipt ? "true" : "false");
+    localStorage.setItem("thermal_print_automatic", printAutomaticReceipt ? "true" : "false");
     toast({
       title: "Configurações de impressão salvas!",
       description: "Suas preferências de impressão foram configuradas com sucesso.",
@@ -619,6 +630,22 @@ export default function SettingsPage() {
                   id="print-kitchen"
                   checked={printKitchenReceipt}
                   onCheckedChange={handleTogglePrintKitchen}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="print-automatic" className="font-heading font-black">
+                    Imprimir Cupom Automaticamente
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Realiza a impressão do comprovante de venda automaticamente no PDV logo após finalizar o pedido.
+                  </p>
+                </div>
+                <Switch
+                  id="print-automatic"
+                  checked={printAutomaticReceipt}
+                  onCheckedChange={handleTogglePrintAutomatic}
                 />
               </div>
             </div>

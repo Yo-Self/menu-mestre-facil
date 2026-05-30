@@ -147,12 +147,11 @@ export function TabBar() {
 
   return (
     <>
-      <div className="flex-1 overflow-hidden relative mx-2 sm:mx-4 pt-2">
+      <div className="flex-1 w-full overflow-visible relative mx-2 sm:mx-4 py-1">
         <div
           ref={scrollContainerRef}
           onWheel={handleWheel}
-          className="flex gap-0.5 sm:gap-1 overflow-x-auto lg:overflow-x-visible hide-scrollbar h-full items-end"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          className="flex flex-wrap gap-x-0.5 gap-y-1 sm:gap-x-1 items-end w-full justify-start lg:justify-start"
         >
           <style
             dangerouslySetInnerHTML={{
@@ -173,7 +172,7 @@ export function TabBar() {
                 : isActive(item.url);
 
             const baseClasses =
-              "group relative flex items-center gap-1 md:gap-1.5 lg:gap-2 px-2 md:px-3 lg:px-4 py-2 text-[10px] sm:text-xs lg:text-sm font-medium transition-all duration-200 select-none whitespace-nowrap min-w-max border-t border-x rounded-t-xl shrink-1 lg:shrink-0";
+              "group relative flex items-center gap-1 md:gap-1.5 lg:gap-2 px-1.5 sm:px-2 md:px-3 lg:px-4 py-1.5 sm:py-2 text-[9px] sm:text-xs lg:text-sm font-medium transition-all duration-200 select-none whitespace-nowrap min-w-max border-t border-x rounded-t-xl shrink-1 lg:shrink-0";
 
             const activeClasses = active
               ? "bg-background text-primary border-border z-10 before:absolute before:-bottom-[1px] before:left-0 before:right-0 before:h-[2px] before:bg-background"

@@ -150,6 +150,50 @@ export default function OrderPresentationPage() {
     }
   }, [resolvedId])
 
+  // Listen for broadcast announcements (e.g. manual recall from the orders dashboard)
+  useEffect(() => {
+    if (!resolvedId) return
+
+    const broadcastChannel = supabase
+      .channel(`tv_announcements:${resolvedId}`)
+      .on('broadcast', { event: 'announce_order' }, (payload) => {
+        console.log('Received broadcast tv announcement:', payload)
+        const orderId = payload.payload?.orderId
+        if (!orderId) return
+
+        const order = orders.find(o => o.id === orderId)
+        if (order && order.status === 'ready') {
+          const isChimeEnabled = localStorage.getItem("queue_chime_enabled") !== "false"
+          if (audioEnabled && isChimeEnabled) {
+            playChimeSound()
+          }
+
+          if (audioEnabled) {
+            setTimeout(() => {
+              const label = getOrderLabel(order)
+              let announcementText = ""
+              if (identifierMode === "mesa" && order.table_name) {
+                announcementText = `Mesa ${label} pronta!`
+              } else {
+                const isNumeric = /^\d+$/.test(label)
+                if (isNumeric) {
+                  announcementText = `Pedido número ${label} pronto!`
+                } else {
+                  announcementText = `Pedido ${label} pronto!`
+                }
+              }
+              speakText(announcementText)
+            }, 1500)
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      broadcastChannel.unsubscribe()
+    }
+  }, [resolvedId, orders, audioEnabled, identifierMode])
+
   // 3. Fallback de sincronização via parâmetros da URL e LocalStorage (para testes locais rápidos)
   useEffect(() => {
     const syncSettings = () => {
