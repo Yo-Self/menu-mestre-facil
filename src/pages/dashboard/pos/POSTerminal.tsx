@@ -553,13 +553,36 @@ export default function POSTerminal() {
     const alreadyPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const remaining = subtotal - alreadyPaid;
 
-    if (isNaN(amountInCents) || amountInCents <= 0 || amountInCents > remaining) {
+    if (isNaN(amountInCents) || amountInCents <= 0) {
       toast({
         title: "Valor inválido",
-        description: `O valor deve ser maior que zero e menor ou igual a R$ ${(remaining / 100).toFixed(2)}`,
+        description: "O valor deve ser maior que zero",
         variant: "destructive",
       });
       return;
+    }
+
+    if (amountInCents > remaining) {
+      if (currentPaymentMethod === "cash") {
+        // Se for dinheiro e o valor for maior que o restante, aceitamos o pagamento de valor 'remaining'
+        // e definimos o 'receivedCashAmount' como o valor total digitado para que o troco seja calculado.
+        setReceivedCashAmount(currentPaymentAmount);
+        
+        setPayments(prev => [
+          ...prev,
+          { method: "cash", amount: remaining }
+        ]);
+
+        setCurrentPaymentAmount("0.00");
+        return;
+      } else {
+        toast({
+          title: "Valor inválido",
+          description: `O valor deve ser menor ou igual a R$ ${(remaining / 100).toFixed(2)}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setPayments(prev => [
@@ -1300,7 +1323,7 @@ export default function POSTerminal() {
         </div>
 
         {/* Zones & Tables Grid */}
-        <div className="flex-1 overflow-y-auto max-h-[500px] xl:max-h-[calc(100vh-21rem)] pr-1 space-y-6">
+        <div className="flex-1 overflow-y-auto max-h-[500px] md:max-h-[calc(100vh-21rem)] pr-1 space-y-6">
           {Array.from(new Set(tablesConfig.map(t => t.zone))).map((zone) => {
             const zoneTables = tablesConfig.filter(t => t.zone === zone);
             const zoneIcon = zone === "Balcão" ? "🏪" : zone === "Salão Principal" ? "🛋️" : "🌅";
@@ -1315,7 +1338,7 @@ export default function POSTerminal() {
                   </Badge>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {zoneTables.map((table) => {
                     const { isBusy, activeOrdersCount, orders } = getTableStatus(table.name);
                     const isCurrentTable = tableName === table.name;
@@ -1407,9 +1430,9 @@ export default function POSTerminal() {
   const cashChange = Math.max(0, (cashReceivedAmount * 100) - cashPaymentAmount);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 min-h-[calc(100vh-8.5rem)]">
+    <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8.5rem)]">
       {/* LEFT COLUMN: PRODUCTS GRID & CATEGORIES */}
-      <div className="flex-1 space-y-6 flex flex-col">
+      <div className="flex-1 space-y-6 flex flex-col min-w-0">
         {/* Header Terminal */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 flex items-center gap-3">
@@ -1508,8 +1531,8 @@ export default function POSTerminal() {
             <p className="text-xs text-muted-foreground/80 mt-1">Crie categorias e pratos no menu de gestão do painel.</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto max-h-[500px] xl:max-h-[calc(100vh-21rem)] pr-1">
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
+          <div className="flex-1 overflow-y-auto max-h-[500px] md:max-h-[calc(100vh-21rem)] pr-1">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredDishes.map((dish) => {
                 const isOutOfStock = dish.stock_quantity !== null && dish.stock_quantity !== undefined && dish.stock_quantity <= 0;
                 
@@ -1582,7 +1605,7 @@ export default function POSTerminal() {
       </div>
 
       {/* RIGHT COLUMN: CART SIDEBAR */}
-      <Card className="w-full xl:w-[420px] shadow-lg border border-border/60 bg-white dark:bg-zinc-950 flex flex-col h-[calc(100vh-8.5rem)]">
+      <Card className="w-full md:w-[350px] lg:w-[420px] flex-shrink-0 shadow-lg border border-border/60 bg-white dark:bg-zinc-950 flex flex-col h-[calc(100vh-8.5rem)]">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-bold font-heading flex items-center gap-2">
@@ -1928,25 +1951,35 @@ export default function POSTerminal() {
 
       {/* 2. PAYMENT / CHECKOUT MODAL */}
       <Dialog open={checkoutModalOpen} onOpenChange={setCheckoutModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-heading font-bold text-lg flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
+        <DialogContent className="sm:max-w-[620px] rounded-3xl p-6 md:p-8 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="font-heading font-black text-xl md:text-2xl text-foreground flex items-center gap-2">
+              <Calculator className="h-6 w-6 text-primary" />
               Fechar Pagamento
             </DialogTitle>
-            <DialogDescription className="text-xs">
-              Mesa/Comanda: <strong>{tableName}</strong> | Total a Pagar: R$ {(subtotal / 100).toFixed(2)}
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+          {/* Prominent Balance Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 gap-2 mb-4">
+            <div className="text-sm text-muted-foreground font-semibold">
+              Mesa / Comanda: <strong className="text-foreground text-base font-bold">{tableName}</strong>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider block">Total a Pagar</span>
+              <span className="text-2xl md:text-3xl font-black text-primary font-heading">
+                {(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
             {/* Left side: Payment formulation */}
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-method" className="text-xs font-bold text-muted-foreground uppercase">Forma de Pagamento</Label>
+              <div className="space-y-2">
+                <Label htmlFor="pay-method" className="text-xs md:text-sm font-black text-muted-foreground uppercase tracking-wider">Forma de Pagamento</Label>
                 <select
                   id="pay-method"
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-white dark:bg-zinc-950 font-medium text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
+                  className="w-full h-11 px-3.5 rounded-xl border border-border bg-white dark:bg-zinc-950 font-bold text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200"
                   value={currentPaymentMethod}
                   onChange={(e) => setCurrentPaymentMethod(e.target.value)}
                 >
@@ -1957,38 +1990,55 @@ export default function POSTerminal() {
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-amount" className="text-xs font-bold text-muted-foreground uppercase">Valor do Lançamento (R$)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="pay-amount" className="text-xs md:text-sm font-black text-muted-foreground uppercase tracking-wider">Valor do Lançamento</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="pay-amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    className="h-9 text-xs focus-visible:ring-primary"
-                    value={currentPaymentAmount}
-                    onChange={(e) => setCurrentPaymentAmount(e.target.value)}
-                  />
-                  <Button type="button" size="sm" className="h-9 px-3 rounded-lg bg-primary font-bold" onClick={addPayment}>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">R$</span>
+                    <Input
+                      id="pay-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      className="h-11 pl-9 text-base font-black focus-visible:ring-primary rounded-xl"
+                      value={currentPaymentAmount}
+                      onChange={(e) => setCurrentPaymentAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addPayment();
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    className="h-11 px-5 rounded-xl bg-primary text-primary-foreground font-black hover:bg-primary-hover shadow-md transition-all hover:scale-[1.02]" 
+                    onClick={addPayment}
+                  >
                     Lançar
                   </Button>
                 </div>
               </div>
 
               {currentPaymentMethod === "cash" && (
-                <div className="space-y-1.5 p-3 rounded-lg bg-muted/20 border space-y-2">
-                  <Label htmlFor="cash-received" className="text-[10px] font-bold text-muted-foreground uppercase">Dinheiro Recebido (R$)</Label>
-                  <Input
-                    id="cash-received"
-                    type="number"
-                    step="0.01"
-                    className="h-8 text-xs focus-visible:ring-primary bg-background"
-                    value={receivedCashAmount}
-                    onChange={(e) => setReceivedCashAmount(e.target.value)}
-                  />
-                  <div className="flex justify-between items-center text-xs font-bold mt-1">
-                    <span className="text-muted-foreground">Troco Estimado:</span>
-                    <span className="text-primary font-heading font-black text-sm">
+                <div className="space-y-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-border/80">
+                  <Label htmlFor="cash-received" className="text-xs font-black text-muted-foreground uppercase tracking-wider block">Dinheiro Recebido</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">R$</span>
+                    <Input
+                      id="cash-received"
+                      type="number"
+                      step="0.01"
+                      className="h-11 pl-9 text-base font-black focus-visible:ring-primary bg-background rounded-xl"
+                      placeholder="0,00"
+                      value={receivedCashAmount}
+                      onChange={(e) => setReceivedCashAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col items-end gap-1 border-t border-dashed pt-3 mt-2">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Troco Estimado</span>
+                    <span className="text-2xl md:text-3xl font-heading font-black text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 px-3 py-1.5 rounded-xl border border-green-500/20 w-full text-right shadow-inner">
                       {(cashChange / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
                   </div>
@@ -1997,25 +2047,25 @@ export default function POSTerminal() {
             </div>
 
             {/* Right side: Payments registered */}
-            <div className="border rounded-xl p-3 bg-muted/10 space-y-3 flex flex-col justify-between">
+            <div className="border rounded-2xl p-4 bg-muted/20 space-y-4 flex flex-col justify-between">
               <div className="space-y-2">
-                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Lançamentos efetuados</h5>
+                <h5 className="text-xs font-black text-muted-foreground uppercase tracking-wider">Lançamentos efetuados</h5>
                 {payments.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60 italic py-6 text-center">Nenhum lançamento efetuado.</p>
+                  <p className="text-xs text-muted-foreground/60 italic py-8 text-center bg-background/50 rounded-xl border border-dashed">Nenhum lançamento efetuado.</p>
                 ) : (
-                  <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                     {payments.map((pay, index) => (
-                      <div key={index} className="flex justify-between items-center text-[11px] p-2 bg-background rounded-lg border">
-                        <span className="font-semibold text-foreground truncate max-w-[100px]">{getPaymentMethodLabel(pay.method)}</span>
+                      <div key={index} className="flex justify-between items-center text-xs p-2.5 bg-background rounded-xl border border-border/80 shadow-sm">
+                        <span className="font-bold text-foreground truncate max-w-[120px]">{getPaymentMethodLabel(pay.method)}</span>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold">{(pay.amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                          <span className="font-extrabold text-primary">{(pay.amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-5 w-5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                             onClick={() => removePayment(index)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -2025,34 +2075,40 @@ export default function POSTerminal() {
               </div>
 
               {/* Status summary */}
-              <div className="border-t pt-2 space-y-1 bg-background p-2 rounded-lg">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-muted-foreground">Total:</span>
+              <div className="border-t border-border/80 pt-3 space-y-2 bg-background p-3 rounded-xl border shadow-sm">
+                <div className="flex justify-between text-xs md:text-sm font-bold text-muted-foreground">
+                  <span>Total Geral:</span>
                   <span>{(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                 </div>
-                <div className="flex justify-between text-xs font-semibold text-green-600">
-                  <span>Pago:</span>
+                <div className="flex justify-between text-xs md:text-sm font-extrabold text-green-600">
+                  <span>Total Pago:</span>
                   <span>{(totalPaid / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                 </div>
-                <div className="flex justify-between text-xs font-black text-red-500 border-t pt-1 mt-1">
-                  <span>Restante:</span>
-                  <span>{remainingToPay > 0 ? (remainingToPay / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "PAGO"}</span>
+                <div className="flex justify-between items-center text-sm font-black border-t border-dashed pt-2 mt-2">
+                  <span className="text-muted-foreground uppercase text-[10px] tracking-wider font-black">Saldo Restante</span>
+                  <span className={`text-base md:text-lg px-2.5 py-1 rounded-lg ${
+                    remainingToPay > 0 
+                      ? "text-red-500 bg-red-500/10 border border-red-500/20" 
+                      : "text-green-600 bg-green-500/10 border border-green-500/20 font-black animate-pulse"
+                  }`}>
+                    {remainingToPay > 0 ? (remainingToPay / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "PAGO"}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="mt-2">
-            <Button variant="ghost" onClick={() => setCheckoutModalOpen(false)}>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button variant="ghost" className="rounded-xl font-bold h-11 px-6 text-muted-foreground" onClick={() => setCheckoutModalOpen(false)}>
               Voltar
             </Button>
             <Button
-              className="bg-primary hover:bg-primary-hover font-bold font-heading rounded-lg h-10 px-5 flex items-center justify-center gap-1.5"
+              className="bg-primary hover:bg-primary-hover font-black font-heading rounded-xl h-11 px-6 flex items-center justify-center gap-2 shadow-lg transition-all hover:scale-[1.02]"
               onClick={handleFinishSale}
               disabled={remainingToPay > 0 || savingOrder}
             >
               {savingOrder ? "Registrando..." : "Confirmar e Finalizar"}
-              <Check className="h-4 w-4 stroke-[3]" />
+              <Check className="h-5 w-5 stroke-[3]" />
             </Button>
           </DialogFooter>
         </DialogContent>
