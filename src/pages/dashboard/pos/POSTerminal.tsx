@@ -669,7 +669,7 @@ export default function POSTerminal() {
           description: "O caixa está offline. O pedido foi guardado localmente e será sincronizado depois.",
         });
 
-        setCreatedOrder({
+        const offlineOrder = {
           id: `OFF-${Date.now()}`,
           created_at: new Date().toISOString(),
           customer_info: {
@@ -677,13 +677,15 @@ export default function POSTerminal() {
             phone: customerPhone || "",
             queue_password: queuePassword
           }
-        });
-        setReceiptSnapshot({
+        };
+        setCreatedOrder(offlineOrder);
+        const snapshot = {
           items: [...cart],
           subtotal: subtotal,
           tableName: tableName,
           customerName: customerName
-        });
+        };
+        setReceiptSnapshot(snapshot);
         setCheckoutModalOpen(false);
         setSuccessModalOpen(true);
         setCart([]);
@@ -691,6 +693,11 @@ export default function POSTerminal() {
         setCustomerName("");
         setCustomerPhone("");
         setPayments([]);
+
+        // Impressão automática no fechamento offline
+        setTimeout(() => {
+          printReceipt(offlineOrder, snapshot);
+        }, 150);
         return;
       }
 
@@ -706,12 +713,13 @@ export default function POSTerminal() {
       );
 
       setCreatedOrder(finalOrder);
-      setReceiptSnapshot({
+      const snapshot = {
         items: [...cart],
         subtotal: subtotal,
         tableName: tableName,
         customerName: customerName
-      });
+      };
+      setReceiptSnapshot(snapshot);
       toast({
         title: "Venda Concluída!",
         description: "O pedido foi registrado com sucesso.",
@@ -723,6 +731,11 @@ export default function POSTerminal() {
       setCustomerName("");
       setCustomerPhone("");
       setPayments([]);
+
+      // Impressão automática no fechamento online
+      setTimeout(() => {
+        printReceipt(finalOrder, snapshot);
+      }, 150);
 
       // If we are closing table orders, update their status to "finished" in Supabase
       if (activeOrderIdsBeingClosed.length > 0) {
@@ -838,17 +851,17 @@ export default function POSTerminal() {
     }
   };
 
-  const printReceipt = () => {
-    if (!createdOrder) return;
+  const printReceipt = (orderToPrint = createdOrder, snapshotToPrint = receiptSnapshot) => {
+    if (!orderToPrint) return;
     
-    const items = receiptSnapshot?.items || cart;
-    const subtotalVal = receiptSnapshot?.subtotal || getCartSubtotal();
-    const orderId = createdOrder?.id || "";
-    const formattedDate = new Date(createdOrder?.created_at || Date.now()).toLocaleString("pt-BR");
-    const tblName = receiptSnapshot?.tableName || tableName;
-    const custName = receiptSnapshot?.customerName || customerName;
-    const queuePassword = createdOrder?.customer_info && typeof createdOrder.customer_info === 'object'
-      ? (createdOrder.customer_info as any).queue_password
+    const items = snapshotToPrint?.items || cart;
+    const subtotalVal = snapshotToPrint?.subtotal || getCartSubtotal();
+    const orderId = orderToPrint?.id || "";
+    const formattedDate = new Date(orderToPrint?.created_at || Date.now()).toLocaleString("pt-BR");
+    const tblName = snapshotToPrint?.tableName || tableName;
+    const custName = snapshotToPrint?.customerName || customerName;
+    const queuePassword = orderToPrint?.customer_info && typeof orderToPrint.customer_info === 'object'
+      ? (orderToPrint.customer_info as any).queue_password
       : null;
 
     // Create a hidden iframe for isolated print
@@ -974,32 +987,48 @@ export default function POSTerminal() {
     `);
     iframeDoc.close();
 
-    // Trigger print
-    setTimeout(() => {
-      if (iframe.contentWindow) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+    const isDesktop = typeof window !== 'undefined' && !!(window as any).api;
+    if (isDesktop) {
+      const printerName = localStorage.getItem("thermal_printer") || "";
+      (window as any).api.print(htmlContent, { printerName, silent: true })
+        .then(() => {
+          if (localStorage.getItem("thermal_print_kitchen") === "true") {
+            setTimeout(() => {
+              printKitchenReceipt(orderToPrint, snapshotToPrint);
+            }, 500);
+          }
+        })
+        .catch((err: any) => {
+          console.error("Erro na impressão silenciosa do PDV:", err);
+        });
+    } else {
+      // Trigger print in browser fallback
+      setTimeout(() => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
 
-        // Print kitchen receipt if active
-        if (localStorage.getItem("thermal_print_kitchen") === "true") {
-          setTimeout(() => {
-            printKitchenReceipt();
-          }, 1000);
+          // Print kitchen receipt if active
+          if (localStorage.getItem("thermal_print_kitchen") === "true") {
+            setTimeout(() => {
+              printKitchenReceipt(orderToPrint, snapshotToPrint);
+            }, 1000);
+          }
         }
-      }
-    }, 250);
+      }, 250);
+    }
   };
 
-  const printKitchenReceipt = () => {
-    if (!createdOrder) return;
+  const printKitchenReceipt = (orderToPrint = createdOrder, snapshotToPrint = receiptSnapshot) => {
+    if (!orderToPrint) return;
 
-    const items = receiptSnapshot?.items || cart;
-    const orderId = createdOrder?.id || "";
-    const formattedDate = new Date(createdOrder?.created_at || Date.now()).toLocaleString("pt-BR");
-    const tblName = receiptSnapshot?.tableName || tableName;
-    const custName = receiptSnapshot?.customerName || customerName;
-    const queuePassword = createdOrder?.customer_info && typeof createdOrder.customer_info === 'object'
-      ? (createdOrder.customer_info as any).queue_password
+    const items = snapshotToPrint?.items || cart;
+    const orderId = orderToPrint?.id || "";
+    const formattedDate = new Date(orderToPrint?.created_at || Date.now()).toLocaleString("pt-BR");
+    const tblName = snapshotToPrint?.tableName || tableName;
+    const custName = snapshotToPrint?.customerName || customerName;
+    const queuePassword = orderToPrint?.customer_info && typeof orderToPrint.customer_info === 'object'
+      ? (orderToPrint.customer_info as any).queue_password
       : null;
 
     let kitchenIframe = document.getElementById('print-kitchen-iframe') as HTMLIFrameElement;
@@ -1105,12 +1134,21 @@ export default function POSTerminal() {
     `);
     iframeDoc.close();
 
-    setTimeout(() => {
-      if (kitchenIframe.contentWindow) {
-        kitchenIframe.contentWindow.focus();
-        kitchenIframe.contentWindow.print();
-      }
-    }, 250);
+    const isDesktop = typeof window !== 'undefined' && !!(window as any).api;
+    if (isDesktop) {
+      const printerName = localStorage.getItem("thermal_printer") || "";
+      (window as any).api.print(htmlContent, { printerName, silent: true })
+        .catch((err: any) => {
+          console.error("Erro na impressão silenciosa da cozinha:", err);
+        });
+    } else {
+      setTimeout(() => {
+        if (kitchenIframe.contentWindow) {
+          kitchenIframe.contentWindow.focus();
+          kitchenIframe.contentWindow.print();
+        }
+      }, 250);
+    }
   };
 
   const getPaymentMethodLabel = (method: string) => {

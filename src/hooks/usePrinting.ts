@@ -7,6 +7,50 @@ export interface Printer {
   description?: string
 }
 
+const convertItemsToHtml = (items: any[], title: string = 'Cupom') => {
+  const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
+  const itemsHtml = items.map((item) => {
+    if (item.type === 'image' && item.path) {
+      const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
+      return `<div style="${positionClass} margin-bottom: 8px;"><img src="${item.path}" style="max-width: 60px; max-height: 60px; object-fit: contain; ${item.style || ''}" /></div>`;
+    }
+    if (item.type === 'text') {
+      const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
+      const customStyle = typeof item.style === 'string' ? item.style : '';
+      return `<div style="${positionClass} margin-bottom: 4px; ${customStyle}">${item.value}</div>`;
+    }
+    return '';
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          @page {
+            size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
+            margin: 0;
+          }
+          body { 
+            background: white; 
+            color: black;
+            padding: 4mm 3mm;
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            width: ${paperWidth === "58mm" ? "52mm" : "74mm"};
+            box-sizing: border-box;
+          }
+        </style>
+      </head>
+      <body>
+        ${itemsHtml}
+      </body>
+    </html>
+  `;
+};
+
 export function usePrinting() {
   // Detecta se a API exposta pelo Preload do Electron está disponível no objeto window
   const isDesktop = typeof window !== 'undefined' && !!window.api
@@ -282,13 +326,12 @@ export function usePrinting() {
           position: 'center'
         })
 
-        // Enviar os dados formatados para o processo principal imprimir na impressora térmica
-        return await window.api.printThermal({
+        // Enviar os dados formatados usando o renderizador HTML nativo e silencioso do Electron (altamente estável)
+        const htmlContent = convertItemsToHtml(items, `Cupom - #${order.display_id || order.id.slice(0, 8)}`);
+        return await printHtml(htmlContent, {
           printerName: options.printerName,
-          items
-        }, {
-          width: options.width ?? '300px'
-        })
+          silent: true
+        });
 
       } catch (error: any) {
         console.error('Erro na impressão térmica do pedido:', error)
@@ -461,12 +504,12 @@ export function usePrinting() {
           position: 'center'
         })
 
-        return await window.api.printThermal({
+        // Enviar os dados formatados da cozinha usando o renderizador HTML silencioso
+        const htmlContent = convertItemsToHtml(items, `Cozinha - #${order.display_id || order.id.slice(0, 8)}`);
+        return await printHtml(htmlContent, {
           printerName: options.printerName,
-          items
-        }, {
-          width: options.width ?? '300px'
-        })
+          silent: true
+        });
 
       } catch (error: any) {
         console.error('Erro na impressão térmica da cozinha:', error)
