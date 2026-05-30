@@ -851,17 +851,29 @@ export default function POSTerminal() {
     }
   };
 
-  const printReceipt = (orderToPrint = createdOrder, snapshotToPrint = receiptSnapshot) => {
-    if (!orderToPrint) return;
+  const printReceipt = (orderToPrint?: any, snapshotToPrint?: any) => {
+    // Se o argumento for um evento do React ou indefinido, usamos createdOrder
+    const finalOrder = (orderToPrint && typeof orderToPrint === 'object' && 'created_at' in orderToPrint)
+      ? orderToPrint
+      : createdOrder;
+
+    if (!finalOrder) {
+      console.warn("Impressão de recibo ignorada: nenhum pedido disponível.");
+      return;
+    }
+
+    const finalSnapshot = (snapshotToPrint && typeof snapshotToPrint === 'object' && 'items' in snapshotToPrint)
+      ? snapshotToPrint
+      : receiptSnapshot;
     
-    const items = snapshotToPrint?.items || cart;
-    const subtotalVal = snapshotToPrint?.subtotal || getCartSubtotal();
-    const orderId = orderToPrint?.id || "";
-    const formattedDate = new Date(orderToPrint?.created_at || Date.now()).toLocaleString("pt-BR");
-    const tblName = snapshotToPrint?.tableName || tableName;
-    const custName = snapshotToPrint?.customerName || customerName;
-    const queuePassword = orderToPrint?.customer_info && typeof orderToPrint.customer_info === 'object'
-      ? (orderToPrint.customer_info as any).queue_password
+    const items = finalSnapshot?.items || cart;
+    const subtotalVal = finalSnapshot?.subtotal || getCartSubtotal();
+    const orderId = finalOrder?.id || "";
+    const formattedDate = new Date(finalOrder?.created_at || Date.now()).toLocaleString("pt-BR");
+    const tblName = finalSnapshot?.tableName || tableName;
+    const custName = finalSnapshot?.customerName || customerName;
+    const queuePassword = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
+      ? (finalOrder.customer_info as any).queue_password
       : null;
 
     // Create a hidden iframe for isolated print
@@ -910,14 +922,14 @@ export default function POSTerminal() {
 
     const customerHtml = custName ? `<p style="margin: 2px 0;">Cliente: ${custName}</p>` : "";
 
-    iframeDoc.open();
-    iframeDoc.write(`
+    const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
+    const htmlContent = `
       <html>
         <head>
           <title>Comprovante - ${restaurantName}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
               margin: 0;
             }
             body { 
@@ -927,7 +939,7 @@ export default function POSTerminal() {
               margin: 0;
               font-family: 'Courier New', Courier, monospace;
               font-size: 12px;
-              width: 72mm; /* 80mm - 8mm padding */
+              width: ${paperWidth === "58mm" ? "50mm" : "72mm"};
               box-sizing: border-box;
             }
             .text-center { text-align: center; }
@@ -984,7 +996,10 @@ export default function POSTerminal() {
           </div>
         </body>
       </html>
-    `);
+    `;
+
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
     iframeDoc.close();
 
     const isDesktop = typeof window !== 'undefined' && !!(window as any).api;
@@ -994,7 +1009,7 @@ export default function POSTerminal() {
         .then(() => {
           if (localStorage.getItem("thermal_print_kitchen") === "true") {
             setTimeout(() => {
-              printKitchenReceipt(orderToPrint, snapshotToPrint);
+              printKitchenReceipt(finalOrder, finalSnapshot);
             }, 500);
           }
         })
@@ -1011,7 +1026,7 @@ export default function POSTerminal() {
           // Print kitchen receipt if active
           if (localStorage.getItem("thermal_print_kitchen") === "true") {
             setTimeout(() => {
-              printKitchenReceipt(orderToPrint, snapshotToPrint);
+              printKitchenReceipt(finalOrder, finalSnapshot);
             }, 1000);
           }
         }
@@ -1019,16 +1034,25 @@ export default function POSTerminal() {
     }
   };
 
-  const printKitchenReceipt = (orderToPrint = createdOrder, snapshotToPrint = receiptSnapshot) => {
-    if (!orderToPrint) return;
+  const printKitchenReceipt = (orderToPrint?: any, snapshotToPrint?: any) => {
+    // Se o argumento for um evento do React ou indefinido, usamos createdOrder
+    const finalOrder = (orderToPrint && typeof orderToPrint === 'object' && 'created_at' in orderToPrint)
+      ? orderToPrint
+      : createdOrder;
 
-    const items = snapshotToPrint?.items || cart;
-    const orderId = orderToPrint?.id || "";
-    const formattedDate = new Date(orderToPrint?.created_at || Date.now()).toLocaleString("pt-BR");
-    const tblName = snapshotToPrint?.tableName || tableName;
-    const custName = snapshotToPrint?.customerName || customerName;
-    const queuePassword = orderToPrint?.customer_info && typeof orderToPrint.customer_info === 'object'
-      ? (orderToPrint.customer_info as any).queue_password
+    if (!finalOrder) return;
+
+    const finalSnapshot = (snapshotToPrint && typeof snapshotToPrint === 'object' && 'items' in snapshotToPrint)
+      ? snapshotToPrint
+      : receiptSnapshot;
+
+    const items = finalSnapshot?.items || cart;
+    const orderId = finalOrder?.id || "";
+    const formattedDate = new Date(finalOrder?.created_at || Date.now()).toLocaleString("pt-BR");
+    const tblName = finalSnapshot?.tableName || tableName;
+    const custName = finalSnapshot?.customerName || customerName;
+    const queuePassword = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
+      ? (finalOrder.customer_info as any).queue_password
       : null;
 
     let kitchenIframe = document.getElementById('print-kitchen-iframe') as HTMLIFrameElement;
@@ -1069,14 +1093,14 @@ export default function POSTerminal() {
       `;
     }).join("");
 
-    iframeDoc.open();
-    iframeDoc.write(`
+    const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
+    const htmlContent = `
       <html>
         <head>
           <title>Cozinha - ${restaurantName}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
               margin: 0;
             }
             body { 
@@ -1086,7 +1110,7 @@ export default function POSTerminal() {
               margin: 0;
               font-family: 'Courier New', Courier, monospace;
               font-size: 12px;
-              width: 72mm;
+              width: ${paperWidth === "58mm" ? "50mm" : "72mm"};
               box-sizing: border-box;
             }
             .text-center { text-align: center; }
@@ -1131,7 +1155,10 @@ export default function POSTerminal() {
           </div>
         </body>
       </html>
-    `);
+    `;
+
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
     iframeDoc.close();
 
     const isDesktop = typeof window !== 'undefined' && !!(window as any).api;
