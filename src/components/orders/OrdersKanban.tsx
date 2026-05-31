@@ -269,7 +269,7 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
 
   const visibleStatusOrder = STATUS_ORDER.filter(status => {
     if (status === 'pending_payment') {
-      return restaurant?.online_payment === true
+      return restaurant?.online_payment === true || restaurant?.whatsapp_enabled === true
     }
     return true
   })
