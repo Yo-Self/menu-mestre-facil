@@ -300,6 +300,7 @@ export default function NewRestaurantPage() {
                 checked={tablePaymentEnabled}
                 onCheckedChange={setTablePaymentEnabled}
               />
+            </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="flex items-center gap-2">
