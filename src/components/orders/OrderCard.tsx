@@ -137,7 +137,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               price: (c.price || 0) / 100 // conversão de centavos
             }))
           : [],
-        notes: item.notes || ''
+        notes: item.notes || '',
+        sent_to_kitchen: item.sent_to_kitchen !== false
       }))
     }
 
@@ -161,7 +162,15 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     // Se estiver ativa a impressão da cozinha, imprime a via da cozinha em seguida
     if (localStorage.getItem("thermal_print_kitchen") === "true") {
       setTimeout(async () => {
-        const kitchenResult = await printKitchenThermalCupom(orderData, {
+        const kitchenOrderData = {
+          ...orderData,
+          items: orderData.items.filter((item: any) => item.sent_to_kitchen !== false)
+        }
+
+        // Se não houver itens para enviar à cozinha, não há o que imprimir
+        if (kitchenOrderData.items.length === 0) return;
+
+        const kitchenResult = await printKitchenThermalCupom(kitchenOrderData, {
           printerName: printerName,
           width: widthInPixels
         })

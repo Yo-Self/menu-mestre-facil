@@ -25,6 +25,7 @@ export default function NewDishPage() {
   const [ingredients, setIngredients] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [needsPreparation, setNeedsPreparation] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
   const [trackStock, setTrackStock] = useState(false);
   const [stockQuantity, setStockQuantity] = useState("10");
@@ -124,6 +125,7 @@ export default function NewDishPage() {
           category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
           restaurant_id: restaurants[0].id,
           is_available: isAvailable,
+          needs_preparation: needsPreparation,
           is_featured: isFeatured,
           stock_quantity: trackStock ? parseInt(stockQuantity) || 0 : null,
         })
@@ -282,6 +284,19 @@ export default function NewDishPage() {
                 <Switch
                   checked={isAvailable}
                   onCheckedChange={setIsAvailable}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Necessita de Preparo</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Este item necessita passar pela cozinha/tela de preparo
+                  </p>
+                </div>
+                <Switch
+                  checked={needsPreparation}
+                  onCheckedChange={setNeedsPreparation}
                 />
               </div>
 

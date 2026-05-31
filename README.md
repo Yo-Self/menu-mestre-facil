@@ -29,6 +29,11 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
   - Campo numérico condicional em reais para estipular o valor mínimo de pedidos de entrega.
   - Validação integrada no fluxo de delivery do cardápio digital do cliente.
 
+### 🍳 Roteamento Inteligente de Pedidos e Controle de Cozinha
+- **Classificação de Preparo**: Distinção automática entre pratos/bebidas que necessitam de preparo na cozinha (ex: hambúrguer) e itens prontos para consumo imediato (ex: refrigerante em lata).
+- **Roteamento Dinâmico**: Pedidos que contêm apenas itens prontos (que não precisam de preparo) pulam a fila da cozinha e mudam diretamente para o status **Concluído**.
+- **Controle de Itens Mistos (PDV)**: Caixa/Garçom possui a opção de "Receber tudo junto". Se desmarcado, apenas itens que requerem preparo são listados no painel de pedidos da cozinha e impressos na via de preparação.
+
 ### 📥 Importador e Scraping de Cardápios (iFood)
 - **Importador de Cardápio iFood**: Importação ágil de cardápios completos diretamente a partir de um link público do iFood.
 - **Resiliência a Bloqueios (CORS)**: Scraping automatizado implementado por meio de Supabase Edge Functions (`scrape-ifood`), garantindo desvio completo de bloqueios de CORS do frontend.

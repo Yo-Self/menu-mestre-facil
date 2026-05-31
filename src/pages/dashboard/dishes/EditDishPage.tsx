@@ -27,6 +27,7 @@ interface DishRow {
   image_url: string;
   is_featured: boolean | null;
   is_available: boolean | null;
+  needs_preparation?: boolean | null;
   restaurant_id: string;
   category_id: string | null;
   ingredients?: string | null;
@@ -56,6 +57,7 @@ export default function EditDishPage() {
   const [ingredients, setIngredients] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [needsPreparation, setNeedsPreparation] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
   const [trackStock, setTrackStock] = useState(false);
   const [stockQuantity, setStockQuantity] = useState("10");
@@ -82,6 +84,7 @@ export default function EditDishPage() {
       setImageUrl(dish.image_url);
       setIngredients(dish.ingredients || "");
       setIsAvailable(Boolean(dish.is_available));
+      setNeedsPreparation(dish.needs_preparation !== false);
       setIsFeatured(Boolean(dish.is_featured));
       setTrackStock(dish.stock_quantity !== undefined && dish.stock_quantity !== null);
       setStockQuantity(dish.stock_quantity !== undefined && dish.stock_quantity !== null ? String(dish.stock_quantity) : "10");
@@ -160,6 +163,7 @@ export default function EditDishPage() {
           ingredients: ingredients || null,
           category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
           is_available: isAvailable,
+          needs_preparation: needsPreparation,
           is_featured: isFeatured,
           stock_quantity: trackStock ? parseInt(stockQuantity) || 0 : null,
         })
@@ -330,6 +334,19 @@ export default function EditDishPage() {
                 <Switch
                   checked={isAvailable}
                   onCheckedChange={setIsAvailable}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Necessita de Preparo</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Este item necessita passar pela cozinha/tela de preparo
+                  </p>
+                </div>
+                <Switch
+                  checked={needsPreparation}
+                  onCheckedChange={setNeedsPreparation}
                 />
               </div>
 

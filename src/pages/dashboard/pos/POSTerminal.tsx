@@ -71,6 +71,7 @@ export default function POSTerminal() {
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [receiveAllTogether, setReceiveAllTogether] = useState(true);
   const [tableName, setTableName] = useState("Balcão");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -669,7 +670,8 @@ export default function POSTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
-        notes: item.notes || null
+        notes: item.notes || null,
+        needs_preparation: item.dish.needs_preparation !== false
       }));
 
       // Gerar senha da fila se a configuração estiver ativa
@@ -729,7 +731,8 @@ export default function POSTerminal() {
           items: [...cart],
           subtotal: subtotal,
           tableName: tableName,
-          customerName: customerName
+          customerName: customerName,
+          receiveAllTogether: receiveAllTogether
         };
         setReceiptSnapshot(snapshot);
         setCheckoutModalOpen(false);
@@ -761,7 +764,8 @@ export default function POSTerminal() {
         payments,
         queuePassword,
         isTakeaway,
-        orderObservation || null
+        orderObservation || null,
+        receiveAllTogether
       );
 
       setCreatedOrder(finalOrder);
@@ -769,7 +773,8 @@ export default function POSTerminal() {
         items: [...cart],
         subtotal: subtotal,
         tableName: tableName,
-        customerName: customerName
+        customerName: customerName,
+        receiveAllTogether: receiveAllTogether
       };
       setReceiptSnapshot(snapshot);
       toast({
@@ -826,7 +831,8 @@ export default function POSTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
-        notes: item.notes || null
+        notes: item.notes || null,
+        needs_preparation: item.dish.needs_preparation !== false
       }));
 
       // Gerar senha da fila se a configuração estiver ativa
@@ -888,7 +894,8 @@ export default function POSTerminal() {
         [],
         queuePassword,
         isTakeaway,
-        orderObservation || null
+        orderObservation || null,
+        receiveAllTogether
       );
 
       toast({
@@ -1133,6 +1140,17 @@ export default function POSTerminal() {
       : receiptSnapshot;
 
     const items = finalSnapshot?.items || cart;
+    const finalReceiveAllTogether = finalSnapshot?.receiveAllTogether !== undefined
+      ? finalSnapshot.receiveAllTogether
+      : receiveAllTogether;
+
+    const filteredItems = items.filter((item: any) => {
+      if (finalReceiveAllTogether) return true;
+      return item.sent_to_kitchen !== false && item.dish?.needs_preparation !== false && item.needs_preparation !== false;
+    });
+
+    if (filteredItems.length === 0) return;
+
     const orderId = finalOrder?.id || "";
     const formattedDate = new Date(finalOrder?.created_at || Date.now()).toLocaleString("pt-BR");
     const tblName = finalSnapshot?.tableName || tableName;
@@ -1160,7 +1178,7 @@ export default function POSTerminal() {
     const iframeDoc = kitchenIframe.contentWindow?.document || kitchenIframe.contentDocument;
     if (!iframeDoc) return;
 
-    const itemsHtml = items.map((item: any) => {
+    const itemsHtml = filteredItems.map((item: any) => {
       let compsText = "";
       if (item.selected_complements && item.selected_complements.length > 0) {
         const groups: Record<string, any[]> = {};
@@ -1978,6 +1996,30 @@ export default function POSTerminal() {
 
         {/* Subtotal & Action Button */}
         <div className="p-4 border-t space-y-4">
+          {(() => {
+            const hasPrep = cart.some(i => i.dish.needs_preparation !== false);
+            const hasNonPrep = cart.some(i => i.dish.needs_preparation === false);
+            const isMixedCart = hasPrep && hasNonPrep;
+            
+            if (isMixedCart) {
+              return (
+                <div className="flex items-center justify-between p-3 bg-muted/40 rounded-xl border border-border/40 mb-2">
+                  <div className="space-y-0.5 text-left">
+                    <Label className="text-xs font-bold text-foreground">Receber tudo junto</Label>
+                    <p className="text-[10px] text-muted-foreground leading-normal">
+                      Enviar itens sem preparo para a cozinha
+                    </p>
+                  </div>
+                  <Switch
+                    checked={receiveAllTogether}
+                    onCheckedChange={setReceiveAllTogether}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="flex items-center justify-between font-heading font-black">
             <span className="text-sm text-muted-foreground">Valor Total:</span>
             <span className="text-2xl text-primary">

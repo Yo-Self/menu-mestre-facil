@@ -11,6 +11,7 @@ export interface POSOrderItemInput {
   price_at_time_of_order: number; // in cents
   selected_complements?: any;
   notes?: string | null;
+  needs_preparation?: boolean;
 }
 
 export interface POSOrderPaymentInput {
@@ -149,7 +150,8 @@ export async function createPOSOrder(
   payments: POSOrderPaymentInput[],
   queuePassword?: string | null,
   isTakeaway?: boolean,
-  observation?: string | null
+  observation?: string | null,
+  receiveAllTogether: boolean = true
 ) {
   // 1. Calculate total price (cents)
   const totalPrice = items.reduce(
@@ -187,14 +189,22 @@ export async function createPOSOrder(
   }
 
   // 3. Insert Order Items
-  const orderItemsInsert = items.map((item) => ({
-    order_id: order.id,
-    dish_id: item.dish_id,
-    quantity: item.quantity,
-    price_at_time_of_order: item.price_at_time_of_order,
-    selected_complements: item.selected_complements || null,
-    notes: item.notes || null,
-  }));
+  const hasPrep = items.some(item => item.needs_preparation !== false);
+  const hasNonPrep = items.some(item => item.needs_preparation === false);
+  const isMixedOrder = hasPrep && hasNonPrep;
+
+  const orderItemsInsert = items.map((item) => {
+    const sentToKitchen = isMixedOrder && receiveAllTogether ? true : (item.needs_preparation !== false);
+    return {
+      order_id: order.id,
+      dish_id: item.dish_id,
+      quantity: item.quantity,
+      price_at_time_of_order: item.price_at_time_of_order,
+      selected_complements: item.selected_complements || null,
+      notes: item.notes || null,
+      sent_to_kitchen: sentToKitchen,
+    };
+  });
 
   const { error: itemsError } = await supabase.from("order_items").insert(orderItemsInsert);
 

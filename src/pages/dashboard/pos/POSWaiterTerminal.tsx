@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +75,7 @@ export default function POSWaiterTerminal() {
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [receiveAllTogether, setReceiveAllTogether] = useState(true);
   const [tableName, setTableName] = useState("Balcão");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -581,7 +583,8 @@ export default function POSWaiterTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
-        notes: item.notes || null
+        notes: item.notes || null,
+        needs_preparation: item.dish.needs_preparation !== false
       }));
 
       await createPOSOrder(
@@ -591,7 +594,11 @@ export default function POSWaiterTerminal() {
         customerName || null,
         customerPhone || null,
         orderItemsInput,
-        [] // empty payments -> sets status: "new"
+        [], // empty payments -> sets status: "new"
+        null,
+        false,
+        null,
+        receiveAllTogether
       );
 
       toast({
@@ -901,6 +908,28 @@ export default function POSWaiterTerminal() {
 
         {/* Subtotal & Preparation Dispatch */}
         <div className="p-4 pb-8 xl:pb-4 border-t space-y-4 flex-shrink-0">
+          {(() => {
+            const hasPrep = cart.some(i => i.dish.needs_preparation !== false);
+            const hasNonPrep = cart.some(i => i.dish.needs_preparation === false);
+            const isMixedCart = hasPrep && hasNonPrep;
+            
+            if (isMixedCart) {
+              return (
+                <div className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl mb-3 border border-border/40">
+                  <div className="space-y-0.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Receber tudo junto</Label>
+                    <p className="text-[9px] text-muted-foreground leading-normal">Mandar bebidas/itens sem preparo para a cozinha</p>
+                  </div>
+                  <Switch
+                    checked={receiveAllTogether}
+                    onCheckedChange={setReceiveAllTogether}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="flex items-center justify-between font-heading font-black">
             <span className="text-sm text-muted-foreground">Subtotal Lançamento:</span>
             <span className="text-2xl text-primary">

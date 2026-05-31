@@ -400,7 +400,11 @@ export default function OrderPresentationPage() {
   }, [orders, loadingOrders, audioEnabled, prevReadyIds])
 
   // Filter lists
-  const preparingOrders = orders.filter(order => order.status === 'new' || order.status === 'in_preparation')
+  const preparingOrders = orders.filter(order => {
+    const isPrep = order.status === 'new' || order.status === 'in_preparation'
+    if (!isPrep) return false
+    return order.order_items?.some(item => item.sent_to_kitchen !== false) ?? true
+  })
   const readyOrders = orders.filter(order => order.status === 'ready')
 
   const getOrderLabel = (order: any) => {

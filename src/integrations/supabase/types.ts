@@ -307,6 +307,7 @@ export type Database = {
           is_available: boolean | null
           is_featured: boolean | null
           name: string
+          needs_preparation: boolean
           portion: string | null
           price: number
           restaurant_id: string
@@ -325,6 +326,7 @@ export type Database = {
           is_available?: boolean | null
           is_featured?: boolean | null
           name: string
+          needs_preparation?: boolean
           portion?: string | null
           price: number
           restaurant_id: string
@@ -343,6 +345,7 @@ export type Database = {
           is_available?: boolean | null
           is_featured?: boolean | null
           name?: string
+          needs_preparation?: boolean
           portion?: string | null
           price?: number
           restaurant_id?: string
@@ -526,6 +529,7 @@ export type Database = {
           price_at_time_of_order: number
           quantity: number
           selected_complements: Json | null
+          sent_to_kitchen: boolean
         }
         Insert: {
           created_at?: string
@@ -535,6 +539,7 @@ export type Database = {
           price_at_time_of_order: number
           quantity: number
           selected_complements?: Json | null
+          sent_to_kitchen?: boolean
         }
         Update: {
           created_at?: string
@@ -544,6 +549,7 @@ export type Database = {
           price_at_time_of_order?: number
           quantity?: number
           selected_complements?: Json | null
+          sent_to_kitchen?: boolean
         }
         Relationships: [
           {
