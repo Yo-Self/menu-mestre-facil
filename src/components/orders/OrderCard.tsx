@@ -23,7 +23,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '../../components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../../components/ui/dialog'
+import { Edit, Plus, Minus, Trash2, Search } from 'lucide-react'
 import { OrderStatus, OrderWithItems } from '../../types/orders'
 import { usePrinting } from '../../hooks/usePrinting'
 import { useRestaurant } from '../../hooks/useRestaurant'
@@ -72,6 +82,140 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
   }, [order.created_at])
 
   const { restaurant } = useRestaurant(order.restaurant_id)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editItems, setEditItems] = useState<any[]>([])
+  const [availableDishes, setAvailableDishes] = useState<any[]>([])
+  const [loadingDishes, setLoadingDishes] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [dishSearch, setDishSearch] = useState('')
+
+  useEffect(() => {
+    if (editModalOpen && order.restaurant_id) {
+      setLoadingDishes(true)
+      supabase
+        .from('dishes')
+        .select('*')
+        .eq('restaurant_id', order.restaurant_id)
+        .eq('is_available', true)
+        .order('name')
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setAvailableDishes(data)
+          }
+          setLoadingDishes(false)
+        })
+    }
+  }, [editModalOpen, order.restaurant_id])
+
+  useEffect(() => {
+    if (editModalOpen) {
+      const mapped = order.order_items.map(item => ({
+        id: item.id,
+        dish_id: item.dish_id,
+        dish_name: item.dishes?.name || 'Prato',
+        quantity: item.quantity,
+        price_at_time_of_order: item.price_at_time_of_order, // in cents
+        selected_complements: item.selected_complements || null,
+        notes: item.notes || null,
+        sent_to_kitchen: item.sent_to_kitchen !== false
+      }))
+      setEditItems(mapped)
+      setDishSearch('')
+    }
+  }, [editModalOpen, order.order_items])
+
+  const handleUpdateQuantity = (index: number, newQty: number) => {
+    if (newQty < 1) return
+    setEditItems(prev => prev.map((item, idx) => idx === index ? { ...item, quantity: newQty } : item))
+  }
+
+  const handleRemoveItem = (index: number) => {
+    setEditItems(prev => prev.filter((_, idx) => idx !== index))
+  }
+
+  const handleAddDish = (dish: any) => {
+    const existingIndex = editItems.findIndex(i => i.dish_id === dish.id && !i.selected_complements)
+    if (existingIndex !== -1) {
+      handleUpdateQuantity(existingIndex, editItems[existingIndex].quantity + 1)
+    } else {
+      setEditItems(prev => [
+        ...prev,
+        {
+          dish_id: dish.id,
+          dish_name: dish.name,
+          quantity: 1,
+          price_at_time_of_order: Math.round(dish.price * 100),
+          selected_complements: null,
+          notes: null,
+          sent_to_kitchen: dish.needs_preparation !== false
+        }
+      ])
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    if (editItems.length === 0) {
+      alert("O pedido não pode ficar vazio. Se deseja cancelar o pedido, altere seu status para Cancelado.")
+      return
+    }
+
+    setSavingEdit(true)
+    try {
+      const newTotalPrice = editItems.reduce((acc, item) => acc + (item.price_at_time_of_order * item.quantity), 0)
+
+      // 1. Delete existing items
+      const { error: deleteError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', order.id)
+
+      if (deleteError) throw deleteError
+
+      // 2. Insert new list of items
+      const itemsToInsert = editItems.map(item => ({
+        order_id: order.id,
+        dish_id: item.dish_id,
+        quantity: item.quantity,
+        price_at_time_of_order: item.price_at_time_of_order,
+        selected_complements: item.selected_complements,
+        notes: item.notes,
+        sent_to_kitchen: item.sent_to_kitchen
+      }))
+
+      const { error: insertError } = await supabase
+        .from('order_items')
+        .insert(itemsToInsert)
+
+      if (insertError) throw insertError
+
+      // 3. Update orders total_price
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          total_price: newTotalPrice,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id)
+
+      if (updateError) throw updateError
+
+      toast({
+        title: "Pedido atualizado!",
+        description: "Os itens do pedido foram salvos com sucesso.",
+      })
+      setEditModalOpen(false)
+    } catch (err: any) {
+      console.error("Erro ao salvar alterações no pedido:", err)
+      toast({
+        title: "Erro ao salvar",
+        description: err.message || "Não foi possível atualizar o pedido.",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   const { isDesktop, printThermalCupom, printKitchenThermalCupom } = usePrinting()
 
   const handlePrint = async () => {
@@ -299,7 +443,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       )
     }
 
-    const type = order.delivery_type || 'dine_in'
+    const type = info?.delivery_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
     const badges: Record<string, { label: string; color: string }> = {
       dine_in: { label: 'Mesa / Local', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400' },
       takeout: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400' },
@@ -398,6 +542,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                 e.stopPropagation()
                 handlePrint()
               }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               title="Imprimir Cupom Térmico"
             >
               <Printer className="h-4 w-4" />
@@ -405,11 +551,28 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-muted/80">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 rounded-full hover:bg-muted/80"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
                   <MoreVertical className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl border-border/60">
+                <DropdownMenuItem
+                  className="text-xs font-bold rounded-lg text-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground flex items-center gap-1.5 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditModalOpen(true)
+                  }}
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                  Editar Pedido
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
                 {Object.entries(STATUS_OPTIONS).map(([status, label]) => (
                   status !== currentStatus && (
                     <DropdownMenuItem
@@ -441,6 +604,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               title="Enviar mensagem no WhatsApp"
             >
               <div className="h-7 w-7 rounded-full hover:bg-green-500/10 text-green-600 transition-colors duration-200 hover:scale-105 flex items-center justify-center">
@@ -543,6 +708,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                 e.stopPropagation()
                 await handleRecallTV()
               }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <Volume2 className="h-3.5 w-3.5" />
               Chamar na TV
@@ -554,6 +721,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                 e.stopPropagation()
                 handleStatusChange('finished')
               }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <Check className="h-3 w-3 stroke-[3]" />
               Finalizar
@@ -567,12 +736,172 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               e.stopPropagation()
               handleStatusChange(action.nextStatus)
             }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             {action.icon}
             {action.label}
           </Button>
         )}
       </CardContent>
+
+      {/* Modal para Editar Itens do Pedido */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto flex flex-col p-6 rounded-2xl border bg-white dark:bg-zinc-950 shadow-2xl custom-scrollbar animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-lg font-black font-heading flex items-center gap-2 text-foreground">
+              📝 Editar Itens do Pedido #{order.id.slice(-6)}
+            </DialogTitle>
+            <DialogDescription className="text-xs font-medium text-muted-foreground mt-1">
+              Adicione novos pratos ou ajuste as quantidades dos produtos existentes no pedido.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 py-4 space-y-5 min-h-0 flex flex-col">
+            {/* Itens Atuais do Pedido */}
+            <div className="space-y-3 flex-shrink-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Itens Atuais</h4>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                {editItems.map((item, index) => {
+                  const itemTotalPrice = item.price_at_time_of_order * item.quantity;
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all duration-200">
+                      <div className="flex-1 min-w-0 pr-4">
+                        <p className="text-xs font-bold text-foreground truncate">{item.dish_name}</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+                          {(item.price_at_time_of_order / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {/* Seletor de quantidade */}
+                        <div className="flex items-center border border-border/80 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden h-8">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQuantity(index, item.quantity - 1)}
+                            className="px-2 hover:bg-muted text-muted-foreground hover:text-foreground h-full transition-colors"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="px-3 text-xs font-bold text-foreground font-mono">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQuantity(index, item.quantity + 1)}
+                            className="px-2 hover:bg-muted text-muted-foreground hover:text-foreground h-full transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Preço total do item */}
+                        <span className="text-xs font-extrabold text-foreground font-mono w-16 text-right">
+                          {(itemTotalPrice / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+
+                        {/* Botão remover */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveItem(index)}
+                          className="h-8 w-8 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
+                          title="Remover Item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {editItems.length === 0 && (
+                  <p className="text-xs font-semibold text-muted-foreground italic text-center py-4 bg-muted/10 rounded-xl border border-dashed">
+                    Nenhum item selecionado. Adicione pratos abaixo.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Adicionar Novos Pratos */}
+            <div className="space-y-3 flex-1 flex flex-col min-h-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Adicionar Pratos</h4>
+              
+              {/* Input de Busca */}
+              <div className="relative flex-shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                <input
+                  type="text"
+                  value={dishSearch}
+                  onChange={(e) => setDishSearch(e.target.value)}
+                  placeholder="Buscar prato pelo nome..."
+                  className="w-full pl-9 pr-4 py-2 border rounded-xl text-xs bg-white dark:bg-zinc-900 border-border/80 focus-visible:ring-primary focus-visible:ring-1 text-foreground"
+                />
+              </div>
+
+              {/* Lista de pratos disponíveis */}
+              <div className="flex-1 overflow-y-auto max-h-[180px] border border-border/40 rounded-xl divide-y divide-border/40 custom-scrollbar bg-muted/5">
+                {loadingDishes ? (
+                  <div className="p-4 text-center text-xs font-medium text-muted-foreground">
+                    Carregando pratos do restaurante...
+                  </div>
+                ) : availableDishes.filter(d => d.name.toLowerCase().includes(dishSearch.toLowerCase())).length > 0 ? (
+                  availableDishes
+                    .filter(d => d.name.toLowerCase().includes(dishSearch.toLowerCase()))
+                    .map((dish) => (
+                      <div key={dish.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex-1 min-w-0 pr-4">
+                          <p className="text-xs font-bold text-foreground truncate">{dish.name}</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+                            {dish.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddDish(dish)}
+                          className="h-8 font-black text-[10px] uppercase tracking-wider rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-white transition-all"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    ))
+                ) : (
+                  <div className="p-4 text-center text-xs font-semibold text-muted-foreground italic">
+                    Nenhum prato disponível encontrado.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t pt-4 mt-2 flex items-center justify-between gap-3 sm:justify-end">
+            <div className="text-left mr-auto hidden sm:block">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Novo Total</p>
+              <p className="text-lg font-black text-primary font-mono leading-none mt-0.5">
+                {(editItems.reduce((acc, item) => acc + (item.price_at_time_of_order * item.quantity), 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditModalOpen(false)}
+                className="text-xs font-bold rounded-xl px-4 py-2 flex-1 sm:flex-initial"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveChanges}
+                disabled={savingEdit}
+                className="text-xs font-black rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover px-5 py-2 flex-1 sm:flex-initial"
+              >
+                {savingEdit ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

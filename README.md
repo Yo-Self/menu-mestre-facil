@@ -34,6 +34,12 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Roteamento Dinâmico**: Pedidos que contêm apenas itens prontos (que não precisam de preparo) pulam a fila da cozinha e mudam diretamente para o status **Concluído**.
 - **Controle de Itens Mistos (PDV)**: Caixa/Garçom possui a opção de "Receber tudo junto". Se desmarcado, apenas itens que requerem preparo são listados no painel de pedidos da cozinha e impressos na via de preparação.
 
+### 📝 Edição Dinâmica de Pedidos (Painel Kanban)
+- **Acesso Rápido**: Opção "Editar Pedido" diretamente no menu de três pontos de cada cartão de pedido no Kanban.
+- **Gerenciamento de Itens**: Permite alterar quantidades, remover itens existentes ou adicionar novos pratos do cardápio em tempo real.
+- **Totalizador em Tempo Real**: Calcula instantaneamente o valor total do pedido com base nos preços atualizados durante as edições.
+- **Integração com Cozinha & Impressão**: As alterações atualizam os bancos de dados em tempo real, sincronizando-se com as vias de impressão térmica e telas de preparo.
+
 ### 📥 Importador e Scraping de Cardápios (iFood)
 - **Importador de Cardápio iFood**: Importação ágil de cardápios completos diretamente a partir de um link público do iFood.
 - **Resiliência a Bloqueios (CORS)**: Scraping automatizado implementado por meio de Supabase Edge Functions (`scrape-ifood`), garantindo desvio completo de bloqueios de CORS do frontend.
