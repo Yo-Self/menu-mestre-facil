@@ -864,6 +864,7 @@ export type Database = {
           has_tables: boolean | null
           tables_count: number | null
           table_categories: string | null
+          min_order_value: number | null
         }
         Insert: {
           address?: string | null
@@ -893,6 +894,7 @@ export type Database = {
           has_tables?: boolean | null
           tables_count?: number | null
           table_categories?: string | null
+          min_order_value?: number | null
         }
         Update: {
           address?: string | null
@@ -922,6 +924,7 @@ export type Database = {
           has_tables?: boolean | null
           tables_count?: number | null
           table_categories?: string | null
+          min_order_value?: number | null
         }
         Relationships: [
           {

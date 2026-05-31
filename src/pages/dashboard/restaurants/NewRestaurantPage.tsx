@@ -56,6 +56,8 @@ export default function NewRestaurantPage() {
   const [addressActive, setAddressActive] = useState(false);
   const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [minOrderValue, setMinOrderValue] = useState(0);
+  const [minOrderEnabled, setMinOrderEnabled] = useState(false);
   
   // Table configuration states
   const [hasTables, setHasTables] = useState(true);
@@ -104,6 +106,7 @@ export default function NewRestaurantPage() {
             address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
             table_payment: tablePaymentEnabled,
             online_payment: onlinePaymentEnabled,
+            min_order_value: minOrderEnabled ? minOrderValue : 0,
             open: true,
             has_tables: hasTables,
             tables_count: tablesCount,
@@ -405,6 +408,47 @@ export default function NewRestaurantPage() {
                       Nomes das zonas físicas separadas por vírgula
                     </p>
                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 font-bold">
+                  🛵 Configuração de Delivery
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Defina as regras e valores mínimos para pedidos de entrega.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pl-6 border-l-2 border-primary/20">
+                <div className="space-y-0.5">
+                  <Label htmlFor="min_order_enabled">Ativar Pedido Mínimo</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Bloqueia a finalização do pedido se o total for inferior ao valor estipulado.
+                  </p>
+                </div>
+                <Switch
+                  id="min_order_enabled"
+                  checked={minOrderEnabled}
+                  onCheckedChange={setMinOrderEnabled}
+                />
+              </div>
+
+              {minOrderEnabled && (
+                <div className="space-y-2 pl-6 border-l-2 border-primary/20 animate-fade-in">
+                  <Label htmlFor="min_order_value">Valor de Pedido Mínimo (R$)</Label>
+                  <Input
+                    id="min_order_value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={minOrderValue || ""}
+                    onChange={(e) => setMinOrderValue(parseFloat(e.target.value) || 0)}
+                    placeholder="Ex: 20.00"
+                    className="max-w-xs font-mono font-bold"
+                  />
                 </div>
               )}
             </div>

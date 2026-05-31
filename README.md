@@ -22,11 +22,16 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - Gestão de status das chamadas
 - Atendimento por mesa
 
-### 📱 Pedidos pelo WhatsApp
-- **NOVO**: Integração direta com WhatsApp para pedidos
-- Campo para número de telefone do restaurante
-- Chave para ativar/desativar a funcionalidade
-- Mensagens personalizadas para pedidos
+### 📱 Pedidos pelo WhatsApp & Delivery
+- **Integração do WhatsApp**: Envio de pedidos estruturados diretamente ao WhatsApp do estabelecimento.
+- **Configuração de Pedido Mínimo**:
+  - Chave seletora premium (**Switch**) interativa no painel administrativo para habilitar ou desabilitar o valor mínimo de pedidos.
+  - Campo numérico condicional em reais para estipular o valor mínimo de pedidos de entrega.
+  - Validação integrada no fluxo de delivery do cardápio digital do cliente.
+
+### 📥 Importador e Scraping de Cardápios (iFood)
+- **Importador de Cardápio iFood**: Importação ágil de cardápios completos diretamente a partir de um link público do iFood.
+- **Resiliência a Bloqueios (CORS)**: Scraping automatizado implementado por meio de Supabase Edge Functions (`scrape-ifood`), garantindo desvio completo de bloqueios de CORS do frontend.
 
 ## Configuração do WhatsApp
 

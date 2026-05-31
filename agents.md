@@ -130,6 +130,7 @@ interface Dish {
 - **Estilização**: Tailwind CSS. Mudanças visuais devem priorizar um design limpo utilizando classes utilitárias, evitando completamente CSS inline.
 - **Componentes UI**: Utilizar a biblioteca `shadcn/ui` já existente na pasta `components/ui/` sempre que aplicável.
 - **Gerenciador de Pacotes**: Utilizar `npm` para gerenciar dependências.
+- **Atualização de Documentação (Regra de Ouro)**: Sempre que novas funcionalidades, migrations de banco de dados ou alterações de fluxos forem implementadas, o desenvolvedor (ou agente de IA) **DEVE** atualizar o arquivo `README.md` correspondente do projeto para manter a documentação de funcionalidades em sincronia absoluta.
 
 ## Known issues & technical debt
 
