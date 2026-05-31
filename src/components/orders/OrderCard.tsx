@@ -56,7 +56,6 @@ const STATUS_COLOR_MAP: Record<OrderStatus, string> = {
 
 export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardProps) {
   const { toast } = useToast()
-  const [isExpanded, setIsExpanded] = useState(false)
   const [elapsedMinutes, setElapsedMinutes] = useState(0)
 
   useEffect(() => {
@@ -127,6 +126,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       is_takeaway: order.customer_info && typeof order.customer_info === 'object'
         ? !!(order.customer_info as any).is_takeaway
         : false,
+      observation: getOrderObservation(),
       items: order.order_items.map((item: any) => ({
         quantity: item.quantity,
         dish_name: item.dishes?.name || 'Prato',
@@ -241,6 +241,13 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
   const getCustomerPhone = () => {
     if (order.customer_info && typeof order.customer_info === 'object') {
       return (order.customer_info as any).phone || ''
+    }
+    return ''
+  }
+
+  const getOrderObservation = () => {
+    if (order.customer_info && typeof order.customer_info === 'object') {
+      return (order.customer_info as any).observation || (order.customer_info as any).notes || ''
     }
     return ''
   }
@@ -454,6 +461,21 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
           return null;
         })()}
 
+        {(() => {
+          const obs = getOrderObservation();
+          if (obs) {
+            return (
+              <div className="mb-2.5 p-2 bg-rose-500/5 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-lg border border-rose-500/20 flex flex-col gap-1">
+                <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider flex items-center gap-1">
+                  ⚠️ Obs do Pedido
+                </span>
+                <p className="font-medium text-foreground/90 break-words">{obs}</p>
+              </div>
+            )
+          }
+          return null;
+        })()}
+
         {/* Order Summary */}
         <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2 font-semibold">
           <span className="flex items-center gap-1">
@@ -470,72 +492,36 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
           <div className="border-t border-border/30 pt-2">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-bold text-muted-foreground">Conteúdo do Pedido:</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className="h-5 px-2 text-[10px] rounded-lg hover:bg-muted text-primary"
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUp className="h-3 w-3 mr-0.5" />
-                    Recolher
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3 w-3 mr-0.5" />
-                    Expandir
-                  </>
-                )}
-              </Button>
             </div>
             
-            {isExpanded ? (
-              <div className="space-y-2 mt-2 transition-all duration-300 ease-in-out animate-fade-in-up">
-                {order.order_items.map((item, index) => (
-                  <div key={index} className="text-xs py-1 border-b border-border/20 last:border-0">
-                    <div className="flex justify-between font-medium">
-                      <span className="text-foreground font-semibold">
-                        {item.quantity}x {item.dishes?.name || 'Prato removido'}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatPrice(item.price_at_time_of_order * item.quantity)}
-                      </span>
+            <div className="space-y-2 mt-2">
+              {order.order_items.map((item, index) => (
+                <div key={index} className="text-xs py-1 border-b border-border/20 last:border-0">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-foreground font-semibold">
+                      {item.quantity}x {item.dishes?.name || 'Prato removido'}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatPrice(item.price_at_time_of_order * item.quantity)}
+                    </span>
+                  </div>
+                  {item.selected_complements && (
+                    <div className="ml-3 text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5">
+                      {Array.isArray(item.selected_complements) && 
+                        item.selected_complements.map((complement: any, compIndex: number) => (
+                          <div key={compIndex}>+ {complement.name}</div>
+                        ))
+                      }
                     </div>
-                    {item.selected_complements && (
-                      <div className="ml-3 text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5">
-                        {Array.isArray(item.selected_complements) && 
-                          item.selected_complements.map((complement: any, compIndex: number) => (
-                            <div key={compIndex}>+ {complement.name}</div>
-                          ))
-                        }
-                      </div>
-                    )}
-                    {item.notes && (
-                      <div className="ml-3 text-[10px] text-destructive/80 font-medium mt-1 bg-red-500/5 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10">
-                        Obs: {item.notes}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-muted-foreground space-y-0.5 mt-1 font-medium">
-                {order.order_items.slice(0, 2).map((item, index) => (
-                  <div key={index} className="truncate text-foreground/80">
-                    {item.quantity}x {item.dishes?.name || 'Prato removido'}
-                  </div>
-                ))}
-                {order.order_items.length > 2 && (
-                  <div className="text-[10px] text-primary font-bold mt-1">
-                    +{order.order_items.length - 2} mais itens...
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                  {item.notes && (
+                    <div className="ml-3 text-[10px] text-destructive/80 font-medium mt-1 bg-red-500/5 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10">
+                      Obs: {item.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {currentStatus === 'ready' ? (

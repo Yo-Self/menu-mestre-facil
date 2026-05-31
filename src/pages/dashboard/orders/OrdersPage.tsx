@@ -57,7 +57,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen p-4">
+    <div className="bg-gray-100 dark:bg-gray-900 w-full h-[calc(100vh-96px)] p-1 overflow-hidden">
       <OrdersKanban
         orders={orders}
         onStatusChange={handleStatusChange}

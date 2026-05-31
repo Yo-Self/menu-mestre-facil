@@ -10,6 +10,7 @@ export interface POSOrderItemInput {
   quantity: number;
   price_at_time_of_order: number; // in cents
   selected_complements?: any;
+  notes?: string | null;
 }
 
 export interface POSOrderPaymentInput {
@@ -147,7 +148,8 @@ export async function createPOSOrder(
   items: POSOrderItemInput[],
   payments: POSOrderPaymentInput[],
   queuePassword?: string | null,
-  isTakeaway?: boolean
+  isTakeaway?: boolean,
+  observation?: string | null
 ) {
   // 1. Calculate total price (cents)
   const totalPrice = items.reduce(
@@ -163,12 +165,13 @@ export async function createPOSOrder(
       pos_session_id: sessionId,
       table_name: tableName || "Balcão",
       customer_info:
-        customerName || customerPhone || queuePassword || isTakeaway
+        customerName || customerPhone || queuePassword || isTakeaway || observation
           ? { 
               name: customerName || "", 
               phone: customerPhone || "",
               queue_password: queuePassword || null,
-              is_takeaway: isTakeaway || false
+              is_takeaway: isTakeaway || false,
+              observation: observation || null
             }
           : null,
       total_price: totalPrice,
@@ -190,6 +193,7 @@ export async function createPOSOrder(
     quantity: item.quantity,
     price_at_time_of_order: item.price_at_time_of_order,
     selected_complements: item.selected_complements || null,
+    notes: item.notes || null,
   }));
 
   const { error: itemsError } = await supabase.from("order_items").insert(orderItemsInsert);

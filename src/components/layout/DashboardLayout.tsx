@@ -194,7 +194,7 @@ export function DashboardLayout() {
         </div>
       )}
       
-      <main className="flex-1 p-6 animate-fade-in-up w-full">
+      <main className={`flex-1 animate-fade-in-up w-full ${location.pathname.includes('/orders/') ? 'p-1.5' : 'p-6'}`}>
         <Outlet />
       </main>
     </div>

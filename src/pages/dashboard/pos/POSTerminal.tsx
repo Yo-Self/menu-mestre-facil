@@ -51,6 +51,7 @@ interface CartItem {
     price: number;
     group_title?: string;
   }[];
+  notes?: string;
 }
 
 export default function POSTerminal() {
@@ -74,6 +75,33 @@ export default function POSTerminal() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [isTakeaway, setIsTakeaway] = useState(false);
+  const [orderObservation, setOrderObservation] = useState("");
+  const [observationModalOpen, setObservationModalOpen] = useState(false);
+
+  // Item observation states
+  const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
+  const [editingCartItemNotes, setEditingCartItemNotes] = useState("");
+  const [itemNotesModalOpen, setItemNotesModalOpen] = useState(false);
+
+  const handleOpenItemNotes = (itemId: string, currentNotes?: string) => {
+    setEditingCartItemId(itemId);
+    setEditingCartItemNotes(currentNotes || "");
+    setItemNotesModalOpen(true);
+  };
+
+  const handleSaveItemNotes = () => {
+    if (!editingCartItemId) return;
+    setCart(prev => 
+      prev.map(item => 
+        item.id === editingCartItemId 
+          ? { ...item, notes: editingCartItemNotes.trim() } 
+          : item
+      )
+    );
+    setItemNotesModalOpen(false);
+    setEditingCartItemId(null);
+    setEditingCartItemNotes("");
+  };
 
   // Complements dialog state
   const [complementsModalOpen, setComplementsModalOpen] = useState(false);
@@ -170,13 +198,18 @@ export default function POSTerminal() {
         e.preventDefault();
         if (cart.length > 0 && window.confirm("Deseja realmente limpar todos os itens da comanda atual?")) {
           setCart([]);
+          setTableName("Balcão");
+          setCustomerName("");
+          setCustomerPhone("");
+          setIsTakeaway(false);
+          setOrderObservation("");
         }
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [cart, payments, tableName, customerName]);
+  }, [cart, payments, tableName, customerName, customerPhone, isTakeaway, orderObservation]);
 
   useEffect(() => {
     const updateOnlineStatus = () => {
@@ -635,7 +668,8 @@ export default function POSTerminal() {
         dish_id: item.dish.id,
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
-        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
+        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        notes: item.notes || null
       }));
 
       // Gerar senha da fila se a configuração estiver ativa
@@ -668,7 +702,8 @@ export default function POSTerminal() {
             name: customerName || "",
             phone: customerPhone || "",
             queue_password: queuePassword,
-            is_takeaway: isTakeaway
+            is_takeaway: isTakeaway,
+            observation: orderObservation || null
           }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
@@ -685,7 +720,8 @@ export default function POSTerminal() {
             name: customerName || "",
             phone: customerPhone || "",
             queue_password: queuePassword,
-            is_takeaway: isTakeaway
+            is_takeaway: isTakeaway,
+            observation: orderObservation || null
           }
         };
         setCreatedOrder(offlineOrder);
@@ -704,6 +740,7 @@ export default function POSTerminal() {
         setCustomerPhone("");
         setPayments([]);
         setIsTakeaway(false);
+        setOrderObservation("");
 
         // Impressão automática no fechamento offline se ativada nas configurações
         if (localStorage.getItem("thermal_print_automatic") === "true") {
@@ -723,7 +760,8 @@ export default function POSTerminal() {
         orderItemsInput,
         payments,
         queuePassword,
-        isTakeaway
+        isTakeaway,
+        orderObservation || null
       );
 
       setCreatedOrder(finalOrder);
@@ -746,6 +784,7 @@ export default function POSTerminal() {
       setCustomerPhone("");
       setPayments([]);
       setIsTakeaway(false);
+      setOrderObservation("");
 
       // Impressão automática no fechamento online se ativada nas configurações
       if (localStorage.getItem("thermal_print_automatic") === "true") {
@@ -786,7 +825,8 @@ export default function POSTerminal() {
         dish_id: item.dish.id,
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
-        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
+        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        notes: item.notes || null
       }));
 
       // Gerar senha da fila se a configuração estiver ativa
@@ -818,7 +858,8 @@ export default function POSTerminal() {
             name: customerName || "",
             phone: customerPhone || "",
             queue_password: queuePassword,
-            is_takeaway: isTakeaway
+            is_takeaway: isTakeaway,
+            observation: orderObservation || null
           }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
@@ -833,6 +874,7 @@ export default function POSTerminal() {
         setCustomerName("");
         setCustomerPhone("");
         setIsTakeaway(false);
+        setOrderObservation("");
         return;
       }
 
@@ -845,7 +887,8 @@ export default function POSTerminal() {
         orderItemsInput,
         [],
         queuePassword,
-        isTakeaway
+        isTakeaway,
+        orderObservation || null
       );
 
       toast({
@@ -858,6 +901,7 @@ export default function POSTerminal() {
       setCustomerName("");
       setCustomerPhone("");
       setIsTakeaway(false);
+      setOrderObservation("");
 
       // Reload active orders to update table occupancy dynamically
       await loadPOSData();
@@ -935,6 +979,11 @@ export default function POSTerminal() {
           .join("");
       }
       
+      let notesText = "";
+      if (item.notes) {
+        notesText = `<div style="font-size: 8px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${item.notes}</div>`;
+      }
+      
       return `
         <div style="margin-bottom: 6px;">
           <div style="display: flex; justify-content: space-between;">
@@ -946,11 +995,17 @@ export default function POSTerminal() {
             <span style="font-weight: bold;">R$ ${totalItemPrice}</span>
           </div>
           ${compsText}
+          ${notesText}
         </div>
       `;
     }).join("");
 
+    const orderObs = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
+      ? (finalOrder.customer_info as any).observation || (finalOrder.customer_info as any).notes
+      : null;
+
     const customerHtml = custName ? `<p style="margin: 2px 0;">Cliente: ${custName}</p>` : "";
+    const observationHtml = orderObs ? `<p style="margin: 2px 0; font-weight: bold; color: #ff0000;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
 
     const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
     const htmlContent = `
@@ -1000,6 +1055,7 @@ export default function POSTerminal() {
             <p style="margin: 2px 0;">Data: ${formattedDate}</p>
             <p style="margin: 2px 0;">Mesa/Comanda: ${tblName}</p>
             ${customerHtml}
+            ${observationHtml}
           </div>
 
           <div class="border-t-dashed my-2"></div>
@@ -1187,6 +1243,12 @@ export default function POSTerminal() {
             <p style="margin: 2px 0; font-weight: bold; font-size: 13px;">Mesa/Comanda: ${tblName}</p>
             <p style="margin: 2px 0;">Cliente: ${custName || "Consumidor"}</p>
             <p style="margin: 2px 0;">Hora: ${formattedDate}</p>
+            ${(() => {
+              const orderObs = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
+                ? (finalOrder.customer_info as any).observation || (finalOrder.customer_info as any).notes
+                : null;
+              return orderObs ? `<p style="margin: 4px 0; font-weight: bold; color: red; font-size: 13px; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
+            })()}
           </div>
 
           <div class="border-t-dashed my-2"></div>
@@ -1775,31 +1837,61 @@ export default function POSTerminal() {
                       );
                     })()}
 
-                    <div className="mt-2 flex items-center gap-2.5">
-                      <div className="flex items-center border rounded-lg overflow-hidden bg-background h-7">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-muted"
-                          onClick={() => updateQuantity(item.id, -1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-muted"
-                          onClick={() => updateQuantity(item.id, 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
+                    <div className="mt-2 flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center border rounded-lg overflow-hidden bg-background h-7">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-muted"
+                            onClick={() => updateQuantity(item.id, -1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-muted"
+                            onClick={() => updateQuantity(item.id, 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <span className="text-[10px] text-muted-foreground/80 font-bold">
+                          x {(unitTotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
                       </div>
-                      
-                      <span className="text-[10px] text-muted-foreground/80 font-bold">
-                        x {(unitTotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </span>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 px-2.5 text-xs font-bold rounded-lg gap-1 border border-border/20 ${
+                          item.notes
+                            ? "bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/15 dark:bg-rose-500/20 dark:text-rose-400"
+                            : "bg-background text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => handleOpenItemNotes(item.id, item.notes)}
+                      >
+                        <span>📝 {item.notes ? "Obs. Ativa" : "Obs"}</span>
+                      </Button>
                     </div>
+
+                    {item.notes && (
+                      <div className="mt-2 p-1.5 bg-rose-500/5 dark:bg-rose-500/10 rounded-lg border border-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400 font-medium flex items-center justify-between gap-1.5 animate-fade-in max-w-[240px]">
+                        <span className="truncate flex-1"><strong>Obs:</strong> {item.notes}</span>
+                        <button
+                          onClick={() => {
+                            setCart(prev => prev.map(i => i.id === item.id ? { ...i, notes: "" } : i));
+                          }}
+                          className="text-[9px] text-rose-500 hover:text-rose-700 font-black cursor-pointer px-1"
+                          title="Remover Observação"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end justify-between">
@@ -1843,16 +1935,44 @@ export default function POSTerminal() {
                 onChange={(e) => setCustomerName(e.target.value)}
               />
             </div>
-            <div className="flex items-center space-x-2 pt-2 col-span-2 border-t border-border/20 mt-1">
-              <Switch
-                id="takeaway"
-                checked={isTakeaway}
-                onCheckedChange={setIsTakeaway}
-              />
-              <Label htmlFor="takeaway" className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1">
-                💼 Pedido para Viagem
-              </Label>
+            <div className="col-span-2 pt-2 border-t border-border/20 mt-1 flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="takeaway"
+                  checked={isTakeaway}
+                  onCheckedChange={setIsTakeaway}
+                />
+                <Label htmlFor="takeaway" className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1">
+                  💼 Pedido para Viagem
+                </Label>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 px-3 text-xs font-bold rounded-lg gap-1 border border-border/40 transition-all duration-200 ${
+                  orderObservation 
+                    ? "bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/15 dark:bg-rose-500/20 dark:text-rose-400" 
+                    : "bg-background text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setObservationModalOpen(true)}
+              >
+                <span>📝 {orderObservation ? "Obs. Ativa" : "Observação"}</span>
+              </Button>
             </div>
+
+            {orderObservation && (
+              <div className="col-span-2 mt-1.5 p-2 bg-rose-500/5 dark:bg-rose-500/10 rounded-lg border border-rose-500/10 text-[11px] text-rose-600 dark:text-rose-400 font-medium flex items-center justify-between gap-2 animate-fade-in">
+                <span className="truncate flex-1"><strong>Obs:</strong> {orderObservation}</span>
+                <button
+                  onClick={() => setOrderObservation("")}
+                  className="text-[10px] text-rose-500 hover:text-rose-700 font-black cursor-pointer px-1"
+                  title="Remover Observação"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2263,6 +2383,96 @@ export default function POSTerminal() {
             >
               {savingOrder ? "Registrando..." : "Confirmar e Finalizar"}
               <Check className="h-5 w-5 stroke-[3]" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 1.5 OBSERVATION DIALOG */}
+      <Dialog open={observationModalOpen} onOpenChange={setObservationModalOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="font-heading font-black text-lg text-foreground flex items-center gap-2">
+              <span>📝 Observação do Pedido</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Insira detalhes adicionais para a comanda e preparação na cozinha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            <Label htmlFor="order-obs-textarea" className="text-xs font-bold text-muted-foreground uppercase">Texto da Observação</Label>
+            <textarea
+              id="order-obs-textarea"
+              rows={4}
+              className="flex w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/60 resize-none text-foreground font-medium"
+              placeholder="Ex: Sem cebola, ponto da carne mal passado, talheres descartáveis..."
+              value={orderObservation}
+              onChange={(e) => setOrderObservation(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 border-t pt-3 mt-1">
+            <Button
+              variant="ghost"
+              className="rounded-xl text-xs font-bold"
+              onClick={() => {
+                setOrderObservation("");
+                setObservationModalOpen(false);
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl text-xs shadow-md"
+              onClick={() => setObservationModalOpen(false)}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 1.6 ITEM OBSERVATION DIALOG */}
+      <Dialog open={itemNotesModalOpen} onOpenChange={setItemNotesModalOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="font-heading font-black text-lg text-foreground flex items-center gap-2">
+              <span>📝 Observação do Item</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Insira detalhes adicionais para a preparação deste item específico na cozinha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            <Label htmlFor="item-obs-textarea" className="text-xs font-bold text-muted-foreground uppercase">Texto da Observação</Label>
+            <textarea
+              id="item-obs-textarea"
+              rows={4}
+              className="flex w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/60 resize-none text-foreground font-medium"
+              placeholder="Ex: Sem cebola, ponto ao ponto, molho separado..."
+              value={editingCartItemNotes}
+              onChange={(e) => setEditingCartItemNotes(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 border-t pt-3 mt-1">
+            <Button
+              variant="ghost"
+              className="rounded-xl text-xs font-bold"
+              onClick={() => {
+                setEditingCartItemNotes("");
+                setItemNotesModalOpen(false);
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl text-xs shadow-md"
+              onClick={handleSaveItemNotes}
+            >
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>

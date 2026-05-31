@@ -31,7 +31,7 @@ export function KanbanColumn({
   return (
     <div 
       ref={setNodeRef}
-      className={`flex-shrink-0 w-80 rounded-2xl border-2 transition-all duration-300 ${
+      className={`flex-shrink-0 w-80 rounded-2xl border-2 transition-all duration-300 flex flex-col h-full ${
         isOver 
           ? 'border-primary bg-primary/5 scale-[1.01] shadow-lg shadow-primary/5' 
           : 'border-border/40 bg-white/20 dark:bg-zinc-900/10'
@@ -50,7 +50,7 @@ export function KanbanColumn({
       </div>
 
       {/* Orders List */}
-      <div className="p-4 space-y-4 min-h-[450px] max-h-[600px] overflow-y-auto scrollbar-none">
+      <div className="p-3 space-y-3 flex-1 overflow-y-auto scrollbar-none min-h-0">
         {orders.map((order) => (
           <OrderCard
             key={order.id}

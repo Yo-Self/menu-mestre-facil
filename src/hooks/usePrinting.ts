@@ -221,6 +221,18 @@ export function usePrinting() {
           position: 'left'
         })
 
+        const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
+          ? (order.customer_info as any).observation || (order.customer_info as any).notes
+          : null);
+        if (orderObs) {
+          items.push({
+            type: 'text',
+            value: `Obs do Pedido: ${orderObs}`,
+            style: 'font-weight: bold; font-size: 12px; color: #cc0000; margin-top: 2px; margin-bottom: 8px;',
+            position: 'left'
+          })
+        }
+
         // Itens do Pedido (Tabela)
         items.push({
           type: 'text',
@@ -375,6 +387,12 @@ export function usePrinting() {
           ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
           <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div>Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          ${(() => {
+            const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
+              ? (order.customer_info as any).observation || (order.customer_info as any).notes
+              : null);
+            return orderObs ? `<div style="font-weight: bold; color: red; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : '';
+          })()}
           <div class="bold" style="margin-top: 10px;">PRODUTOS:</div>
           ${order.items?.map((item: any) => `
             <div>${item.quantity}x ${item.dish_name || item.name}</div>
@@ -470,6 +488,18 @@ export function usePrinting() {
           position: 'left'
         })
 
+        const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
+          ? (order.customer_info as any).observation || (order.customer_info as any).notes
+          : null);
+        if (orderObs) {
+          items.push({
+            type: 'text',
+            value: `⚠️ OBS PEDIDO: ${orderObs}`,
+            style: 'font-weight: bold; font-size: 13px; color: #ff0000; margin-bottom: 10px; background-color: #eee; padding: 4px; border: 1px solid #ccc;',
+            position: 'left'
+          })
+        }
+
         items.push({
           type: 'text',
           value: 'ITENS PARA PREPARAÇÃO',
@@ -563,6 +593,12 @@ export function usePrinting() {
           <div>Mesa/Local: <strong>${order.table_name || 'Balcão'}</strong></div>
           <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div>Hora: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          ${(() => {
+            const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
+              ? (order.customer_info as any).observation || (order.customer_info as any).notes
+              : null);
+            return orderObs ? `<div class="obs" style="font-size: 16px; margin: 8px 0; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${orderObs}</div>` : '';
+          })()}
           
           <div class="border" style="font-weight: bold;">ITENS PARA PREPARAÇÃO:</div>
           ${order.items?.map((item: any) => `

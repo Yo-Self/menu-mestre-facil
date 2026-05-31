@@ -54,6 +54,7 @@ interface CartItem {
     price: number;
     group_title?: string;
   }[];
+  notes?: string;
 }
 
 export default function POSWaiterTerminal() {
@@ -579,7 +580,8 @@ export default function POSWaiterTerminal() {
         dish_id: item.dish.id,
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
-        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null
+        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        notes: item.notes || null
       }));
 
       await createPOSOrder(

@@ -340,7 +340,7 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="glass-card p-6 rounded-2xl shadow-sm animate-fade-in-up">
+      <div className="glass-card p-4 rounded-2xl shadow-sm animate-fade-in-up w-full h-full flex flex-col min-h-0">
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
@@ -636,7 +636,7 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
             </div>
           </div>
         </div>
-        <div className="flex space-x-6 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-muted">
+        <div className="flex-1 flex space-x-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-muted min-h-0">
           {visibleStatusOrder.map((status) => {
             const statusConfig = STATUS_CONFIG[status]
             const statusOrders = getOrdersByStatus(status)
