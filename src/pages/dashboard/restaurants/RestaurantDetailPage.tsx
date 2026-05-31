@@ -25,6 +25,7 @@ interface Restaurant {
   background_night: string | null;
   open: boolean;
   table_payment: boolean;
+  table_ordering: boolean;
   online_payment: boolean;
 }
 
@@ -303,6 +304,14 @@ export default function RestaurantDetailPage() {
                 <Badge variant={restaurant.table_payment ? "default" : "secondary"} className="flex items-center gap-1">
                   <CreditCard className="h-3 w-3" />
                   {restaurant.table_payment ? "Habilitado" : "Desabilitado"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Pedido na Mesa:</span>
+                <Badge variant={restaurant.table_ordering ? "default" : "secondary"} className="flex items-center gap-1">
+                  <ShoppingCart className="h-3 w-3" />
+                  {restaurant.table_ordering ? "Habilitado" : "Desabilitado"}
                 </Badge>
               </div>
 

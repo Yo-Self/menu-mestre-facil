@@ -689,6 +689,11 @@ export default function POSTerminal() {
         queuePassword = currentCounter.toString().padStart(3, '0');
       }
 
+      // Calculate received cash and change in cents
+      const cashPayment = payments.find(p => p.method === "cash");
+      const savedReceivedCash = cashPayment ? Math.round((parseFloat(receivedCashAmount) || 0) * 100) : null;
+      const savedChange = cashPayment ? Math.max(0, (savedReceivedCash || 0) - cashPayment.amount) : null;
+
       if (!isOnline) {
         // Save local queue
         const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
@@ -705,7 +710,9 @@ export default function POSTerminal() {
             phone: customerPhone || "",
             queue_password: queuePassword,
             is_takeaway: isTakeaway,
-            observation: orderObservation || null
+            observation: orderObservation || null,
+            received_cash: savedReceivedCash,
+            change: savedChange
           }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
@@ -723,7 +730,9 @@ export default function POSTerminal() {
             phone: customerPhone || "",
             queue_password: queuePassword,
             is_takeaway: isTakeaway,
-            observation: orderObservation || null
+            observation: orderObservation || null,
+            received_cash: savedReceivedCash,
+            change: savedChange
           }
         };
         setCreatedOrder(offlineOrder);
@@ -732,7 +741,10 @@ export default function POSTerminal() {
           subtotal: subtotal,
           tableName: tableName,
           customerName: customerName,
-          receiveAllTogether: receiveAllTogether
+          receiveAllTogether: receiveAllTogether,
+          payments: [...payments],
+          receivedCashAmount: parseFloat(receivedCashAmount) || 0,
+          cashChange: cashChange / 100
         };
         setReceiptSnapshot(snapshot);
         setCheckoutModalOpen(false);
@@ -765,7 +777,9 @@ export default function POSTerminal() {
         queuePassword,
         isTakeaway,
         orderObservation || null,
-        receiveAllTogether
+        receiveAllTogether,
+        savedReceivedCash,
+        savedChange
       );
 
       setCreatedOrder(finalOrder);
@@ -774,7 +788,10 @@ export default function POSTerminal() {
         subtotal: subtotal,
         tableName: tableName,
         customerName: customerName,
-        receiveAllTogether: receiveAllTogether
+        receiveAllTogether: receiveAllTogether,
+        payments: [...payments],
+        receivedCashAmount: parseFloat(receivedCashAmount) || 0,
+        cashChange: cashChange / 100
       };
       setReceiptSnapshot(snapshot);
       toast({
@@ -982,26 +999,43 @@ export default function POSTerminal() {
         });
         
         compsText = Object.entries(groups)
-          .map(([title, comps]) => `<div style="font-size: 8px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${title}:</strong> ${comps.map(c => c.name).join(", ")}</div>`)
+          .map(([title, comps]) => {
+            const compsList = comps.map(c => {
+              const priceStr = c.price > 0 ? ` (+ R$ ${(c.price / 100).toFixed(2)})` : '';
+              return `${c.name}${priceStr}`;
+            }).join(", ");
+            return `<div style="font-size: 9px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${title}:</strong> ${compsList}</div>`;
+          })
           .join("");
       }
       
       let notesText = "";
       if (item.notes) {
-        notesText = `<div style="font-size: 8px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${item.notes}</div>`;
+        notesText = `<div style="font-size: 9px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${item.notes}</div>`;
+      }
+
+      // Composição do preço caso tenha adicionais pagos
+      let compositionText = "";
+      if (compsPrice > 0) {
+        compositionText = `
+          <div style="font-size: 9px; color: #555; padding-left: 5px; margin-top: 1px; font-style: italic;">
+            Composição: R$ ${(dishPrice / 100).toFixed(2)} base + R$ ${(compsPrice / 100).toFixed(2)} adicional = R$ ${(unitTotal / 100).toFixed(2)} un.
+          </div>
+        `;
       }
       
       return `
         <div style="margin-bottom: 6px;">
-          <div style="display: flex; justify-content: space-between;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
             <span style="font-weight: bold; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.dish.name}</span>
-            <span style="white-space: nowrap;">${item.quantity} x R$ ${((unitTotal) / 100).toFixed(2)}</span>
+            <span style="white-space: nowrap;">${item.quantity} x R$ ${(unitTotal / 100).toFixed(2)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 10px;">
             <span>&nbsp;</span>
             <span style="font-weight: bold;">R$ ${totalItemPrice}</span>
           </div>
           ${compsText}
+          ${compositionText}
           ${notesText}
         </div>
       `;
@@ -1011,8 +1045,49 @@ export default function POSTerminal() {
       ? (finalOrder.customer_info as any).observation || (finalOrder.customer_info as any).notes
       : null;
 
-    const customerHtml = custName ? `<p style="margin: 2px 0;">Cliente: ${custName}</p>` : "";
-    const observationHtml = orderObs ? `<p style="margin: 2px 0; font-weight: bold; color: #ff0000;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
+    const customerHtml = custName ? `<p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Cliente: ${custName}</p>` : "";
+    const observationHtml = orderObs ? `<p style="margin: 2px 0; font-weight: bold; color: #ff0000; font-size: 12px;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
+
+    // Múltiplos meios de pagamento e troco
+    const snapshotPayments = finalSnapshot?.payments || [];
+    const receivedCash = finalSnapshot?.receivedCashAmount || (finalOrder?.customer_info && typeof finalOrder.customer_info === 'object' ? ((finalOrder.customer_info as any).received_cash || 0) / 100 : 0);
+    const changeVal = finalSnapshot?.cashChange || (finalOrder?.customer_info && typeof finalOrder.customer_info === 'object' ? ((finalOrder.customer_info as any).change || 0) / 100 : 0);
+
+    let paymentsHtml = "";
+    if (snapshotPayments && snapshotPayments.length > 0) {
+      paymentsHtml = snapshotPayments.map((p: any) => {
+        const methodLabel = getPaymentMethodLabel(p.method);
+        const amountFormatted = (p.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return `<p style="margin: 2px 0; font-size: 11px;">${methodLabel}: ${amountFormatted}</p>`;
+      }).join("");
+
+      // Add cash details if cash was used and there is received_cash/change
+      const hasCash = snapshotPayments.some((p: any) => p.method === "cash");
+      if (hasCash && receivedCash > 0) {
+        paymentsHtml += `
+          <p style="margin: 2px 0; font-size: 10px; color: #555;">Dinheiro Recebido: R$ ${receivedCash.toFixed(2)}</p>
+          <p style="margin: 2px 0; font-size: 10px; color: #555; font-weight: bold;">Troco: R$ ${changeVal.toFixed(2)}</p>
+        `;
+      }
+    } else {
+      // Fallback if no payments are recorded (e.g. old orders or delivery online orders)
+      const singleMethod = finalOrder?.payment_method || 'card';
+      const methodLabel = singleMethod === 'card' ? 'Cartão (Débito/Crédito)' : singleMethod === 'cash' ? 'Dinheiro' : singleMethod === 'pix' ? 'PIX' : 'Pago pelo App';
+      paymentsHtml = `<p style="margin: 2px 0; font-size: 11px;">Forma de Pagamento: ${methodLabel}</p>`;
+      
+      // Check if cash received/change are in customer_info
+      if (singleMethod === 'cash' && finalOrder?.customer_info && typeof finalOrder.customer_info === 'object') {
+        const info = finalOrder.customer_info as any;
+        if (info.received_cash !== undefined && info.received_cash !== null) {
+          const recCash = info.received_cash / 100;
+          const chgVal = (info.change !== undefined && info.change !== null) ? info.change / 100 : 0;
+          paymentsHtml += `
+            <p style="margin: 2px 0; font-size: 10px; color: #555;">Dinheiro Recebido: R$ ${recCash.toFixed(2)}</p>
+            <p style="margin: 2px 0; font-size: 10px; color: #555; font-weight: bold;">Troco: R$ ${chgVal.toFixed(2)}</p>
+          `;
+        }
+      }
+    }
 
     const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
     const htmlContent = `
@@ -1043,9 +1118,9 @@ export default function POSTerminal() {
         </head>
         <body>
           <div class="text-center">
-            ${restaurantLogo ? `<div style="margin-bottom: 6px;"><img src="${restaurantLogo}" style="max-width: 60px; max-height: 60px; object-fit: contain;" /></div>` : ''}
-            <h3 style="margin: 0 0 4px 0; font-size: 14px; text-transform: uppercase;">${restaurantName}</h3>
-            <p style="margin: 0 0 2px 0; font-size: 10px; font-weight: bold;">Comprovante de Venda</p>
+            ${restaurantLogo ? `<div style="margin-bottom: 6px;"><img src="${restaurantLogo}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
+            <h3 style="margin: 0 0 4px 0; font-size: 16px; text-transform: uppercase;">${restaurantName}</h3>
+            <p style="margin: 0 0 2px 0; font-size: 12px; font-weight: bold;">Comprovante de Venda</p>
             <p style="margin: 0; font-size: 9px; color: #555;">ID: ${orderId.substring(0, 8)}...</p>
           </div>
 
@@ -1058,9 +1133,9 @@ export default function POSTerminal() {
 
           <div class="border-t-dashed my-2"></div>
 
-          <div style="font-size: 11px; line-height: 1.4;">
+          <div style="font-size: 12px; line-height: 1.4;">
             <p style="margin: 2px 0;">Data: ${formattedDate}</p>
-            <p style="margin: 2px 0;">Mesa/Comanda: ${tblName}</p>
+            <p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Mesa/Comanda: ${tblName}</p>
             ${customerHtml}
             ${observationHtml}
           </div>
@@ -1068,8 +1143,8 @@ export default function POSTerminal() {
           <div class="border-t-dashed my-2"></div>
 
           <div style="font-size: 11px;">
-            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 6px; font-size: 10px; color: #555;">
-              <span>ITEM</span>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 6px; font-size: 12px; color: #000; border-bottom: 1px solid #000; padding-bottom: 3px;">
+              <span>PRODUTOS</span>
               <span>TOTAL</span>
             </div>
             ${itemsHtml}
@@ -1079,7 +1154,8 @@ export default function POSTerminal() {
 
           <div class="text-right" style="font-size: 12px; line-height: 1.5;">
             <p style="margin: 2px 0;">SUBTOTAL: R$ ${(subtotalVal / 100).toFixed(2)}</p>
-            <p style="margin: 2px 0; font-weight: bold; font-size: 13px;">TOTAL PAGO: R$ ${(subtotalVal / 100).toFixed(2)}</p>
+            ${paymentsHtml}
+            <p style="margin: 4px 0 2px 0; font-weight: bold; font-size: 14px; border-top: 1px dashed #000; padding-top: 4px;">TOTAL PAGO: R$ ${(subtotalVal / 100).toFixed(2)}</p>
           </div>
 
           <div class="border-t-dashed my-2" style="margin-top: 15px;"></div>
@@ -2560,8 +2636,8 @@ export default function POSTerminal() {
 
               {/* Items detail list */}
               <div className="space-y-2">
-                <div className="flex justify-between font-bold text-[10px] text-muted-foreground uppercase">
-                  <span>Item</span>
+                <div className="flex justify-between font-bold text-[10px] text-muted-foreground uppercase border-b pb-1">
+                  <span>Produtos</span>
                   <div className="flex gap-4">
                     <span>Qtd</span>
                     <span>Total</span>
@@ -2574,8 +2650,8 @@ export default function POSTerminal() {
                   const unitTotal = dishPrice + compsPrice;
                   
                   return (
-                    <div key={index} className="space-y-0.5 text-[10px]">
-                      <div className="flex justify-between">
+                    <div key={index} className="space-y-0.5 text-[10px] border-b border-zinc-100 dark:border-zinc-800/40 pb-1.5 last:border-0">
+                      <div className="flex justify-between font-semibold">
                         <span className="truncate max-w-[150px]">{item.dish.name}</span>
                         <div className="flex gap-4">
                           <span>{item.quantity}</span>
@@ -2595,12 +2671,22 @@ export default function POSTerminal() {
                             {Object.entries(groups).map(([title, comps]) => (
                               <div key={title} className="flex flex-wrap gap-x-1">
                                 <strong className="text-foreground/75">{title}:</strong>
-                                <span>{comps.map(c => c.name).join(", ")}</span>
+                                <span>
+                                  {comps.map(c => {
+                                    const priceStr = c.price > 0 ? ` (+ R$ ${(c.price / 100).toFixed(2)})` : '';
+                                    return `${c.name}${priceStr}`;
+                                  }).join(", ")}
+                                </span>
                               </div>
                             ))}
                           </div>
                         );
                       })()}
+                      {compsPrice > 0 && (
+                        <div className="text-[8px] text-muted-foreground ml-1 font-medium italic mt-0.5">
+                          Composição: R$ ${(dishPrice / 100).toFixed(2)} base + R$ ${(compsPrice / 100).toFixed(2)} adicional = R$ ${(unitTotal / 100).toFixed(2)} un.
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -2608,9 +2694,54 @@ export default function POSTerminal() {
 
               <div className="border-t border-dashed my-2" />
 
-              <div className="space-y-1 text-right font-bold text-[10px]">
-                <p>SUBTOTAL: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}</p>
-                <p className="text-primary font-black text-xs mt-1">TOTAL PAGO: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}</p>
+              <div className="space-y-1 text-right text-[10px]">
+                <p className="font-semibold">SUBTOTAL: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}</p>
+                
+                {receiptSnapshot?.payments && receiptSnapshot.payments.length > 0 ? (
+                  <>
+                    {receiptSnapshot.payments.map((p: any, idx: number) => (
+                      <p key={idx} className="font-semibold">
+                        {getPaymentMethodLabel(p.method)}: R$ ${(p.amount / 100).toFixed(2)}
+                      </p>
+                    ))}
+                    {receiptSnapshot.payments.some((p: any) => p.method === "cash") && receiptSnapshot.receivedCashAmount > 0 && (
+                      <>
+                        <p className="text-[9px] text-muted-foreground">
+                          Dinheiro Recebido: R$ {receiptSnapshot.receivedCashAmount.toFixed(2)}
+                        </p>
+                        <p className="text-[9px] font-bold text-muted-foreground">
+                          Troco: R$ {receiptSnapshot.cashChange.toFixed(2)}
+                        </p>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">
+                      Forma de Pagamento: {createdOrder?.payment_method ? getPaymentMethodLabel(createdOrder.payment_method) : 'Cartão (Débito/Crédito)'}
+                    </p>
+                    {createdOrder?.payment_method === 'cash' && createdOrder?.customer_info && typeof createdOrder.customer_info === 'object' && (() => {
+                      const info = createdOrder.customer_info as any;
+                      if (info.received_cash !== undefined && info.received_cash !== null) {
+                        return (
+                          <>
+                            <p className="text-[9px] text-muted-foreground">
+                              Dinheiro Recebido: R$ {(info.received_cash / 100).toFixed(2)}
+                            </p>
+                            <p className="text-[9px] font-bold text-muted-foreground">
+                              Troco: R$ {((info.change || 0) / 100).toFixed(2)}
+                            </p>
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </>
+                )}
+
+                <p className="text-primary font-black text-xs mt-1 border-t border-dashed pt-1">
+                  TOTAL PAGO: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}
+                </p>
               </div>
             </div>
           </div>

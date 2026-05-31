@@ -597,6 +597,7 @@ export default function OrderPresentationPage() {
                       className="absolute inset-0 w-full h-full border-0"
                       allow="autoplay; encrypted-media; picture-in-picture"
                       allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
                     />
                   )
                 }
@@ -825,6 +826,7 @@ export default function OrderPresentationPage() {
                               className="w-full h-full rounded-xl border-0 aspect-video max-h-full"
                               allow="autoplay; encrypted-media; picture-in-picture"
                               allowFullScreen
+                              referrerPolicy="strict-origin-when-cross-origin"
                             />
                           )
                         }

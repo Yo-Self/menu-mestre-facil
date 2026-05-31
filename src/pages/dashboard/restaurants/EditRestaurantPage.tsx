@@ -81,6 +81,7 @@ export default function EditRestaurantPage() {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [addressActive, setAddressActive] = useState(false);
   const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
+  const [tableOrderingEnabled, setTableOrderingEnabled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [minOrderValue, setMinOrderValue] = useState(0);
   const [minOrderEnabled, setMinOrderEnabled] = useState(false);
@@ -125,6 +126,7 @@ export default function EditRestaurantPage() {
       setWhatsappPhone(data.whatsapp_phone || "");
       setWhatsappEnabled(data.whatsapp_enabled);
       setTablePaymentEnabled(data.table_payment);
+      setTableOrderingEnabled(data.table_ordering ?? false);
       setOnlinePaymentEnabled(data.online_payment ?? false);
       setAddressData({
         address: data.address || "",
@@ -180,6 +182,7 @@ export default function EditRestaurantPage() {
           longitude: addressData.longitude,
           address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
           table_payment: tablePaymentEnabled,
+          table_ordering: tableOrderingEnabled,
           online_payment: onlinePaymentEnabled,
           min_order_value: minOrderEnabled ? minOrderValue : 0,
           has_tables: hasTables,
@@ -377,6 +380,22 @@ export default function EditRestaurantPage() {
               <Switch
                 checked={tablePaymentEnabled}
                 onCheckedChange={setTablePaymentEnabled}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Pedido na Mesa
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Libera a funcionalidade de enviar pedidos direto da mesa
+                </p>
+              </div>
+              <Switch
+                checked={tableOrderingEnabled}
+                onCheckedChange={setTableOrderingEnabled}
               />
             </div>
 

@@ -252,6 +252,21 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         console.error("Erro ao salvar senha no pedido:", err);
       }
     }
+
+    // Consultar todos os pagamentos da tabela order_payments para este pedido
+    let paymentsData: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('order_payments')
+        .select('*')
+        .eq('order_id', order.id);
+      
+      if (!error && data) {
+        paymentsData = data;
+      }
+    } catch (err) {
+      console.error("Erro ao buscar pagamentos do pedido:", err);
+    }
     
     // Formatar os dados do pedido do banco (centavos) para o formato amigável do cupom (decimal)
     const orderData = {
@@ -271,6 +286,11 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         ? !!(order.customer_info as any).is_takeaway
         : false,
       observation: getOrderObservation(),
+      customer_info: order.customer_info, // repassar o customer_info completo (contendo received_cash e change)
+      payments: paymentsData.map((p: any) => ({
+        method: p.method,
+        amount: (p.amount || 0) / 100 // conversão de centavos
+      })),
       items: order.order_items.map((item: any) => ({
         quantity: item.quantity,
         dish_name: item.dishes?.name || 'Prato',

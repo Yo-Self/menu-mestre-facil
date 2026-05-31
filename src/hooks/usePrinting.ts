@@ -1,5 +1,18 @@
 import { useCallback } from 'react'
 
+const getPaymentLabel = (method: string) => {
+  const paymentMap: { [key: string]: string } = {
+    cash: 'Dinheiro',
+    credit_card: 'Cartão de Crédito',
+    debit_card: 'Cartão de Débito',
+    pix: 'PIX',
+    stripe: 'Online (Stripe)',
+    card: 'Cartão (Débito/Crédito)',
+    online: 'Pago pelo App'
+  }
+  return paymentMap[method] || method;
+}
+
 export interface Printer {
   name: string
   displayName: string
@@ -12,7 +25,7 @@ const convertItemsToHtml = (items: any[], title: string = 'Cupom') => {
   const itemsHtml = items.map((item) => {
     if (item.type === 'image' && item.path) {
       const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
-      return `<div style="${positionClass} margin-bottom: 8px;"><img src="${item.path}" style="max-width: 60px; max-height: 60px; object-fit: contain; ${item.style || ''}" /></div>`;
+      return `<div style="${positionClass} margin-bottom: 8px;"><img src="${item.path}" style="max-width: 90px; max-height: 90px; object-fit: contain; ${item.style || ''}" /></div>`;
     }
     if (item.type === 'text') {
       const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
@@ -133,7 +146,7 @@ export function usePrinting() {
             type: 'image',
             path: order.restaurant_logo,
             position: 'center',
-            style: 'width: 60px; height: 60px; margin-bottom: 5px; object-fit: contain;'
+            style: 'width: 90px; height: 90px; margin-bottom: 5px; object-fit: contain;'
           })
         }
 
@@ -141,7 +154,7 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: '--- GESTOR MENU ---',
-          style: 'font-weight: bold; font-size: 16px; margin-bottom: 3px;',
+          style: 'font-weight: bold; font-size: 18px; margin-bottom: 3px;',
           position: 'center'
         })
 
@@ -149,7 +162,7 @@ export function usePrinting() {
           items.push({
             type: 'text',
             value: order.restaurant_name.toUpperCase(),
-            style: 'font-weight: bold; font-size: 14px; margin-bottom: 10px;',
+            style: 'font-weight: bold; font-size: 16px; margin-bottom: 10px;',
             position: 'center'
           })
         }
@@ -158,7 +171,7 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: `PEDIDO: #${order.display_id || order.id.slice(0, 8)}`,
-          style: 'font-weight: bold; font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;',
+          style: 'font-weight: bold; font-size: 15px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;',
           position: 'center'
         })
 
@@ -194,7 +207,7 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: `Cliente: ${order.customer_name || 'Consumidor'}`,
-          style: 'font-weight: bold; font-size: 12px;',
+          style: 'font-weight: bold; font-size: 13px;',
           position: 'left'
         })
 
@@ -217,7 +230,7 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: `Tipo: ${tipoEntrega}`,
-          style: 'font-weight: bold; font-size: 12px; margin-bottom: 10px;',
+          style: 'font-weight: bold; font-size: 13px; margin-bottom: 10px;',
           position: 'left'
         })
 
@@ -228,7 +241,7 @@ export function usePrinting() {
           items.push({
             type: 'text',
             value: `Obs do Pedido: ${orderObs}`,
-            style: 'font-weight: bold; font-size: 12px; color: #cc0000; margin-top: 2px; margin-bottom: 8px;',
+            style: 'font-weight: bold; font-size: 13px; color: #cc0000; margin-top: 2px; margin-bottom: 8px;',
             position: 'left'
           })
         }
@@ -237,7 +250,7 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: 'PRODUTOS',
-          style: 'font-weight: bold; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 5px;',
+          style: 'font-weight: bold; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 5px;',
           position: 'left'
         })
 
@@ -260,6 +273,21 @@ export function usePrinting() {
               style: 'font-size: 11px; margin-bottom: 3px; padding-left: 10px;',
               position: 'left'
             })
+
+            // Composição do preço caso tenha adicionais pagos
+            const compsPrice = item.complements?.reduce((sum: number, c: any) => sum + (c.price || 0), 0) || 0;
+            if (compsPrice > 0) {
+              const basePrice = (item.unit_price || 0) - compsPrice;
+              const baseFormatted = basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              const compsFormatted = compsPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              const sumFormatted = (item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              items.push({
+                type: 'text',
+                value: `Composição: ${baseFormatted} base + ${compsFormatted} adicional = ${sumFormatted}`,
+                style: 'font-size: 9px; font-style: italic; color: #555; padding-left: 10px; margin-bottom: 3px;',
+                position: 'left'
+              });
+            }
 
             // Complementos
             if (item.complements && item.complements.length > 0) {
@@ -305,12 +333,45 @@ export function usePrinting() {
         items.push({
           type: 'text',
           value: `VALOR TOTAL: ${totalFormatted}`,
-          style: 'font-weight: bold; font-size: 14px; margin-top: 5px; margin-bottom: 5px;',
+          style: 'font-weight: bold; font-size: 15px; margin-top: 5px; margin-bottom: 5px;',
           position: 'right'
         })
 
-        // Forma de pagamento
-        if (order.payment_method) {
+        // Múltiplos meios de pagamento e troco
+        if (order.payments && order.payments.length > 0) {
+          order.payments.forEach((p: any) => {
+            const methodLabel = getPaymentLabel(p.method);
+            const amountFormatted = p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            items.push({
+              type: 'text',
+              value: `${methodLabel}: ${amountFormatted}`,
+              style: 'font-size: 11px;',
+              position: 'left'
+            });
+          });
+
+          // Se for dinheiro e tiver troco
+          const cashPayment = order.payments.find((p: any) => p.method === 'cash');
+          if (cashPayment && order.customer_info && typeof order.customer_info === 'object') {
+            const info = order.customer_info as any;
+            if (info.received_cash !== undefined && info.received_cash !== null) {
+              const recCash = info.received_cash / 100;
+              const chgVal = (info.change !== undefined && info.change !== null) ? info.change / 100 : 0;
+              items.push({
+                type: 'text',
+                value: `Dinheiro Recebido: ${recCash.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+                style: 'font-size: 10px; color: #555; padding-left: 10px;',
+                position: 'left'
+              });
+              items.push({
+                type: 'text',
+                value: `Troco: ${chgVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+                style: 'font-size: 10px; font-weight: bold; color: #555; padding-left: 10px;',
+                position: 'left'
+              });
+            }
+          }
+        } else if (order.payment_method) {
           const paymentMap: { [key: string]: string } = {
             card: 'Cartão (Débito/Crédito)',
             cash: 'Dinheiro',
@@ -323,6 +384,27 @@ export function usePrinting() {
             style: 'font-size: 11px;',
             position: 'left'
           })
+
+          // Se for dinheiro e tiver troco
+          if (order.payment_method === 'cash' && order.customer_info && typeof order.customer_info === 'object') {
+            const info = order.customer_info as any;
+            if (info.received_cash !== undefined && info.received_cash !== null) {
+              const recCash = info.received_cash / 100;
+              const chgVal = (info.change !== undefined && info.change !== null) ? info.change / 100 : 0;
+              items.push({
+                type: 'text',
+                value: `Dinheiro Recebido: ${recCash.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+                style: 'font-size: 10px; color: #555; padding-left: 10px;',
+                position: 'left'
+              });
+              items.push({
+                type: 'text',
+                value: `Troco: ${chgVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+                style: 'font-size: 10px; font-weight: bold; color: #555; padding-left: 10px;',
+                position: 'left'
+              });
+            }
+          }
         }
 
         // Endereço de entrega se for delivery
@@ -330,7 +412,7 @@ export function usePrinting() {
           items.push({
             type: 'text',
             value: 'ENDEREÇO DE ENTREGA',
-            style: 'font-weight: bold; font-size: 12px; border-top: 1px solid #000; margin-top: 10px; padding-top: 5px;',
+            style: 'font-weight: bold; font-size: 13px; border-top: 1px solid #000; margin-top: 10px; padding-top: 5px;',
             position: 'left'
           })
           items.push({
@@ -379,28 +461,91 @@ export function usePrinting() {
           </style>
         </head>
         <body>
-          ${order.restaurant_logo ? `<div class="center" style="margin-bottom: 8px;"><img src="${order.restaurant_logo}" style="max-width: 60px; max-height: 60px; object-fit: contain;" /></div>` : ''}
-          <div class="center bold">--- GESTOR MENU ---</div>
-          <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
-          <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
+          ${order.restaurant_logo ? `<div class="center" style="margin-bottom: 8px;"><img src="${order.restaurant_logo}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
+          <div class="center bold" style="font-size: 18px;">--- GESTOR MENU ---</div>
+          <div class="center" style="font-size: 16px;">${(order.restaurant_name || '').toUpperCase()}</div>
+          <div class="border center bold" style="font-size: 15px;">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
           ${order.queue_password ? `<div class="center bold" style="font-size: 26px; padding: 10px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;">SENHA: ${order.queue_password}</div>` : ''}
           ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
-          <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
-          <div>Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          <div style="font-size: 13px; font-weight: bold;">Cliente: ${order.customer_name || 'Consumidor'}</div>
+          <div style="font-size: 12px;">Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
           ${(() => {
             const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
               ? (order.customer_info as any).observation || (order.customer_info as any).notes
               : null);
-            return orderObs ? `<div style="font-weight: bold; color: red; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : '';
+            return orderObs ? `<div style="font-weight: bold; color: red; font-size: 13px; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : '';
           })()}
-          <div class="bold" style="margin-top: 10px;">PRODUTOS:</div>
-          ${order.items?.map((item: any) => `
-            <div>${item.quantity}x ${item.dish_name || item.name}</div>
-            <div style="font-size: 12px; padding-left: 10px;">${(item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un.</div>
-          `).join('')}
+          <div class="bold" style="margin-top: 10px; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 2px;">PRODUTOS:</div>
+          ${order.items?.map((item: any) => {
+            const compsPrice = item.complements?.reduce((sum: number, c: any) => sum + (c.price || 0), 0) || 0;
+            const basePrice = (item.unit_price || 0) - compsPrice;
+            const baseFormatted = basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const compsFormatted = compsPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const sumFormatted = (item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const compositionHtml = compsPrice > 0 
+              ? `<div style="font-size: 10px; font-style: italic; color: #555; padding-left: 10px;">Composição: ${baseFormatted} base + ${compsFormatted} adicional = ${sumFormatted}</div>`
+              : '';
+            const complementsHtml = item.complements?.map((comp: any) => {
+              const compPrice = comp.price > 0 ? ` (+ ${(comp.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : '';
+              return `<div style="font-size: 11px; font-style: italic; color: #555; padding-left: 10px;">- ${comp.name}${compPrice}</div>`;
+            }).join('') || '';
+            
+            return `
+              <div style="margin-top: 5px; font-size: 12px; font-weight: bold;">${item.quantity}x ${item.dish_name || item.name}</div>
+              <div style="font-size: 11px; padding-left: 10px;">${(item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un. | Total: ${((item.unit_price || 0) * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              ${complementsHtml}
+              ${compositionHtml}
+            `;
+          }).join('')}
           <div class="border"></div>
-          <div class="right bold">TOTAL: ${(order.total_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-          <div class="center" style="margin-top: 20px;">Impresso via navegador web.</div>
+          <div class="right bold" style="font-size: 15px;">TOTAL: ${(order.total_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div style="margin-top: 10px;">
+            ${(() => {
+              if (order.payments && order.payments.length > 0) {
+                let html = order.payments.map((p: any) => {
+                  const methodLabel = getPaymentLabel(p.method);
+                  const amountFormatted = p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                  return `<div style="font-size: 11px;">${methodLabel}: ${amountFormatted}</div>`;
+                }).join("");
+                
+                const cashPayment = order.payments.find((p: any) => p.method === 'cash');
+                if (cashPayment && order.customer_info && typeof order.customer_info === 'object') {
+                  const info = order.customer_info as any;
+                  if (info.received_cash !== undefined && info.received_cash !== null) {
+                    const recCash = info.received_cash / 100;
+                    const chgVal = (info.change !== undefined && info.change !== null) ? info.change / 100 : 0;
+                    html += `
+                      <div style="font-size: 10px; color: #555; padding-left: 10px;">Dinheiro Recebido: ${recCash.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                      <div style="font-size: 10px; font-weight: bold; color: #555; padding-left: 10px;">Troco: ${chgVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    `;
+                  }
+                }
+                return html;
+              } else if (order.payment_method) {
+                const paymentMap: { [key: string]: string } = {
+                  card: 'Cartão (Débito/Crédito)',
+                  cash: 'Dinheiro',
+                  pix: 'PIX',
+                  online: 'Pago pelo App'
+                };
+                let html = `<div style="font-size: 11px;">Pagamento: ${paymentMap[order.payment_method] || order.payment_method}</div>`;
+                if (order.payment_method === 'cash' && order.customer_info && typeof order.customer_info === 'object') {
+                  const info = order.customer_info as any;
+                  if (info.received_cash !== undefined && info.received_cash !== null) {
+                    const recCash = info.received_cash / 100;
+                    const chgVal = (info.change !== undefined && info.change !== null) ? info.change / 100 : 0;
+                    html += `
+                      <div style="font-size: 10px; color: #555; padding-left: 10px;">Dinheiro Recebido: ${recCash.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                      <div style="font-size: 10px; font-weight: bold; color: #555; padding-left: 10px;">Troco: ${chgVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    `;
+                  }
+                }
+                return html;
+              }
+              return '';
+            })()}
+          </div>
+          <div class="center" style="margin-top: 20px; font-size: 11px;">Impresso via navegador web.</div>
         </body>
         </html>
       `

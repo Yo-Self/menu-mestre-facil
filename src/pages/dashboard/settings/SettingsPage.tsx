@@ -33,6 +33,7 @@ export default function SettingsPage() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [selectedTableForQr, setSelectedTableForQr] = useState("1");
   
   // Lógica de Impressora Desktop
   const { isDesktop, getPrinters, printThermalCupom } = usePrinting();
@@ -295,6 +296,98 @@ export default function SettingsPage() {
     });
   };
 
+  const handleCopyTableLink = () => {
+    if (!restaurant) return;
+    const url = `https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copiado!",
+      description: `O link para a Mesa ${selectedTableForQr} foi copiado para a área de transferência.`,
+    });
+  };
+
+  const handleDownloadQrCode = () => {
+    if (!restaurant) return;
+    const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+      `https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`
+    )}`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.download = `qrcode-mesa-${selectedTableForQr}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Download iniciado!",
+      description: `Abrindo o QR Code da Mesa ${selectedTableForQr} em alta resolução.`,
+    });
+  };
+
+  const handlePrintQrCode = () => {
+    if (!restaurant) return;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+      `https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`
+    )}`;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Imprimir QR Code - Mesa ${selectedTableForQr}</title>
+            <style>
+              body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                font-family: sans-serif;
+                text-align: center;
+              }
+              .container {
+                border: 2px solid #ccc;
+                padding: 30px;
+                border-radius: 20px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              }
+              img {
+                width: 250px;
+                height: 250px;
+              }
+              h1 {
+                margin: 20px 0 10px 0;
+                font-size: 28px;
+                color: #333;
+              }
+              p {
+                margin: 0;
+                color: #666;
+                font-size: 14px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="${qrUrl}" alt="QR Code Mesa ${selectedTableForQr}" />
+              <h1>MESA ${selectedTableForQr}</h1>
+              <p>Escaneie para fazer seu pedido</p>
+              <p style="font-size: 10px; margin-top: 15px; font-family: monospace;">${restaurant.name}</p>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -405,6 +498,84 @@ export default function SettingsPage() {
                 <Button onClick={handleSaveProfile} disabled={saving} className="rounded-xl font-bold">
                   {saving ? "Salvando..." : "Salvar Identificador"}
                 </Button>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* Gerador de QR Code por Mesa */}
+        {restaurant && restaurant.has_tables && (
+          <>
+            <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  Gerador de QR Codes para Mesas
+                </CardTitle>
+                <CardDescription>
+                  Gere e baixe QR Codes individuais para identificar automaticamente cada mesa no menu digital.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Controles à esquerda */}
+                  <div className="md:col-span-1 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="table-select" className="font-heading font-black">Selecionar Mesa</Label>
+                      <select
+                        id="table-select"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={selectedTableForQr}
+                        onChange={(e) => setSelectedTableForQr(e.target.value)}
+                      >
+                        {Array.from({ length: restaurant.tables_count || 12 }, (_, i) => String(i + 1)).map((num) => (
+                          <option key={num} value={num}>
+                            Mesa {num}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground leading-normal">
+                        Ao escanear este QR Code, o cliente será direcionado para o cardápio e a mesa será selecionada automaticamente na comanda.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2">
+                      <Button onClick={handleCopyTableLink} className="w-full flex items-center justify-center gap-2 rounded-xl font-bold">
+                        Copiar Link da Mesa
+                      </Button>
+                      <Button onClick={handleDownloadQrCode} variant="outline" className="w-full flex items-center justify-center gap-2 rounded-xl font-bold">
+                        Baixar QR Code
+                      </Button>
+                      <Button onClick={handlePrintQrCode} variant="outline" className="w-full flex items-center justify-center gap-2 rounded-xl font-bold">
+                        Imprimir QR Code
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* QR Code visual à direita */}
+                  <div className="md:col-span-2 flex flex-col items-center justify-center border rounded-xl p-6 bg-slate-50 dark:bg-slate-900/50">
+                    <div className="bg-white p-4 rounded-xl shadow-md border flex items-center justify-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                          `https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`
+                        )}`}
+                        alt={`QR Code Mesa ${selectedTableForQr}`}
+                        className="w-48 h-48"
+                        id="table-qrcode-img"
+                      />
+                    </div>
+                    <div className="mt-4 text-center">
+                      <span className="text-lg font-black text-primary">Mesa {selectedTableForQr}</span>
+                      <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs md:max-w-md font-mono select-all">
+                        {`https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </>
