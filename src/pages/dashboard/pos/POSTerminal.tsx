@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +73,7 @@ export default function POSTerminal() {
   const [tableName, setTableName] = useState("Balcão");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [isTakeaway, setIsTakeaway] = useState(false);
 
   // Complements dialog state
   const [complementsModalOpen, setComplementsModalOpen] = useState(false);
@@ -665,7 +667,8 @@ export default function POSTerminal() {
           customer_info: {
             name: customerName || "",
             phone: customerPhone || "",
-            queue_password: queuePassword
+            queue_password: queuePassword,
+            is_takeaway: isTakeaway
           }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
@@ -681,7 +684,8 @@ export default function POSTerminal() {
           customer_info: {
             name: customerName || "",
             phone: customerPhone || "",
-            queue_password: queuePassword
+            queue_password: queuePassword,
+            is_takeaway: isTakeaway
           }
         };
         setCreatedOrder(offlineOrder);
@@ -699,6 +703,7 @@ export default function POSTerminal() {
         setCustomerName("");
         setCustomerPhone("");
         setPayments([]);
+        setIsTakeaway(false);
 
         // Impressão automática no fechamento offline se ativada nas configurações
         if (localStorage.getItem("thermal_print_automatic") === "true") {
@@ -717,7 +722,8 @@ export default function POSTerminal() {
         customerPhone || null,
         orderItemsInput,
         payments,
-        queuePassword
+        queuePassword,
+        isTakeaway
       );
 
       setCreatedOrder(finalOrder);
@@ -739,6 +745,7 @@ export default function POSTerminal() {
       setCustomerName("");
       setCustomerPhone("");
       setPayments([]);
+      setIsTakeaway(false);
 
       // Impressão automática no fechamento online se ativada nas configurações
       if (localStorage.getItem("thermal_print_automatic") === "true") {
@@ -810,7 +817,8 @@ export default function POSTerminal() {
           customer_info: {
             name: customerName || "",
             phone: customerPhone || "",
-            queue_password: queuePassword
+            queue_password: queuePassword,
+            is_takeaway: isTakeaway
           }
         });
         localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
@@ -824,6 +832,7 @@ export default function POSTerminal() {
         setTableName("Balcão");
         setCustomerName("");
         setCustomerPhone("");
+        setIsTakeaway(false);
         return;
       }
 
@@ -835,7 +844,8 @@ export default function POSTerminal() {
         customerPhone || null,
         orderItemsInput,
         [],
-        queuePassword
+        queuePassword,
+        isTakeaway
       );
 
       toast({
@@ -847,6 +857,7 @@ export default function POSTerminal() {
       setTableName("Balcão");
       setCustomerName("");
       setCustomerPhone("");
+      setIsTakeaway(false);
 
       // Reload active orders to update table occupancy dynamically
       await loadPOSData();
@@ -1073,6 +1084,9 @@ export default function POSTerminal() {
     const queuePassword = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
       ? (finalOrder.customer_info as any).queue_password
       : null;
+    const isTakeawayOrder = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
+      ? !!(finalOrder.customer_info as any).is_takeaway
+      : false;
 
     let kitchenIframe = document.getElementById('print-kitchen-iframe') as HTMLIFrameElement;
     if (!kitchenIframe) {
@@ -1154,6 +1168,13 @@ export default function POSTerminal() {
           </div>
 
           <div class="border-t-dashed my-2"></div>
+
+          ${isTakeawayOrder ? `
+            <div style="background-color: #000; color: #fff; padding: 6px; font-weight: bold; font-size: 14px; text-align: center; margin: 6px 0;">
+              *** PEDIDO PARA VIAGEM ***
+            </div>
+            <div class="border-t-dashed my-2"></div>
+          ` : ''}
 
           ${queuePassword ? `
             <div class="text-center" style="padding: 4px 0;">
@@ -1821,6 +1842,16 @@ export default function POSTerminal() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
               />
+            </div>
+            <div className="flex items-center space-x-2 pt-2 col-span-2 border-t border-border/20 mt-1">
+              <Switch
+                id="takeaway"
+                checked={isTakeaway}
+                onCheckedChange={setIsTakeaway}
+              />
+              <Label htmlFor="takeaway" className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1">
+                💼 Pedido para Viagem
+              </Label>
             </div>
           </div>
         </div>

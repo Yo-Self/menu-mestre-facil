@@ -124,6 +124,9 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       restaurant_name: restaurant?.name || 'Gestor Menu',
       restaurant_logo: restaurant?.image_url || '',
       queue_password: queuePassword,
+      is_takeaway: order.customer_info && typeof order.customer_info === 'object'
+        ? !!(order.customer_info as any).is_takeaway
+        : false,
       items: order.order_items.map((item: any) => ({
         quantity: item.quantity,
         dish_name: item.dishes?.name || 'Prato',
@@ -269,11 +272,22 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
   }
 
   const getDeliveryTypeBadge = () => {
+    const info = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : null;
+    const isTakeaway = info && info.is_takeaway;
+    
+    if (isTakeaway) {
+      return (
+        <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-lg px-2 py-0.5 bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400">
+          💼 Para Viagem
+        </Badge>
+      )
+    }
+
     const type = order.delivery_type || 'dine_in'
     const badges: Record<string, { label: string; color: string }> = {
-      dine_in: { label: 'Mesa / Local', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
-      takeout: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' },
-      delivery: { label: 'Delivery', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20' }
+      dine_in: { label: 'Mesa / Local', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400' },
+      takeout: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400' },
+      delivery: { label: 'Delivery', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:bg-sky-500/20 dark:text-sky-400' }
     }
     const config = badges[type] || badges.dine_in
     return (
@@ -427,6 +441,18 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
             <span>Mesa: <strong className="text-foreground">{order.table_name}</strong></span>
           </div>
         )}
+
+        {(() => {
+          const info = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : null;
+          if (info && info.is_takeaway) {
+            return (
+              <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 mb-2.5 font-bold bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 w-fit animate-pulse">
+                <span>💼 Pedido para Viagem</span>
+              </div>
+            )
+          }
+          return null;
+        })()}
 
         {/* Order Summary */}
         <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2 font-semibold">

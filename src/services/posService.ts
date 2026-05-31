@@ -146,7 +146,8 @@ export async function createPOSOrder(
   customerPhone: string | null,
   items: POSOrderItemInput[],
   payments: POSOrderPaymentInput[],
-  queuePassword?: string | null
+  queuePassword?: string | null,
+  isTakeaway?: boolean
 ) {
   // 1. Calculate total price (cents)
   const totalPrice = items.reduce(
@@ -162,11 +163,12 @@ export async function createPOSOrder(
       pos_session_id: sessionId,
       table_name: tableName || "Balcão",
       customer_info:
-        customerName || customerPhone || queuePassword
+        customerName || customerPhone || queuePassword || isTakeaway
           ? { 
               name: customerName || "", 
               phone: customerPhone || "",
-              queue_password: queuePassword || null
+              queue_password: queuePassword || null,
+              is_takeaway: isTakeaway || false
             }
           : null,
       total_price: totalPrice,

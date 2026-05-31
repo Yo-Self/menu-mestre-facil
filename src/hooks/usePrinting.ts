@@ -172,6 +172,16 @@ export function usePrinting() {
           })
         }
 
+        // Cabeçalho de Viagem
+        if (order.is_takeaway) {
+          items.push({
+            type: 'text',
+            value: '*** PEDIDO PARA VIAGEM ***',
+            style: 'font-weight: bold; font-size: 16px; background-color: #000; color: #fff; padding: 6px 0; margin-bottom: 10px;',
+            position: 'center'
+          })
+        }
+
         const dateStr = order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')
         items.push({
           type: 'text',
@@ -203,9 +213,10 @@ export function usePrinting() {
           takeout: 'RETIRADA',
           dine_in: 'MESA/LOCAL'
         }
+        const tipoEntrega = order.is_takeaway ? 'VIAGEM' : (deliveryTypeMap[order.delivery_type] || order.delivery_type || 'MESA')
         items.push({
           type: 'text',
-          value: `Tipo: ${deliveryTypeMap[order.delivery_type] || order.delivery_type || 'MESA'}`,
+          value: `Tipo: ${tipoEntrega}`,
           style: 'font-weight: bold; font-size: 12px; margin-bottom: 10px;',
           position: 'left'
         })
@@ -361,6 +372,7 @@ export function usePrinting() {
           <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
           <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
           ${order.queue_password ? `<div class="center bold" style="font-size: 26px; padding: 10px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;">SENHA: ${order.queue_password}</div>` : ''}
+          ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
           <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div>Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
           <div class="bold" style="margin-top: 10px;">PRODUTOS:</div>
@@ -422,6 +434,16 @@ export function usePrinting() {
             type: 'text',
             value: `SENHA: ${order.queue_password}`,
             style: 'font-weight: 900; font-size: 20px; padding: 6px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;',
+            position: 'center'
+          })
+        }
+
+        // Cabeçalho de Viagem
+        if (order.is_takeaway) {
+          items.push({
+            type: 'text',
+            value: '*** PEDIDO PARA VIAGEM ***',
+            style: 'font-weight: bold; font-size: 16px; background-color: #000; color: #fff; padding: 6px 0; margin-bottom: 8px;',
             position: 'center'
           })
         }
@@ -537,6 +559,7 @@ export function usePrinting() {
           <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
           <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
           ${order.queue_password ? `<div class="center bold" style="font-size: 24px; padding: 5px 0;">SENHA: ${order.queue_password}</div><div class="border"></div>` : ''}
+          ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
           <div>Mesa/Local: <strong>${order.table_name || 'Balcão'}</strong></div>
           <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div>Hora: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
