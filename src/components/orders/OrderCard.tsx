@@ -3,6 +3,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { Card, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import { Checkbox } from '../../components/ui/checkbox'
 import { 
   MoreVertical, 
   Clock, 
@@ -88,6 +89,30 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
   const [loadingDishes, setLoadingDishes] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [dishSearch, setDishSearch] = useState('')
+
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`order_checked_items:${order.id}`)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  useEffect(() => {
+    if (Object.keys(checkedItems).length > 0) {
+      localStorage.setItem(`order_checked_items:${order.id}`, JSON.stringify(checkedItems))
+    } else {
+      localStorage.removeItem(`order_checked_items:${order.id}`)
+    }
+  }, [checkedItems, order.id])
+
+  const toggleCheck = (itemId: string) => {
+    setCheckedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }))
+  }
 
   useEffect(() => {
     if (editModalOpen && order.restaurant_id) {
@@ -689,32 +714,52 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
             </div>
             
             <div className="space-y-2 mt-2">
-              {order.order_items.map((item, index) => (
-                <div key={index} className="text-xs py-1 border-b border-border/20 last:border-0">
-                  <div className="flex justify-between font-medium">
-                    <span className="text-foreground font-semibold">
-                      {item.quantity}x {item.dishes?.name || 'Prato removido'}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatPrice(item.price_at_time_of_order * item.quantity)}
-                    </span>
+              {order.order_items.map((item, index) => {
+                const isChecked = !!checkedItems[item.id]
+                return (
+                  <div key={index} className={`text-xs py-1 border-b border-border/20 last:border-0 transition-all duration-200 ${isChecked ? 'opacity-60 bg-muted/5' : ''}`}>
+                    <div className="flex justify-between font-medium items-center">
+                      <div className="flex items-center min-w-0 flex-1">
+                        {order.order_items.length > 1 && (
+                          <div 
+                            className="mr-2 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox 
+                              id={`item-${item.id}`}
+                              checked={isChecked}
+                              onCheckedChange={() => toggleCheck(item.id)}
+                              className="h-4 w-4 rounded border-muted-foreground/30 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 data-[state=checked]:text-white"
+                            />
+                          </div>
+                        )}
+                        <span className={`text-foreground font-semibold truncate ${isChecked ? 'line-through text-muted-foreground/50 font-normal' : ''}`}>
+                          {item.quantity}x {item.dishes?.name || 'Prato removido'}
+                        </span>
+                      </div>
+                      <span className={`text-muted-foreground shrink-0 ml-2 font-mono ${isChecked ? 'line-through text-muted-foreground/40' : ''}`}>
+                        {formatPrice(item.price_at_time_of_order * item.quantity)}
+                      </span>
+                    </div>
+                    {item.selected_complements && (
+                      <div className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}>
+                        {Array.isArray(item.selected_complements) && 
+                          item.selected_complements.map((complement: any, compIndex: number) => (
+                            <div key={compIndex}>+ {complement.name}</div>
+                          ))
+                        }
+                      </div>
+                    )}
+                    {item.notes && (
+                      <div className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} text-[10px] text-destructive/80 font-medium mt-1 bg-red-500/5 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}>
+                        Obs: {item.notes}
+                      </div>
+                    )}
                   </div>
-                  {item.selected_complements && (
-                    <div className="ml-3 text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5">
-                      {Array.isArray(item.selected_complements) && 
-                        item.selected_complements.map((complement: any, compIndex: number) => (
-                          <div key={compIndex}>+ {complement.name}</div>
-                        ))
-                      }
-                    </div>
-                  )}
-                  {item.notes && (
-                    <div className="ml-3 text-[10px] text-destructive/80 font-medium mt-1 bg-red-500/5 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10">
-                      Obs: {item.notes}
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
