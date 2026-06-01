@@ -41,6 +41,10 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Totalizador em Tempo Real**: Calcula instantaneamente o valor total do pedido com base nos preços atualizados durante as edições.
 - **Integração com Cozinha & Impressão**: As alterações atualizam os bancos de dados em tempo real, sincronizando-se com as vias de impressão térmica e telas de preparo.
 
+### 💳 Sincronização Automatizada de Pagamentos
+- **Fluxo de Transição Automática**: Pedidos que entram no sistema com o status **Aguardando Pagamento** são automaticamente movidos para a fila de **Novos** assim que o pagamento online é concluído (quando a tag `stripe_payment_intent_id` é registrada).
+- **Tempo Real & Resiliência**: Funciona instantaneamente por meio de assinaturas em tempo real do Supabase (Realtime) se o painel estiver aberto, e também possui um mecanismo de atualização em lote no carregamento inicial para processar pagamentos realizados enquanto o painel administrativo estava offline.
+
 ### 📥 Importador e Scraping de Cardápios (iFood)
 - **Importador de Cardápio iFood**: Importação ágil de cardápios completos diretamente a partir de um link público do iFood.
 - **Resiliência a Bloqueios (CORS)**: Scraping automatizado implementado por meio de Supabase Edge Functions (`scrape-ifood`), garantindo desvio completo de bloqueios de CORS do frontend.

@@ -59,6 +59,7 @@ interface Restaurant {
   table_payment: boolean;
   online_payment: boolean;
   min_order_value?: number | null;
+  stripe_connect_id?: string | null;
 }
 
 export default function EditRestaurantPage() {
@@ -83,6 +84,7 @@ export default function EditRestaurantPage() {
   const [tablePaymentEnabled, setTablePaymentEnabled] = useState(false);
   const [tableOrderingEnabled, setTableOrderingEnabled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [stripeConnectId, setStripeConnectId] = useState("");
   const [minOrderValue, setMinOrderValue] = useState(0);
   const [minOrderEnabled, setMinOrderEnabled] = useState(false);
   
@@ -128,6 +130,7 @@ export default function EditRestaurantPage() {
       setTablePaymentEnabled(data.table_payment);
       setTableOrderingEnabled(data.table_ordering ?? false);
       setOnlinePaymentEnabled(data.online_payment ?? false);
+      setStripeConnectId(data.stripe_connect_id || "");
       setAddressData({
         address: data.address || "",
         latitude: data.latitude,
@@ -184,6 +187,7 @@ export default function EditRestaurantPage() {
           table_payment: tablePaymentEnabled,
           table_ordering: tableOrderingEnabled,
           online_payment: onlinePaymentEnabled,
+          stripe_connect_id: (onlinePaymentEnabled || tablePaymentEnabled) ? (stripeConnectId.trim() || null) : null,
           min_order_value: minOrderEnabled ? minOrderValue : 0,
           has_tables: hasTables,
           tables_count: tablesCount,
@@ -414,6 +418,23 @@ export default function EditRestaurantPage() {
                 onCheckedChange={setOnlinePaymentEnabled}
               />
             </div>
+
+            {(onlinePaymentEnabled || tablePaymentEnabled) && (
+              <div className="space-y-2 pl-6 border-l-2 border-primary/20 animate-fade-in">
+                <Label htmlFor="stripe_connect_id">ID da Conta Stripe Connect (Produção / Testes)</Label>
+                <Input
+                  id="stripe_connect_id"
+                  value={stripeConnectId}
+                  onChange={(e) => setStripeConnectId(e.target.value)}
+                  placeholder="Ex: acct_xxxxxxxxxxxx"
+                  className="max-w-xs font-mono"
+                  required={onlinePaymentEnabled || tablePaymentEnabled}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Insira o ID da sua conta vinculada Stripe Connect para receber as vendas diretamente. Ex: acct_xxxxxxxxxxxx.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4 border-t pt-6">
               <div className="flex items-center justify-between">

@@ -407,6 +407,16 @@ export function usePrinting() {
           }
         }
 
+        // Aviso de pedido pago online (nada a cobrar na entrega)
+        if (order.stripe_payment_intent_id) {
+          items.push({
+            type: 'text',
+            value: 'PEDIDO PAGO ONLINE, NADA A COBRAR NA ENTREGA',
+            style: 'font-weight: bold; font-size: 11px; background-color: #eee; border: 1px solid #000; padding: 4px; margin-top: 5px; margin-bottom: 5px;',
+            position: 'left'
+          })
+        }
+
         // Endereço de entrega se for delivery
         if (order.delivery_type === 'delivery' && order.address) {
           items.push({
@@ -469,6 +479,12 @@ export function usePrinting() {
           ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
           <div style="font-size: 13px; font-weight: bold;">Cliente: ${order.customer_name || 'Consumidor'}</div>
           <div style="font-size: 12px;">Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          ${order.delivery_type === 'delivery' && order.address ? `
+            <div style="font-size: 12px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 6px;">
+              <span class="bold">ENDEREÇO DE ENTREGA:</span><br/>
+              ${order.address}
+            </div>
+          ` : ''}
           ${(() => {
             const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
               ? (order.customer_info as any).observation || (order.customer_info as any).notes
@@ -544,6 +560,11 @@ export function usePrinting() {
               }
               return '';
             })()}
+            ${order.stripe_payment_intent_id ? `
+              <div style="font-weight: bold; font-size: 12px; color: #15803d; border: 1px solid #15803d; background-color: #f0fdf4; padding: 6px; margin-top: 8px; text-align: center;">
+                PEDIDO PAGO ONLINE, NADA A COBRAR NA ENTREGA
+              </div>
+            ` : ''}
           </div>
           <div class="center" style="margin-top: 20px; font-size: 11px;">Impresso via navegador web.</div>
         </body>

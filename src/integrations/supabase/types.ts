@@ -872,6 +872,7 @@ export type Database = {
           tables_count: number | null
           table_categories: string | null
           min_order_value: number | null
+          stripe_connect_id: string | null
         }
         Insert: {
           address?: string | null
@@ -903,6 +904,7 @@ export type Database = {
           tables_count?: number | null
           table_categories?: string | null
           min_order_value?: number | null
+          stripe_connect_id?: string | null
         }
         Update: {
           address?: string | null
@@ -934,6 +936,7 @@ export type Database = {
           tables_count?: number | null
           table_categories?: string | null
           min_order_value?: number | null
+          stripe_connect_id?: string | null
         }
         Relationships: [
           {

@@ -300,7 +300,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       created_at: order.created_at,
       customer_name: getCustomerName(),
       customer_phone: getCustomerPhone(),
-      delivery_type: order.delivery_type || 'dine_in',
+      delivery_type: getDeliveryType(),
       table_name: order.table_name,
       total_price: order.total_price / 100, // conversão de centavos
       payment_method: order.payment_method || 'card',
@@ -311,6 +311,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         ? !!(order.customer_info as any).is_takeaway
         : false,
       observation: getOrderObservation(),
+      address: getCustomerAddress(),
+      stripe_payment_intent_id: order.stripe_payment_intent_id,
       customer_info: order.customer_info, // repassar o customer_info completo (contendo received_cash e change)
       payments: paymentsData.map((p: any) => ({
         method: p.method,
@@ -448,6 +450,32 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       return (order.customer_info as any).observation || (order.customer_info as any).notes || ''
     }
     return ''
+  }
+
+  const getCustomerAddress = () => {
+    if (order.customer_info && typeof order.customer_info === 'object') {
+      const info = order.customer_info as any
+      if (info.address) return info.address
+      if (info.delivery_address) return info.delivery_address
+      if (info.endereco) return info.endereco
+      
+      const parts = []
+      if (info.street || info.rua) parts.push(info.street || info.rua)
+      if (info.number || info.numero) parts.push(info.number || info.numero)
+      if (info.complement || info.complemento) parts.push(info.complement || info.complemento)
+      if (info.neighborhood || info.bairro) parts.push(info.neighborhood || info.bairro)
+      if (info.city || info.cidade) parts.push(info.city || info.cidade)
+      
+      if (parts.length > 0) {
+        return parts.join(', ')
+      }
+    }
+    return ''
+  }
+
+  const getDeliveryType = () => {
+    const info = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : null
+    return info?.delivery_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
   }
 
   const getTotalItems = () => {
