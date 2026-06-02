@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useRestaurant } from '@/components/providers/RestaurantProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,10 +38,25 @@ interface DeliveryZone {
   radius: number; // em metros
 }
 
+interface RestaurantOption {
+  id: string;
+  name: string;
+  address: string | null;
+}
+
+const SP_FALLBACK_LAT = -23.55052;
+const SP_FALLBACK_LNG = -46.633308;
+
+function isSpFallbackCoords(lat: number, lng: number) {
+  return lat === SP_FALLBACK_LAT && lng === SP_FALLBACK_LNG;
+}
+
 export default function DeliveryPage() {
   const { currentRestaurantId, setCurrentRestaurantId } = useRestaurant();
   const { toast } = useToast();
 
+  const [restaurants, setRestaurants] = useState<RestaurantOption[]>([]);
+  const [restaurantsReady, setRestaurantsReady] = useState(false);
   const [activeTab, setActiveTab] = useState('panel');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,54 +120,86 @@ export default function DeliveryPage() {
     loadGoogleMaps();
   }, []);
 
-  // 2. Buscar dados do Restaurante e Entregas do Supabase
-  const fetchData = async () => {
-    console.log('🔍 Debug - fetchData init. currentRestaurantId:', currentRestaurantId);
-    
-    setLoading(true);
-    try {
-      let targetRestaurantId = currentRestaurantId;
-
-      // Se não houver restaurante selecionado no contexto, buscar o primeiro disponível
-      if (!targetRestaurantId) {
-        console.log('🔍 Debug - Sem currentRestaurantId, buscando primeiro restaurante do usuário...');
-        const { data: userRest, error: userRestErr } = await supabase
-          .from('restaurants')
-          .select('id')
-          .limit(1);
-          
-        if (userRestErr) throw userRestErr;
-        
-        if (userRest && userRest.length > 0) {
-          targetRestaurantId = userRest[0].id;
-          console.log('🔍 Debug - Restaurante auto-selecionado:', targetRestaurantId);
-          // Opcional: atualizar o contexto global
-          setCurrentRestaurantId(targetRestaurantId);
-          // O return aqui é importante porque atualizar o context vai triggar re-render e chamar fetchData novamente
-          return; 
-        } else {
-          console.log('🔍 Debug - Nenhum restaurante encontrado para o usuário.');
-          setLoading(false);
+  // Inicializar lista de restaurantes e validar seleção do contexto
+  useEffect(() => {
+    const loadRestaurants = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setRestaurants([]);
           return;
         }
-      }
 
-      // Buscar Restaurante
-      console.log('🔍 Debug - fetch restaurant from Supabase');
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('id, name, address')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        const list = (data || []) as RestaurantOption[];
+        setRestaurants(list);
+
+        if (list.length === 0) {
+          setCurrentRestaurantId(null);
+          return;
+        }
+
+        const isValid = currentRestaurantId && list.some((r) => r.id === currentRestaurantId);
+        if (!isValid) {
+          setCurrentRestaurantId(list[0].id);
+        }
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: 'Erro ao carregar restaurantes',
+          description: e.message || 'Erro inesperado.',
+          variant: 'destructive',
+        });
+      } finally {
+        setRestaurantsReady(true);
+      }
+    };
+
+    loadRestaurants();
+  }, []);
+
+  const resetRestaurantState = () => {
+    setRestaurantData(null);
+    setResolvedRestaurantAddress('');
+    setRestaurantLat(null);
+    setRestaurantLng(null);
+    setIsCoordsFallback(false);
+    setDeliveryZones([]);
+    setOrders([]);
+  };
+
+  // 2. Buscar dados do Restaurante e Entregas do Supabase
+  const fetchData = async () => {
+    if (!currentRestaurantId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    resetRestaurantState();
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: rest, error: restErr } = await supabase
         .from('restaurants')
         .select('*')
-        .eq('id', targetRestaurantId)
+        .eq('id', currentRestaurantId)
+        .eq('user_id', user.id)
         .single();
 
-      if (restErr) {
-        console.error('🔍 Debug - fetch restaurant error:', restErr);
-        throw restErr;
-      }
+      if (restErr) throw restErr;
 
-      console.log('🔍 Debug - fetch restaurant success:', rest?.name, rest?.id);
       setRestaurantData(rest);
-      setResolvedRestaurantAddress(rest.address || '');
+      setResolvedRestaurantAddress(rest.address?.trim() || '');
       setDeliveryEnabled(rest.delivery_enabled || false);
       setDeliveryMaxDistance(Number(rest.delivery_max_distance) || 10);
       setDeliveryBaseFee(((rest.delivery_base_fee || 0) / 100).toFixed(2));
@@ -160,31 +208,33 @@ export default function DeliveryPage() {
 
       const latVal = Number(rest.latitude);
       const lngVal = Number(rest.longitude);
-      
-      const isExactFallback = latVal === -23.55052 && lngVal === -46.633308;
+      const hasStoredCoords =
+        rest.latitude != null &&
+        rest.longitude != null &&
+        !Number.isNaN(latVal) &&
+        !Number.isNaN(lngVal);
+      const hasValidCoords = hasStoredCoords && !isSpFallbackCoords(latVal, lngVal);
+      const hasAddress = Boolean(rest.address?.trim());
 
-      if (rest.latitude !== null && rest.longitude !== null && !isNaN(latVal) && !isNaN(lngVal) && !isExactFallback) {
+      if (hasValidCoords) {
         setRestaurantLat(latVal);
         setRestaurantLng(lngVal);
         setIsCoordsFallback(false);
-      } else if (!rest.address || rest.address.trim() === '') {
-        console.warn('🔍 Debug - Sem endereço. Forçando fallback SP.');
-        // Se não tem endereço para o geocoder buscar, usar fallback SP para o mapa não quebrar
-        setRestaurantLat(-23.55052);
-        setRestaurantLng(-46.633308);
-        setIsCoordsFallback(true);
-      } else {
-        // Deixar nulo para que o useEffect de Geocodificação tente buscar pelo endereço real
+      } else if (hasAddress) {
         setRestaurantLat(null);
         setRestaurantLng(null);
-        setIsCoordsFallback(true); // O geocoder depois vai arrumar se der certo
+        setIsCoordsFallback(true);
+      } else {
+        setRestaurantLat(SP_FALLBACK_LAT);
+        setRestaurantLng(SP_FALLBACK_LNG);
+        setIsCoordsFallback(true);
       }
 
       // Buscar Entregas Ativas (order_type = delivery, status não finalizado/cancelado)
       const { data: ords, error: ordsErr } = await supabase
         .from('orders')
         .select('*')
-        .eq('restaurant_id', targetRestaurantId)
+        .eq('restaurant_id', currentRestaurantId)
         .eq('order_type', 'delivery')
         .in('status', ['new', 'in_preparation', 'ready'])
         .order('created_at', { ascending: true });
@@ -204,19 +254,19 @@ export default function DeliveryPage() {
   };
 
   useEffect(() => {
+    if (!restaurantsReady || !currentRestaurantId) return;
+
     fetchData();
 
-    // Inscrição Realtime para novos pedidos
-    if (!currentRestaurantId) return;
     const channel = supabase
-      .channel('delivery_orders_realtime')
+      .channel(`delivery_orders_realtime_${currentRestaurantId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `restaurant_id=eq.${currentRestaurantId}`
+          filter: `restaurant_id=eq.${currentRestaurantId}`,
         },
         () => {
           fetchData();
@@ -227,7 +277,7 @@ export default function DeliveryPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentRestaurantId]);
+  }, [currentRestaurantId, restaurantsReady]);
 
   // 2.5 Geocodificar endereço de texto do restaurante se coordenadas estiverem nulas
   useEffect(() => {
@@ -540,7 +590,12 @@ export default function DeliveryPage() {
       const baseFeeCents = Math.round(parseFloat(deliveryBaseFee) * 100);
       const feePerKmCents = Math.round(parseFloat(deliveryFeePerKm) * 100);
 
-      const updatePayload = {
+      const addressToSave =
+        resolvedRestaurantAddress.trim() ||
+        restaurantData?.address?.trim() ||
+        '';
+
+      const updatePayload: Record<string, unknown> = {
         delivery_enabled: deliveryEnabled,
         delivery_max_distance: deliveryMaxDistance,
         delivery_base_fee: baseFeeCents,
@@ -548,8 +603,12 @@ export default function DeliveryPage() {
         delivery_zones: deliveryZones,
         latitude: restaurantLat,
         longitude: restaurantLng,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
+
+      if (addressToSave) {
+        updatePayload.address = addressToSave;
+      }
 
       console.log('🔍 Debug - Payload de update:', updatePayload);
 
@@ -804,27 +863,82 @@ export default function DeliveryPage() {
     }
   };
 
+  const selectedRestaurantFromList = restaurants.find((r) => r.id === currentRestaurantId);
+  const displayRestaurantName =
+    restaurantData?.name || selectedRestaurantFromList?.name || 'Carregando...';
+  const displayRestaurantAddress =
+    resolvedRestaurantAddress.trim() ||
+    restaurantData?.address?.trim() ||
+    selectedRestaurantFromList?.address?.trim() ||
+    '';
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-background/80 backdrop-blur border border-border/40 p-6 rounded-2xl shadow-sm">
-        <div>
+        <div className="space-y-1 min-w-0">
           <h1 className="text-3xl font-heading font-extrabold bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent flex items-center gap-3">
             <Truck className="h-8 w-8 text-primary shrink-0" />
             Gestão de Entregas & Delivery
           </h1>
-          <p className="text-muted-foreground mt-1 font-sans font-medium">
-            Configurando taxas e áreas para: <strong className="text-foreground">{restaurantData?.name || "Carregando..."}</strong>
+          <p className="text-muted-foreground font-sans font-medium">
+            Configurando taxas e áreas para:{' '}
+            <strong className="text-foreground">{displayRestaurantName}</strong>
           </p>
+          {displayRestaurantAddress ? (
+            <p className="text-sm text-muted-foreground flex items-start gap-1.5 font-sans">
+              <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+              <span>{displayRestaurantAddress}</span>
+            </p>
+          ) : (
+            <p className="text-sm text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Endereço não cadastrado. Defina em{' '}
+                <Link
+                  to={currentRestaurantId ? `/dashboard/restaurants/${currentRestaurantId}/edit` : '/dashboard/restaurants'}
+                  className="underline font-semibold hover:text-primary"
+                >
+                  configurações do restaurante
+                </Link>{' '}
+                ou arraste o pino no mapa e salve.
+              </span>
+            </p>
+          )}
         </div>
-        <Button 
-          onClick={fetchData} 
-          variant="outline" 
-          size="sm"
-          className="border-border/60 hover:border-primary/40 rounded-xl"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar Painel
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
+          {restaurants.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="delivery-restaurant-select" className="text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                Restaurante:
+              </Label>
+              <Select
+                value={currentRestaurantId || ''}
+                onValueChange={(value) => setCurrentRestaurantId(value)}
+              >
+                <SelectTrigger id="delivery-restaurant-select" className="min-w-[180px] rounded-xl">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <Button
+            onClick={fetchData}
+            variant="outline"
+            size="sm"
+            className="border-border/60 hover:border-primary/40 rounded-xl"
+            disabled={!currentRestaurantId}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar Painel
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

@@ -56,10 +56,6 @@ export default function RestaurantDetailPage() {
       fetchRestaurant();
       fetchStats();
     }
-    
-    return () => {
-      setCurrentRestaurantId(null);
-    };
   }, [id, setCurrentRestaurantId]);
 
   const fetchRestaurant = async () => {
