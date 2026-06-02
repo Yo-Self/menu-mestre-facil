@@ -54,6 +54,7 @@ export default function DeliveryPage() {
   const [restaurantData, setRestaurantData] = useState<any>(null);
   const [restaurantLat, setRestaurantLat] = useState<number | null>(null);
   const [restaurantLng, setRestaurantLng] = useState<number | null>(null);
+  const [resolvedRestaurantAddress, setResolvedRestaurantAddress] = useState<string>('');
   const [isCoordsFallback, setIsCoordsFallback] = useState(false);
 
   // Estado para nova zona interativa
@@ -150,6 +151,7 @@ export default function DeliveryPage() {
 
       console.log('🔍 Debug - fetch restaurant success:', rest?.name, rest?.id);
       setRestaurantData(rest);
+      setResolvedRestaurantAddress(rest.address || '');
       setDeliveryEnabled(rest.delivery_enabled || false);
       setDeliveryMaxDistance(Number(rest.delivery_max_distance) || 10);
       setDeliveryBaseFee(((rest.delivery_base_fee || 0) / 100).toFixed(2));
@@ -182,7 +184,7 @@ export default function DeliveryPage() {
       const { data: ords, error: ordsErr } = await supabase
         .from('orders')
         .select('*')
-        .eq('restaurant_id', currentRestaurantId)
+        .eq('restaurant_id', targetRestaurantId)
         .eq('order_type', 'delivery')
         .in('status', ['new', 'in_preparation', 'ready'])
         .order('created_at', { ascending: true });
@@ -266,6 +268,48 @@ export default function DeliveryPage() {
     geocodeAddress();
   }, [googleMapsLoaded, restaurantData, restaurantLat]);
 
+  useEffect(() => {
+    if (!googleMapsLoaded || !restaurantData) return;
+    if (restaurantData.address && restaurantData.address.trim() !== '') return;
+    if (restaurantLat === null || restaurantLng === null) return;
+    if (resolvedRestaurantAddress) return;
+
+    const reverseGeocode = async () => {
+      try {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: restaurantLat, lng: restaurantLng } }, async (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const formattedAddress = results[0].formatted_address || '';
+            if (!formattedAddress) return;
+
+            setResolvedRestaurantAddress(formattedAddress);
+            setRestaurantData((prev: any) => prev ? { ...prev, address: formattedAddress } : prev);
+
+            if (currentRestaurantId) {
+              const { error } = await supabase
+                .from('restaurants')
+                .update({
+                  address: formattedAddress,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', currentRestaurantId);
+
+              if (error) {
+                console.warn('🔍 Debug - Falha ao persistir endereço reverso:', error);
+              } else {
+                console.log('🔍 Debug - Endereço recuperado por reverse geocoding e salvo no banco.');
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Erro ao fazer reverse geocoding do restaurante:', e);
+      }
+    };
+
+    reverseGeocode();
+  }, [googleMapsLoaded, restaurantData, restaurantLat, restaurantLng, resolvedRestaurantAddress, currentRestaurantId]);
+
   // 3. Inicializar e Renderizar o Mapa Google
   useEffect(() => {
     console.log('🔍 Debug - Map rendering useEffect triggered:', {
@@ -282,7 +326,7 @@ export default function DeliveryPage() {
       return;
     }
 
-    if (!restaurantLat || !restaurantLng) {
+    if (restaurantLat === null || restaurantLng === null) {
       console.log('🔍 Debug - Map initialization aborted due to missing coordinates.');
       return;
     }
@@ -635,13 +679,22 @@ export default function DeliveryPage() {
   const handleGenerateRoute = () => {
     if (selectedOrders.length === 0) return;
 
-    const restLat = Number(restaurantLat);
-    const restLng = Number(restaurantLng);
-
-    if (!restLat || !restLng || isNaN(restLat) || isNaN(restLng) || isCoordsFallback) {
+    if (restaurantLat === null || restaurantLng === null || isCoordsFallback) {
       toast({
         title: 'Coordenadas do restaurante em falta ou padrão',
         description: 'Por favor, defina e salve a localização exata do seu restaurante no mapa de configurações primeiro.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    const restLat = Number(restaurantLat);
+    const restLng = Number(restaurantLng);
+
+    if (isNaN(restLat) || isNaN(restLng)) {
+      toast({
+        title: 'Coordenadas do restaurante inválidas',
+        description: 'Por favor, revise a localização salva do restaurante antes de gerar a rota.',
         variant: 'warning'
       });
       return;
@@ -659,7 +712,7 @@ export default function DeliveryPage() {
         address: order.delivery_address || 'Endereço desconhecido',
         customer: order.customer_info?.name || 'Cliente'
       };
-    }).filter(p => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng));
+    }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
     if (points.length === 0) {
       toast({
