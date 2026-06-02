@@ -9,6 +9,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - Configuração de tipo de culinária
 - Upload de imagens
 - URLs personalizadas para cada restaurante
+- **Controle de Abertura em Tempo Real**: Chave seletora interativa ("Aberto / Fechado") na página inicial do painel ("Meus Restaurantes") para abrir ou fechar o estabelecimento instantaneamente, atualizando o status que bloqueia novos pedidos nos cardápios do cliente.
 
 ### 🍽️ Gestão de Cardápio
 - Criação de categorias de pratos
