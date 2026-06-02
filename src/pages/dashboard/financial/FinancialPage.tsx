@@ -58,6 +58,7 @@ interface Expense {
   parent_id: string | null;
   employee_id: string | null;
   created_at: string;
+  type: string;
 }
 
 interface Employee {
@@ -127,12 +128,22 @@ export default function FinancialPage() {
   const [expenseDesc, setExpenseDesc] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("Ingredientes");
+  const [expenseType, setExpenseType] = useState<"fixed" | "variable">("variable");
   const [expenseDueDate, setExpenseDueDate] = useState("");
   const [expenseStatus, setExpenseStatus] = useState("pending");
   const [expenseIsRec, setExpenseIsRec] = useState(false);
   const [expenseRecPeriod, setExpenseRecPeriod] = useState("monthly");
   const [expenseInstallments, setExpenseInstallments] = useState("6");
   const [savingExpense, setSavingExpense] = useState(false);
+
+  const handleCategoryChange = (cat: string) => {
+    setExpenseCategory(cat);
+    if (cat === "Aluguel" || cat === "Pessoal" || cat === "Serviços") {
+      setExpenseType("fixed");
+    } else {
+      setExpenseType("variable");
+    }
+  };
 
   // Form states - Employee
   const [empName, setEmpName] = useState("");
@@ -353,6 +364,87 @@ export default function FinancialPage() {
     };
   }, [orders, expenses]);
 
+  // Break-Even Metrics
+  const breakEvenMetrics = useMemo(() => {
+    const fixedExpenses = expenses
+      .filter(e => e.type === "fixed")
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+
+    const variableExpenses = expenses
+      .filter(e => e.type === "variable")
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+
+    const cpv = metrics.totalSalesCost;
+    const totalVariableCosts = variableExpenses + cpv;
+    const totalInflows = metrics.totalInflows;
+
+    const contributionMarginVal = totalInflows - totalVariableCosts;
+    const contributionMarginRatio = totalInflows > 0 ? contributionMarginVal / totalInflows : 0;
+
+    let breakEvenPoint = 0;
+    if (contributionMarginRatio > 0) {
+      breakEvenPoint = fixedExpenses / contributionMarginRatio;
+    }
+
+    const breakEvenProgress = breakEvenPoint > 0 ? Math.min((totalInflows / breakEvenPoint) * 100, 100) : 0;
+
+    return {
+      fixedExpenses,
+      variableExpenses,
+      totalVariableCosts,
+      contributionMarginVal,
+      contributionMarginRatio,
+      breakEvenPoint,
+      breakEvenProgress
+    };
+  }, [expenses, metrics.totalSalesCost, metrics.totalInflows]);
+
+  // DRE Export helper
+  const exportDREToCSV = () => {
+    const paymentFees = metrics.totalInflows * 0.025;
+    const netRevenue = metrics.totalInflows - paymentFees;
+    const cpv = metrics.totalSalesCost;
+    const variableExpenses = breakEvenMetrics.variableExpenses;
+    const totalVariableCosts = cpv + variableExpenses;
+    const contributionMargin = netRevenue - totalVariableCosts;
+    const contributionMarginPct = netRevenue > 0 ? (contributionMargin / netRevenue) * 100 : 0;
+    const fixedExpenses = breakEvenMetrics.fixedExpenses;
+    const ebitda = contributionMargin - fixedExpenses;
+    const ebitdaPct = netRevenue > 0 ? (ebitda / netRevenue) * 100 : 0;
+
+    const rows = [
+      ["Demonstrativo de Resultado do Exercico (DRE) - Menu Mestre Facil"],
+      [`Periodo: ${startDate.toLocaleDateString("pt-BR")} ate ${endDate.toLocaleDateString("pt-BR")}`],
+      [""],
+      ["Item", "Valor (R$)", "Percentual (%)"],
+      ["(=) RECEITA BRUTA OPERACIONAL", metrics.totalInflows.toFixed(2), "100.0%"],
+      ["(-) Taxas de Meios de Pagamento (Estimado 2.5%)", paymentFees.toFixed(2), "2.5%"],
+      ["(=) RECEITA LIQUIDA", netRevenue.toFixed(2), (netRevenue > 0 ? 100 : 0).toFixed(1) + "%"],
+      ["(-) CUSTOS VARIAVEIS", totalVariableCosts.toFixed(2), (netRevenue > 0 ? (totalVariableCosts / netRevenue) * 100 : 0).toFixed(1) + "%"],
+      ["    Custo dos Produtos Vendidos (CPV)", cpv.toFixed(2), (netRevenue > 0 ? (cpv / netRevenue) * 100 : 0).toFixed(1) + "%"],
+      ["    Despesas Variaveis", variableExpenses.toFixed(2), (netRevenue > 0 ? (variableExpenses / netRevenue) * 100 : 0).toFixed(1) + "%"],
+      ["(=) MARGEM DE CONTRIBUICAO", contributionMargin.toFixed(2), contributionMarginPct.toFixed(1) + "%"],
+      ["(-) DESPESAS FIXAS (Estruturais)", fixedExpenses.toFixed(2), (netRevenue > 0 ? (fixedExpenses / netRevenue) * 100 : 0).toFixed(1) + "%"],
+      ["(=) LUCRO OPERACIONAL LIQUIDO (EBITDA)", ebitda.toFixed(2), ebitdaPct.toFixed(1) + "%"]
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `DRE_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "DRE Exportada com sucesso!",
+      description: "O arquivo CSV foi baixado no seu computador."
+    });
+  };
+
   // Chart Data compilation (Group Inflows vs Outflows by Day)
   const chartData = useMemo(() => {
     const dailyMap = new Map<string, { date: string; entradas: number; saidas: number }>();
@@ -485,6 +577,7 @@ export default function FinancialPage() {
           status: expenseStatus,
           is_recurring: true,
           recurrence_period: expenseRecPeriod,
+          type: expenseType
         };
 
         // Insert first record
@@ -517,7 +610,8 @@ export default function FinancialPage() {
             status: "pending",
             is_recurring: true,
             recurrence_period: expenseRecPeriod,
-            parent_id: firstExp.id
+            parent_id: firstExp.id,
+            type: expenseType
           });
         }
 
@@ -542,7 +636,8 @@ export default function FinancialPage() {
             category: expenseCategory,
             due_date: expenseDueDate,
             status: expenseStatus,
-            is_recurring: false
+            is_recurring: false,
+            type: expenseType
           });
 
         if (error) throw error;
@@ -553,6 +648,7 @@ export default function FinancialPage() {
       setExpenseDesc("");
       setExpenseAmount("");
       setExpenseIsRec(false);
+      setExpenseType("variable");
       setIsExpenseModalOpen(false);
       fetchData();
 
@@ -718,7 +814,8 @@ export default function FinancialPage() {
           due_date: todayStr,
           status: payrollStatus,
           is_recurring: false,
-          employee_id: selectedEmp.id
+          employee_id: selectedEmp.id,
+          type: "fixed"
         });
 
       if (error) throw error;
@@ -906,6 +1003,7 @@ export default function FinancialPage() {
           <TabsTrigger value="expenses" className="rounded-lg text-xs font-bold font-heading">Despesas ({expenses.length})</TabsTrigger>
           <TabsTrigger value="employees" className="rounded-lg text-xs font-bold font-heading">Funcionários & Folha</TabsTrigger>
           <TabsTrigger value="products" className="rounded-lg text-xs font-bold font-heading">Lucro por Produto</TabsTrigger>
+          <TabsTrigger value="dre" className="rounded-lg text-xs font-bold font-heading">DRE / P&L</TabsTrigger>
         </TabsList>
 
         {/* ── TABS CONTENT: OVERVIEW ── */}
@@ -981,6 +1079,127 @@ export default function FinancialPage() {
               </CardContent>
             </Card>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            
+            {/* Break-Even Point Card */}
+            <Card className="lg:col-span-2 glass-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg font-bold font-heading">Ponto de Equilíbrio Financeiro (Break-Even Point)</CardTitle>
+                  <CardDescription>Métrica matemática do faturamento mínimo necessário para cobrir os custos fixos</CardDescription>
+                </div>
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                  <Calculator className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                
+                {/* Big break-even value and contribution margin ratio */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl border border-border/40 bg-muted/20">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Faturamento Mínimo Necessário</p>
+                    <p className="text-2xl font-black font-heading text-primary mt-1">
+                      {breakEvenMetrics.breakEvenPoint > 0 
+                        ? breakEvenMetrics.breakEvenPoint.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                        : "Indefinido *"}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground block mt-1">Para zerar o caixa e cobrir custos</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border/40 bg-muted/20">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Margem de Contribuição %</p>
+                    <p className="text-2xl font-black font-heading text-foreground mt-1">
+                      {(breakEvenMetrics.contributionMarginRatio * 100).toFixed(1)}%
+                    </p>
+                    <span className="text-[10px] text-muted-foreground block mt-1">Média de lucro bruto por venda</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border/40 bg-muted/20">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Custos Fixos Atuais</p>
+                    <p className="text-2xl font-black font-heading text-foreground mt-1">
+                      {breakEvenMetrics.fixedExpenses.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground block mt-1">Aluguel, folha, serviços fixos</span>
+                  </div>
+                </div>
+
+                {/* Progress bar visual */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-muted-foreground">Progresso do Faturamento Operacional</span>
+                    <span className="text-foreground">{breakEvenMetrics.breakEvenProgress.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        breakEvenMetrics.breakEvenProgress >= 100 
+                          ? "bg-gradient-to-r from-emerald-500 to-green-500" 
+                          : "bg-gradient-to-r from-primary to-amber-500"
+                      }`}
+                      style={{ width: `${breakEvenMetrics.breakEvenProgress}%` }}
+                    />
+                  </div>
+                  
+                  {/* Status comment under progress bar */}
+                  <p className="text-xs font-semibold text-muted-foreground mt-1">
+                    {breakEvenMetrics.breakEvenPoint === 0 ? (
+                      <span className="text-amber-500">* Lance despesas fixas e realize vendas para calcular o ponto de equilíbrio.</span>
+                    ) : breakEvenMetrics.breakEvenProgress >= 100 ? (
+                      <span className="text-green-600 dark:text-green-400 font-bold flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5" /> Faturamento superou o ponto de equilíbrio em R$ {(metrics.totalInflows - breakEvenMetrics.breakEvenPoint).toFixed(2)}! A operação está gerando lucro líquido real!
+                      </span>
+                    ) : (
+                      <span>Faltam R$ {(breakEvenMetrics.breakEvenPoint - metrics.totalInflows).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em vendas brutas para atingir o break-even.</span>
+                    )}
+                  </p>
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* Micro DRE / Summary Card */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold font-heading">Resumo DRE Simplificado</CardTitle>
+                <CardDescription>Visão contábil rápida do período</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/20">
+                    <span className="text-muted-foreground">Receita Bruta (A)</span>
+                    <span className="font-semibold text-foreground">R$ {metrics.totalInflows.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/20">
+                    <span className="text-muted-foreground">Custos Variáveis (B)</span>
+                    <span className="font-semibold text-red-500/90">-R$ {breakEvenMetrics.totalVariableCosts.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/20">
+                    <span className="text-muted-foreground">Custos Fixos (C)</span>
+                    <span className="font-semibold text-red-500/90">-R$ {breakEvenMetrics.fixedExpenses.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 text-sm font-bold">
+                    <span className="text-foreground">Resultado EBITDA (A-B-C)</span>
+                    {(() => {
+                      const net = (metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts - breakEvenMetrics.fixedExpenses;
+                      return (
+                        <span className={net >= 0 ? "text-primary" : "text-red-500"}>
+                          R$ {net.toFixed(2)}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <p className="text-[10px] text-muted-foreground leading-normal font-semibold">
+                    * O EBITDA considera a dedução automática de 2.5% estimada para taxas de processamento de pagamentos.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
         </TabsContent>
 
         {/* ── TABS CONTENT: GENERAL EXPENSES ── */}
@@ -1014,6 +1233,7 @@ export default function FinancialPage() {
                       <tr className="border-b border-border/60 text-muted-foreground text-xs font-bold uppercase tracking-wider">
                         <th className="py-3 px-4">Descrição</th>
                         <th className="py-3 px-4">Categoria</th>
+                        <th className="py-3 px-4">Tipo</th>
                         <th className="py-3 px-4">Vencimento</th>
                         <th className="py-3 px-4">Recorrência</th>
                         <th className="py-3 px-4">Valor</th>
@@ -1033,6 +1253,18 @@ export default function FinancialPage() {
                           <td className="py-3.5 px-4">
                             <Badge variant="outline" className="rounded-lg font-semibold bg-background border-border/50 text-xs px-2 py-0.5">
                               {expense.category}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Badge 
+                              variant="outline" 
+                              className={`rounded-lg font-semibold text-xs px-2 py-0.5 ${
+                                expense.type === "fixed"
+                                  ? "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                                  : "bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400"
+                              }`}
+                            >
+                              {expense.type === "fixed" ? "Fixo" : "Variável"}
                             </Badge>
                           </td>
                           <td className="py-3.5 px-4 font-medium text-muted-foreground/80">
@@ -1270,6 +1502,254 @@ export default function FinancialPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── TABS CONTENT: DRE / P&L ── */}
+        <TabsContent value="dre" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2 glass-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg font-bold font-heading">Demonstrativo de Resultado do Exercício (DRE)</CardTitle>
+                  <CardDescription>
+                    Demonstrativo financeiro estruturado para análise do período
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={exportDREToCSV}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs font-bold border-border/60 hover:bg-accent/10"
+                >
+                  <Calculator className="w-4 h-4 mr-1.5" /> Exportar CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-border/60 text-muted-foreground text-xs font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Indicador Financeiro</th>
+                        <th className="py-3 px-4">Valor (R$)</th>
+                        <th className="py-3 px-4 text-right">Proporção / MC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20 font-medium">
+                      
+                      {/* RECEITA BRUTA */}
+                      <tr className="bg-muted/10 font-bold">
+                        <td className="py-3.5 px-4 text-foreground flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-green-500" />
+                          (=) RECEITA BRUTA OPERACIONAL
+                        </td>
+                        <td className="py-3.5 px-4 text-foreground">
+                          {metrics.totalInflows.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-muted-foreground">100.0%</td>
+                      </tr>
+
+                      {/* DEDUCOES */}
+                      <tr className="text-muted-foreground">
+                        <td className="py-3.5 px-4 pl-8">
+                          (-) Taxas de Meios de Pagamento (Pix/Cartão - Est. 2.5%)
+                        </td>
+                        <td className="py-3.5 px-4 text-red-500/90 font-semibold">
+                          -{(metrics.totalInflows * 0.025).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-xs">2.5%</td>
+                      </tr>
+
+                      {/* RECEITA LIQUIDA */}
+                      <tr className="bg-muted/5 font-extrabold text-foreground border-t border-border/40">
+                        <td className="py-3.5 px-4 pl-6 flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 text-primary" />
+                          (=) RECEITA OPERACIONAL LÍQUIDA
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {(metrics.totalInflows * 0.975).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {(metrics.totalInflows > 0 ? 97.5 : 0).toFixed(1)}%
+                        </td>
+                      </tr>
+
+                      {/* CUSTOS VARIAVEIS (CPV) */}
+                      <tr className="text-muted-foreground font-semibold">
+                        <td className="py-3.5 px-4 flex items-center gap-2">
+                          <TrendingDown className="w-4 h-4 text-red-400" />
+                          (-) CUSTOS VARIÁVEIS TOTAIS
+                        </td>
+                        <td className="py-3.5 px-4 text-red-500/90">
+                          -{(breakEvenMetrics.totalVariableCosts).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-xs">
+                          {metrics.totalInflows > 0 
+                            ? ((breakEvenMetrics.totalVariableCosts / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                      <tr className="text-muted-foreground/80 text-xs">
+                        <td className="py-3.5 px-4 pl-12">
+                          Custo dos Produtos Vendidos (CPV / Produção)
+                        </td>
+                        <td className="py-3.5 px-4 text-red-500/80">
+                          -{(metrics.totalSalesCost).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {metrics.totalInflows > 0 
+                            ? ((metrics.totalSalesCost / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                      <tr className="text-muted-foreground/80 text-xs">
+                        <td className="py-3.5 px-4 pl-12">
+                          Insumos / Embalagens / Despesas Variáveis
+                        </td>
+                        <td className="py-3.5 px-4 text-red-500/80">
+                          -{(breakEvenMetrics.variableExpenses).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {metrics.totalInflows > 0 
+                            ? ((breakEvenMetrics.variableExpenses / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                      {/* MARGEM DE CONTRIBUICAO */}
+                      <tr className="bg-muted/10 font-bold border-t border-border/40 text-foreground">
+                        <td className="py-3.5 px-4 pl-6 flex items-center gap-2">
+                          <Percent className="w-4 h-4 text-emerald-500" />
+                          (=) MARGEM DE CONTRIBUIÇÃO (MC)
+                        </td>
+                        <td className={`py-3.5 px-4 ${((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                          {(((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {metrics.totalInflows > 0 
+                            ? ((((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts) / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                      {/* DESPESAS FIXAS */}
+                      <tr className="text-muted-foreground font-semibold">
+                        <td className="py-3.5 px-4 flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-amber-500" />
+                          (-) CUSTOS / DESPESAS FIXAS TOTAIS
+                        </td>
+                        <td className="py-3.5 px-4 text-red-500/90">
+                          -{(breakEvenMetrics.fixedExpenses).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-xs">
+                          {metrics.totalInflows > 0 
+                            ? ((breakEvenMetrics.fixedExpenses / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                      {/* LUCRO OPERACIONAL */}
+                      <tr className="bg-primary/5 font-black border-t-2 border-primary/40 text-foreground text-base">
+                        <td className="py-4 px-4 flex items-center gap-2">
+                          <DollarSign className="w-5 h-5 text-primary" />
+                          (=) LUCRO LÍQUIDO OPERACIONAL (EBITDA)
+                        </td>
+                        <td className={`py-4 px-4 ${(((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts) - breakEvenMetrics.fixedExpenses) >= 0 ? "text-primary font-extrabold" : "text-red-500 font-extrabold"}`}>
+                          {((((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts) - breakEvenMetrics.fixedExpenses)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          {metrics.totalInflows > 0 
+                            ? (((((metrics.totalInflows * 0.975) - breakEvenMetrics.totalVariableCosts) - breakEvenMetrics.fixedExpenses) / (metrics.totalInflows * 0.975)) * 100).toFixed(1) 
+                            : "0.0"}%
+                        </td>
+                      </tr>
+
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* DRE Summary / Diagnostics Sidebar */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold font-heading">Saúde Operacional</CardTitle>
+                <CardDescription>Diagnóstico sobre o desempenho do período</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* Diagnóstico EBITDA Badge */}
+                {(() => {
+                  const netRev = metrics.totalInflows * 0.975;
+                  const ebitda = (netRev - breakEvenMetrics.totalVariableCosts) - breakEvenMetrics.fixedExpenses;
+                  const pct = netRev > 0 ? (ebitda / netRev) * 100 : 0;
+                  
+                  let badgeText = "Prejuízo Operacional";
+                  let badgeClass = "bg-red-500/10 text-red-500 border-red-500/20";
+                  let explanation = "Sua empresa está operando com caixa negativo no período. É recomendável revisar custos fixos e aumentar o faturamento bruto.";
+
+                  if (pct > 20) {
+                    badgeText = "Excelente Desempenho";
+                    badgeClass = "bg-green-500/10 text-green-600 border-green-500/20 dark:text-green-400";
+                    explanation = "Parabéns! Sua margem EBITDA está acima de 20%. Isso indica excelente eficiência operacional e ótimo retorno financeiro.";
+                  } else if (pct > 0) {
+                    badgeText = "Operação Saudável";
+                    badgeClass = "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400";
+                    explanation = "Sua empresa opera em lucro estável, cobrindo os custos fixos e gerando caixa positivo. Mantenha o bom controle de estoque.";
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-2 items-start">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Margem EBITDA do Período</Label>
+                        <Badge className={`rounded-xl px-3 py-1 font-bold text-sm ${badgeClass}`}>
+                          {pct.toFixed(1)}% — {badgeText}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
+                        {explanation}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                <div className="h-px bg-border/40 w-full" />
+
+                {/* Contribution Margin Gauge */}
+                {(() => {
+                  const netRev = metrics.totalInflows * 0.975;
+                  const mc = netRev - breakEvenMetrics.totalVariableCosts;
+                  const mcPct = netRev > 0 ? (mc / netRev) * 100 : 0;
+                  
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <span className="text-muted-foreground">Margem de Contribuição Geral</span>
+                        <span className="font-extrabold text-foreground">{mcPct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            mcPct >= 40 
+                              ? "bg-emerald-500" 
+                              : mcPct >= 20 
+                                ? "bg-primary" 
+                                : "bg-red-500"
+                          }`}
+                          style={{ width: `${Math.max(0, Math.min(100, mcPct))}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-medium mt-1">
+                        A Margem de Contribuição representa quanto sobra das vendas líquidas após deduzir custos variáveis para pagar os custos fixos.
+                      </p>
+                    </div>
+                  );
+                })()}
+
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* ── MODAL: ADD EXPENSE (WITH RECURRENCE) ── */}
@@ -1309,7 +1789,7 @@ export default function FinancialPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="exp-cat">Categoria</Label>
-                <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                <Select value={expenseCategory} onValueChange={handleCategoryChange}>
                   <SelectTrigger id="exp-cat" className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
@@ -1324,6 +1804,19 @@ export default function FinancialPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
+                <Label htmlFor="exp-type">Tipo de Custo</Label>
+                <Select value={expenseType} onValueChange={(val: "fixed" | "variable") => setExpenseType(val)}>
+                  <SelectTrigger id="exp-type" className="rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="fixed">Fixo (Estrutural)</SelectItem>
+                    <SelectItem value="variable">Variável (Operacional)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="exp-date">Vencimento</Label>
                 <Input 
                   id="exp-date" 
@@ -1333,19 +1826,19 @@ export default function FinancialPage() {
                   required 
                 />
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="exp-status">Status Inicial</Label>
-                <Select value={expenseStatus} onValueChange={setExpenseStatus}>
-                  <SelectTrigger id="exp-status" className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="pending">Pendente (A Pagar)</SelectItem>
-                    <SelectItem value="paid">Paga (Concluída)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-status">Status Inicial</Label>
+              <Select value={expenseStatus} onValueChange={setExpenseStatus}>
+                <SelectTrigger id="exp-status" className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="pending">Pendente (A Pagar)</SelectItem>
+                  <SelectItem value="paid">Paga (Concluída)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Recurrence Fields */}

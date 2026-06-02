@@ -6,6 +6,9 @@ import {
   Clock,
   Star,
   CreditCard,
+  TrendingDown,
+  Scale,
+  Briefcase,
 } from 'lucide-react';
 import { KpiCard } from './KpiCard';
 import { RevenueTrendChart } from './RevenueTrendChart';
@@ -113,6 +116,48 @@ export function ReportsDashboard({
           previous={prevSummary?.cancelledOrders ?? null}
           loading={loading}
         />
+      </div>
+
+      {/* ── Balanço Financeiro Resumido (Phase 2) ── */}
+      <div className="space-y-3.5">
+        <div className="flex flex-col gap-0.5">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-heading">
+            Balanço Financeiro Resumido
+          </h3>
+          <p className="text-xs text-muted-foreground">Custos gerais, custo de insumos e saldo operacional no período</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KpiCard
+            label="Saídas (Despesas)"
+            value={loading ? '—' : formatCurrencyBRL(summary.totalExpensesCents)}
+            subLabel="contas e custos gerais"
+            icon={<TrendingDown className="w-5 h-5 text-red-600" />}
+            iconBg="bg-red-500"
+            current={summary.totalExpensesCents}
+            previous={prevSummary?.totalExpensesCents ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            label="CPV (Custo dos Itens)"
+            value={loading ? '—' : formatCurrencyBRL(summary.productionCostCents)}
+            subLabel="custo total de insumos vendidos"
+            icon={<Briefcase className="w-5 h-5 text-amber-600" />}
+            iconBg="bg-amber-500"
+            current={summary.productionCostCents}
+            previous={prevSummary?.productionCostCents ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            label="Resultado Líquido"
+            value={loading ? '—' : formatCurrencyBRL(summary.netBalanceCents)}
+            subLabel="vendas concluídas - despesas"
+            icon={<Scale className="w-5 h-5 text-primary" />}
+            iconBg="bg-primary"
+            current={summary.netBalanceCents}
+            previous={prevSummary?.netBalanceCents ?? null}
+            loading={loading}
+          />
+        </div>
       </div>
 
       {/* ── Revenue Trend ── */}

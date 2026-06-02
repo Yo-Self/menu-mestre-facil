@@ -47,6 +47,9 @@ export interface ReportSummary {
   byDayOfWeek: { day: string; dayIndex: number; orders: number }[];
   peakHours: { hour: number; count: number }[];
   byPaymentMethod: PaymentMethodData[];
+  totalExpensesCents: number;
+  netBalanceCents: number;
+  productionCostCents: number;
 }
 
 export interface ReportData {
@@ -59,13 +62,31 @@ export interface ReportData {
 
 const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-function aggregateOrders(orders: ReportOrder[]): ReportSummary {
+function aggregateOrders(orders: ReportOrder[], expenses: any[] = []): ReportSummary {
   const totalOrders = orders.length;
   const completedOrders = orders.filter(o => o.status === 'finished').length;
   const cancelledOrders = orders.filter(o => o.status === 'cancelled').length;
   const totalRevenueCents = orders.reduce((s, o) => s + o.total_price, 0);
   const averageTicketCents = totalOrders > 0 ? Math.round(totalRevenueCents / totalOrders) : 0;
   const cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0;
+
+  // Expenses calculations
+  const totalExpensesCents = expenses.reduce((sum, e) => sum + Math.round(Number(e.amount) * 100), 0);
+
+  // Production costs of sold items in completed orders
+  let productionCostCents = 0;
+  orders
+    .filter(o => o.status === 'finished')
+    .forEach(order => {
+      order.order_items.forEach(item => {
+        const cost = (item.dishes as any)?.cost_price || 0;
+        productionCostCents += Math.round(cost * item.quantity * 100);
+      });
+    });
+
+  // Net Balance = (Completed Revenue) - (Total expenses)
+  const completedRevenueCents = orders.filter(o => o.status === 'finished').reduce((sum, o) => sum + o.total_price, 0);
+  const netBalanceCents = completedRevenueCents - totalExpensesCents;
 
   // Top items
   const itemMap = new Map<string, { name: string; quantity: number; revenueCents: number }>();
@@ -197,6 +218,9 @@ function aggregateOrders(orders: ReportOrder[]): ReportSummary {
     byDayOfWeek,
     peakHours,
     byPaymentMethod,
+    totalExpensesCents,
+    netBalanceCents,
+    productionCostCents,
   };
 }
 
@@ -244,13 +268,30 @@ async function fetchOrdersForPeriod(
   return (data ?? []) as ReportOrder[];
 }
 
+async function fetchExpensesForPeriod(
+  restaurantIds: string[],
+  start: Date,
+  end: Date
+): Promise<any[]> {
+  if (restaurantIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .in('restaurant_id', restaurantIds)
+    .gte('due_date', start.toISOString().split('T')[0])
+    .lte('due_date', end.toISOString().split('T')[0]);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export function useReportData(
   restaurantIds: string[],
   startDate: Date,
   endDate: Date
 ): ReportData {
   const [orders, setOrders] = useState<ReportOrder[]>([]);
-  const [summary, setSummary] = useState<ReportSummary>(aggregateOrders([]));
+  const [summary, setSummary] = useState<ReportSummary>(aggregateOrders([], []));
   const [prevSummary, setPrevSummary] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -258,7 +299,7 @@ export function useReportData(
   const fetch = useCallback(async () => {
     if (restaurantIds.length === 0) {
       setOrders([]);
-      setSummary(aggregateOrders([]));
+      setSummary(aggregateOrders([], []));
       setPrevSummary(null);
       setLoading(false);
       return;
@@ -267,9 +308,15 @@ export function useReportData(
     setLoading(true);
     setError(null);
     try {
-      const [currentOrders, prevOrders] = await Promise.all([
+      const [currentOrders, prevOrders, currentExpenses, prevExpenses] = await Promise.all([
         fetchOrdersForPeriod(restaurantIds, startDate, endDate),
         fetchOrdersForPeriod(
+          restaurantIds,
+          getPrevPeriodRange(startDate, endDate).start,
+          getPrevPeriodRange(startDate, endDate).end
+        ),
+        fetchExpensesForPeriod(restaurantIds, startDate, endDate),
+        fetchExpensesForPeriod(
           restaurantIds,
           getPrevPeriodRange(startDate, endDate).start,
           getPrevPeriodRange(startDate, endDate).end
@@ -277,8 +324,8 @@ export function useReportData(
       ]);
 
       setOrders(currentOrders);
-      setSummary(aggregateOrders(currentOrders));
-      setPrevSummary(aggregateOrders(prevOrders));
+      setSummary(aggregateOrders(currentOrders, currentExpenses));
+      setPrevSummary(aggregateOrders(prevOrders, prevExpenses));
     } catch (err: any) {
       setError(err?.message ?? 'Erro ao carregar relatório');
     } finally {
