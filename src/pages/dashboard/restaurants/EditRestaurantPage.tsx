@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { AddressSelector } from "@/components/ui/address-selector";
+import { useRestaurant } from "@/components/providers/RestaurantProvider";
 
 const cuisineTypes = [
   "Brasileira",
@@ -66,6 +67,7 @@ export default function EditRestaurantPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setCurrentRestaurantId } = useRestaurant();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [formData, setFormData] = useState({
@@ -101,6 +103,7 @@ export default function EditRestaurantPage() {
 
   useEffect(() => {
     if (id) {
+      setCurrentRestaurantId(id);
       fetchRestaurant();
     }
   }, [id]);

@@ -46,6 +46,7 @@ import ReportsGlobalPage from "./pages/dashboard/reports/ReportsGlobalPage";
 import StockPage from "./pages/dashboard/stock/StockPage";
 import PhysicalMenuPage from "./pages/dashboard/physical-menu/PhysicalMenuPage";
 import FinancialPage from "./pages/dashboard/financial/FinancialPage";
+import DeliveryPage from "./pages/dashboard/delivery/DeliveryPage";
 import NotFound from "./pages/NotFound";
 
 
@@ -116,6 +117,7 @@ const App = () => (
                   <Route path="/dashboard/stock" element={<StockPage />} />
                   <Route path="/dashboard/physical-menu" element={<PhysicalMenuPage />} />
                   <Route path="/dashboard/financial" element={<FinancialPage />} />
+                  <Route path="/dashboard/delivery" element={<DeliveryPage />} />
 
 
                   <Route path="/orders/:restaurantId" element={<OrdersPage />} />

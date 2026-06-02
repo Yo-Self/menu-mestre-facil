@@ -740,6 +740,13 @@ export type Database = {
           table_name: string | null
           total_price: number
           updated_at: string
+          order_type: string
+          delivery_fee: number | null
+          delivery_distance: number | null
+          delivery_address: string | null
+          delivery_coords_lat: number | null
+          delivery_coords_lng: number | null
+          delivery_address_details: Json | null
         }
         Insert: {
           created_at?: string
@@ -753,6 +760,13 @@ export type Database = {
           table_name?: string | null
           total_price: number
           updated_at?: string
+          order_type?: string
+          delivery_fee?: number | null
+          delivery_distance?: number | null
+          delivery_address?: string | null
+          delivery_coords_lat?: number | null
+          delivery_coords_lng?: number | null
+          delivery_address_details?: Json | null
         }
         Update: {
           created_at?: string
@@ -766,6 +780,13 @@ export type Database = {
           table_name?: string | null
           total_price?: number
           updated_at?: string
+          order_type?: string
+          delivery_fee?: number | null
+          delivery_distance?: number | null
+          delivery_address?: string | null
+          delivery_coords_lat?: number | null
+          delivery_coords_lng?: number | null
+          delivery_address_details?: Json | null
         }
         Relationships: [
           {
@@ -993,6 +1014,11 @@ export type Database = {
           table_categories: string | null
           min_order_value: number | null
           stripe_connect_id: string | null
+          delivery_enabled: boolean
+          delivery_max_distance: number
+          delivery_base_fee: number
+          delivery_fee_per_km: number
+          delivery_zones: Json
         }
         Insert: {
           address?: string | null
@@ -1025,6 +1051,11 @@ export type Database = {
           table_categories?: string | null
           min_order_value?: number | null
           stripe_connect_id?: string | null
+          delivery_enabled?: boolean
+          delivery_max_distance?: number
+          delivery_base_fee?: number
+          delivery_fee_per_km?: number
+          delivery_zones?: Json
         }
         Update: {
           address?: string | null
@@ -1057,6 +1088,11 @@ export type Database = {
           table_categories?: string | null
           min_order_value?: number | null
           stripe_connect_id?: string | null
+          delivery_enabled?: boolean
+          delivery_max_distance?: number
+          delivery_base_fee?: number
+          delivery_fee_per_km?: number
+          delivery_zones?: Json
         }
         Relationships: [
           {

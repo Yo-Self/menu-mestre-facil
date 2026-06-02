@@ -28,6 +28,12 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
   - Chave seletora premium (**Switch**) interativa no painel administrativo para habilitar ou desabilitar o valor mínimo de pedidos.
   - Campo numérico condicional em reais para estipular o valor mínimo de pedidos de entrega.
   - Validação integrada no fluxo de delivery do cardápio digital do cliente.
+- **Gestão de Entrega & Delivery (Nova Aba)**:
+  - **Parâmetros de Entrega**: Nova aba central `/dashboard/delivery` (ícone `Truck`) que gerencia a ativação de delivery, raio de entrega máximo (km), taxa de entrega base (R$) e taxa por km adicional.
+  - **Zonamento com Mapas Interativos (Google Maps)**: Integração com mapa interativo do Google Maps exibindo a geolocalização do restaurante e o círculo de cobertura máxima. Suporta a criação de zonas personalizadas como círculos dinâmicos:
+    - **Zonas de Exclusão (Sem Cobertura)**: Bloqueia compras de clientes localizados dentro dessa área (destacadas em vermelho).
+    - **Zonas de Taxas Especiais**: Cobra uma taxa fixa específica para aquela área substituindo a taxa por quilometragem (destacadas em roxo).
+  - **Otimização de Rotas com TSP (Traveling Salesperson Problem)**: Painel de entregas ativas com seleção de múltiplos pedidos por checkbox. O sistema calcula a rota de entrega mais rápida no cliente usando a heurística *Nearest Neighbor* a partir das coordenadas do restaurante e gera o link direto do Google Maps com todos os `waypoints` perfeitamente ordenados.
 
 ### 🍳 Roteamento Inteligente de Pedidos e Controle de Cozinha
 - **Classificação de Preparo**: Distinção automática entre pratos/bebidas que necessitam de preparo na cozinha (ex: hambúrguer) e itens prontos para consumo imediato (ex: refrigerante em lata).

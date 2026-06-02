@@ -17,6 +17,7 @@ import {
   Printer,
   ChevronDown,
   DollarSign,
+  Truck,
 } from "lucide-react";
 
 import {
@@ -74,6 +75,7 @@ const staticMenuItems = [
   { title: "Cardápio", url: "/dashboard/menus", icon: Menu, isCardapio: true },
   { title: "PDV/Caixa", url: "/dashboard/pos", icon: Calculator },
   // "Pedidos" is injected dynamically below
+  { title: "Entrega", url: "/dashboard/delivery", icon: Truck },
   { title: "Menu Físico", url: "/dashboard/physical-menu", icon: Printer },
   { title: "Relatórios", url: "/dashboard/reports", icon: BarChart2 },
   { title: "Estoque", url: "/dashboard/stock", icon: Boxes },
