@@ -18,9 +18,9 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - Menus ativos e inativos
 
 ### 🔔 Chamadas de Garçom
-- Sistema integrado para clientes chamarem garçons
-- Notificações em tempo real
-- Gestão de status das chamadas
+- Sistema integrado para clientes chamarem garçons (cardápio público envia; gestor recebe)
+- **Notificações via Supabase Realtime**: o sino no header do painel (`WaiterCallNotifications`) escuta `postgres_changes` na tabela `waiter_calls` — sem polling periódico na API REST
+- Gestão de status das chamadas (atender / cancelar)
 - Atendimento por mesa
 
 ### 📱 Pedidos pelo WhatsApp & Delivery

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface WaiterCall {
@@ -14,26 +14,31 @@ export interface WaiterCall {
 
 interface UseWaiterCallsProps {
   restaurantId: string;
+  /** @deprecated Polling was replaced by Supabase Realtime; kept for API compatibility */
   autoRefresh?: boolean;
+  /** @deprecated No longer used */
   refreshInterval?: number;
 }
 
-export function useWaiterCalls({ 
-  restaurantId, 
-  autoRefresh = true, 
-  refreshInterval = 10000 
+export function useWaiterCalls({
+  restaurantId,
+  autoRefresh = true,
 }: UseWaiterCallsProps) {
   const [calls, setCalls] = useState<WaiterCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const hasLoadedRef = useRef(false);
 
-  const fetchCalls = useCallback(async () => {
+  const fetchCalls = useCallback(async (options?: { showLoading?: boolean }) => {
+    const showLoading = options?.showLoading ?? !hasLoadedRef.current;
+
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
 
-      // Buscar chamadas pendentes diretamente do banco
       const { data: callsData, error: callsError } = await supabase
         .from('waiter_calls')
         .select('*')
@@ -47,11 +52,14 @@ export function useWaiterCalls({
 
       setCalls(callsData || []);
       setPendingCount(callsData?.length || 0);
+      hasLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
       console.error('Erro ao buscar chamadas:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [restaurantId]);
 
@@ -72,7 +80,7 @@ export function useWaiterCalls({
         throw callError;
       }
 
-      await fetchCalls(); // Recarregar lista
+      await fetchCalls();
       return callData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -81,15 +89,13 @@ export function useWaiterCalls({
   }, [restaurantId, fetchCalls]);
 
   const updateCallStatus = useCallback(async (
-    callId: string, 
+    callId: string,
     status: 'attended' | 'cancelled',
     attendedBy?: string,
     notes?: string
   ) => {
     try {
-      const updateData: any = {
-        status,
-      };
+      const updateData: Record<string, unknown> = { status };
 
       if (status === 'attended') {
         updateData.attended_at = new Date().toISOString();
@@ -113,7 +119,7 @@ export function useWaiterCalls({
         throw callError;
       }
 
-      await fetchCalls(); // Recarregar lista
+      await fetchCalls();
       return callData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -121,17 +127,34 @@ export function useWaiterCalls({
     }
   }, [fetchCalls]);
 
-  // Auto-refresh
   useEffect(() => {
     if (!restaurantId) return;
 
-    fetchCalls();
+    hasLoadedRef.current = false;
+    fetchCalls({ showLoading: true });
 
-    if (autoRefresh) {
-      const interval = setInterval(fetchCalls, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [restaurantId, autoRefresh, refreshInterval, fetchCalls]);
+    if (!autoRefresh) return;
+
+    const channel = supabase
+      .channel(`waiter-calls:${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waiter_calls',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => {
+          fetchCalls({ showLoading: false });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId, autoRefresh, fetchCalls]);
 
   return {
     calls,

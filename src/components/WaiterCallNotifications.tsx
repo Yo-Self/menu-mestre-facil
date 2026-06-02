@@ -26,8 +26,6 @@ export function WaiterCallNotifications({
   
   const { calls, loading, error, pendingCount, updateCallStatus } = useWaiterCalls({
     restaurantId,
-    autoRefresh: true,
-    refreshInterval: 10000,
   });
 
   const { waiterCallEnabled, loading: restaurantLoading } = useRestaurantWaiterCall({

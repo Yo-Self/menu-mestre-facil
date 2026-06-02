@@ -18,8 +18,6 @@ export default function WaiterCallTestPage() {
   
   const { createCall, calls, loading } = useWaiterCalls({
     restaurantId: testRestaurantId,
-    autoRefresh: true,
-    refreshInterval: 5000,
   });
 
   const handleCreateCall = async () => {
