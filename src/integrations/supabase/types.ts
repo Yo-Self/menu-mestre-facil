@@ -314,6 +314,7 @@ export type Database = {
           stock_quantity: number | null
           tags: string[]
           updated_at: string | null
+          cost_price: number | null
         }
         Insert: {
           allergens?: string | null
@@ -333,6 +334,7 @@ export type Database = {
           stock_quantity?: number | null
           tags?: string[]
           updated_at?: string | null
+          cost_price?: number | null
         }
         Update: {
           allergens?: string | null
@@ -352,6 +354,7 @@ export type Database = {
           stock_quantity?: number | null
           tags?: string[]
           updated_at?: string | null
+          cost_price?: number | null
         }
         Relationships: [
           {
@@ -382,6 +385,120 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      employees: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          role: string | null
+          salary: number
+          hire_date: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          role?: string | null
+          salary: number
+          hire_date: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          role?: string | null
+          salary?: number
+          hire_date?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      expenses: {
+        Row: {
+          id: string
+          restaurant_id: string
+          description: string
+          amount: number
+          category: string
+          due_date: string
+          status: string
+          is_recurring: boolean
+          recurrence_period: string | null
+          parent_id: string | null
+          employee_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          description: string
+          amount: number
+          category: string
+          due_date: string
+          status?: string
+          is_recurring?: boolean
+          recurrence_period?: string | null
+          parent_id?: string | null
+          employee_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          description?: string
+          amount?: number
+          category?: string
+          due_date?: string
+          status?: string
+          is_recurring?: boolean
+          recurrence_period?: string | null
+          parent_id?: string | null
+          employee_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          }
         ]
       }
       import_logs: {

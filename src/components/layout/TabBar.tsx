@@ -16,6 +16,7 @@ import {
   Boxes,
   Printer,
   ChevronDown,
+  DollarSign,
 } from "lucide-react";
 
 import {
@@ -76,6 +77,7 @@ const staticMenuItems = [
   { title: "Menu Físico", url: "/dashboard/physical-menu", icon: Printer },
   { title: "Relatórios", url: "/dashboard/reports", icon: BarChart2 },
   { title: "Estoque", url: "/dashboard/stock", icon: Boxes },
+  { title: "Financeiro", url: "/dashboard/financial", icon: DollarSign },
   { title: "Ajustes", url: "/dashboard/settings", icon: Settings },
 ];
 

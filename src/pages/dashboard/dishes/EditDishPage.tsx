@@ -32,6 +32,7 @@ interface DishRow {
   category_id: string | null;
   ingredients?: string | null;
   stock_quantity?: number | null;
+  cost_price?: number | null;
 }
 
 interface DishCategory {
@@ -53,6 +54,7 @@ export default function EditDishPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [costPrice, setCostPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -81,6 +83,7 @@ export default function EditDishPage() {
       setName(dish.name);
       setDescription(dish.description || "");
       setPrice(String(dish.price));
+      setCostPrice(dish.cost_price !== undefined && dish.cost_price !== null ? String(dish.cost_price) : "");
       setImageUrl(dish.image_url);
       setIngredients(dish.ingredients || "");
       setIsAvailable(Boolean(dish.is_available));
@@ -159,6 +162,7 @@ export default function EditDishPage() {
           name,
           description: description || null,
           price: parseFloat(price),
+          cost_price: costPrice ? parseFloat(costPrice) : null,
           image_url: imageUrl,
           ingredients: ingredients || null,
           category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
@@ -285,7 +289,7 @@ export default function EditDishPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Preço (R$)</Label>
+                <Label htmlFor="price">Preço de Venda (R$)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -299,17 +303,30 @@ export default function EditDishPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="categories">Categorias</Label>
-                <MultiSelect
-                  options={categoryOptions}
-                  selected={selectedCategories}
-                  onSelectionChange={setSelectedCategories}
-                  placeholder="Selecione as categorias"
+                <Label htmlFor="cost_price">Custo de Produção (R$ - Opcional)</Label>
+                <Input
+                  id="cost_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  placeholder="0.00"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Selecione uma ou mais categorias para o prato
-                </p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categories">Categorias</Label>
+              <MultiSelect
+                options={categoryOptions}
+                selected={selectedCategories}
+                onSelectionChange={setSelectedCategories}
+                placeholder="Selecione as categorias"
+              />
+              <p className="text-xs text-muted-foreground">
+                Selecione uma ou mais categorias para o prato
+              </p>
             </div>
 
             <div className="space-y-4">

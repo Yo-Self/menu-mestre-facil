@@ -21,6 +21,7 @@ export default function NewDishPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [costPrice, setCostPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -105,6 +106,7 @@ export default function NewDishPage() {
         name,
         description: description || null,
         price: parseFloat(price),
+        cost_price: costPrice ? parseFloat(costPrice) : null,
         image_url: imageUrl,
         ingredients: ingredients || null,
         category_id: selectedCategories.length > 0 ? selectedCategories[0] : null,
@@ -120,6 +122,7 @@ export default function NewDishPage() {
           name,
           description: description || null,
           price: parseFloat(price),
+          cost_price: costPrice ? parseFloat(costPrice) : null,
           image_url: imageUrl || "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&crop=center",
           ingredients: ingredients || null,
           category_id: selectedCategories.length > 0 ? selectedCategories[0] : null, // Manter compatibilidade
@@ -232,7 +235,7 @@ export default function NewDishPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Preço (R$)</Label>
+                <Label htmlFor="price">Preço de Venda (R$)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -246,18 +249,31 @@ export default function NewDishPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="categories">Categorias</Label>
-                <MultiSelect
-                  options={categoryOptions}
-                  selected={selectedCategories}
-                  onSelectionChange={setSelectedCategories}
-                  placeholder="Selecione as categorias"
-                  disabled={loadingCategories}
+                <Label htmlFor="cost_price">Custo de Produção (R$ - Opcional)</Label>
+                <Input
+                  id="cost_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  placeholder="0.00"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Selecione uma ou mais categorias para o prato
-                </p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categories">Categorias</Label>
+              <MultiSelect
+                options={categoryOptions}
+                selected={selectedCategories}
+                onSelectionChange={setSelectedCategories}
+                placeholder="Selecione as categorias"
+                disabled={loadingCategories}
+              />
+              <p className="text-xs text-muted-foreground">
+                Selecione uma ou mais categorias para o prato
+              </p>
             </div>
 
             <div className="space-y-4">
