@@ -35,34 +35,7 @@ export function useOrders(restaurantId?: string) {
         throw ordersError
       }
 
-      let finalOrders = ordersData || []
-      
-      // Auto-transition paid orders from pending_payment to new
-      const paidPendingOrders = finalOrders.filter(
-        order => order.status === 'pending_payment' && order.stripe_payment_intent_id
-      )
-
-      if (paidPendingOrders.length > 0) {
-        console.log(`Auto-transitioning ${paidPendingOrders.length} paid pending_payment orders to 'new'`)
-        await Promise.all(
-          paidPendingOrders.map(order =>
-            supabase
-              .from('orders')
-              .update({
-                status: 'new',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', order.id)
-          )
-        )
-        finalOrders = finalOrders.map(order => 
-          order.status === 'pending_payment' && order.stripe_payment_intent_id
-            ? { ...order, status: 'new', updated_at: new Date().toISOString() }
-            : order
-        )
-      }
-
-      setOrders(finalOrders)
+      setOrders(ordersData || [])
     } catch (err) {
       console.error('Error fetching orders:', err)
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos')
@@ -219,26 +192,6 @@ export function useOrders(restaurantId?: string) {
               }
 
               if (orderData) {
-                // If the order has status 'pending_payment' but has the paid tag,
-                // automatically update its status to 'new' in both DB and local representation.
-                if (orderData.status === 'pending_payment' && orderData.stripe_payment_intent_id) {
-                  console.log(`Order ${orderId} was paid online. Auto-transitioning to 'new'...`)
-                  try {
-                    await supabase
-                      .from('orders')
-                      .update({
-                        status: 'new',
-                        updated_at: new Date().toISOString()
-                      })
-                      .eq('id', orderId)
-                    
-                    orderData.status = 'new'
-                    orderData.updated_at = new Date().toISOString()
-                  } catch (e) {
-                    console.error('Error updating status to new in real-time upsert:', e)
-                  }
-                }
-
                 setOrders(prevOrders => {
                   const existingOrderIndex = prevOrders.findIndex(o => o.id === orderId)
                   if (existingOrderIndex !== -1) {
