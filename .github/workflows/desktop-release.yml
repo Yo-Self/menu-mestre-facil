@@ -89,7 +89,13 @@ jobs:
         with:
           name: electron-${{ matrix.platform }}
           path: |
-            release/**
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+            release/*.yml
           if-no-files-found: error
           retention-days: 7
 
@@ -123,11 +129,22 @@ jobs:
       - name: Consolidate artifacts into release/
         run: |
           mkdir -p release
-          find artifact-staging -type f -exec cp -f {} release/ \;
+          find artifact-staging -type f \( \
+            -iname '*.exe' -o -iname '*.dmg' -o -iname '*.zip' -o \
+            -iname '*.AppImage' -o -iname '*.deb' -o \
+            -iname '*.blockmap' -o -iname '*.yml' -o -iname '*.yaml' \
+          \) -exec cp -f {} release/ \;
           echo "Release files:"
           ls -la release/
+          if [ -z "$(ls -A release)" ]; then
+            echo "No distributable artifacts found to publish"
+            exit 1
+          fi
 
       - name: Publish to GitHub Releases
-        run: npx electron-builder --publish always
+        run: |
+          shopt -s nullglob
+          artifacts=(release/*)
+          npx electron-builder publish -f "${artifacts[@]}" -p always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
