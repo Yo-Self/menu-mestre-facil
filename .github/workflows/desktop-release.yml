@@ -33,12 +33,10 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          # Incrementa a versão no package.json (patch bump: 1.0.0 -> 1.0.1)
           npm version patch -m "chore(release): bump version to %s [skip ci]"
 
       - name: Push changes and tag
         run: |
-          # Envia a alteração do package.json e a tag recém-criada
           git push origin main
           git push origin --tags
 
@@ -48,14 +46,19 @@ jobs:
           TAG_NAME=$(git describe --tags --abbrev=0)
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
-  build-and-release:
+  build:
     needs: bump-version
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,20 +81,53 @@ jobs:
       - name: Build production bundle
         run: npm run build:desktop
 
-      - name: Build & Publish Electron App (Windows)
-        if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win --publish always
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package Electron app (${{ matrix.platform }})
+        run: npx electron-builder --${{ matrix.platform }} --publish never
 
-      - name: Build & Publish Electron App (macOS)
-        if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac --publish always
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-${{ matrix.platform }}
+          path: |
+            release/**
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Build & Publish Electron App (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: npx electron-builder --linux --publish always
+  publish-release:
+    needs: [bump-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifact-staging
+          pattern: electron-*
+          merge-multiple: true
+
+      - name: Consolidate artifacts into release/
+        run: |
+          mkdir -p release
+          find artifact-staging -type f -exec cp -f {} release/ \;
+          echo "Release files:"
+          ls -la release/
+
+      - name: Publish to GitHub Releases
+        run: npx electron-builder --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

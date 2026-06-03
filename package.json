@@ -2,6 +2,8 @@
   "name": "menu-mestre-facil",
   "private": true,
   "version": "0.0.30",
+  "description": "Gestor Menu — aplicativo desktop para gestão de cardápios digitais Yo Self",
+  "author": "Yo Self",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
