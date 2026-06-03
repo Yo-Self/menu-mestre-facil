@@ -441,7 +441,9 @@ export default function ReportsPage() {
                               {new Date(order.created_at).toLocaleString('pt-BR')}
                             </span>
                             {order.table_name && (
-                              <span>Mesa: {order.table_name}</span>
+                              <span>
+                                {order.table_name.toLowerCase() === 'retirada' ? 'Retirada' : `Mesa: ${order.table_name}`}
+                              </span>
                             )}
                           </div>
                         </div>

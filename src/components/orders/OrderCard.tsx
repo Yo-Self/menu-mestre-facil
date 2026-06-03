@@ -475,7 +475,10 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
 
   const getDeliveryType = () => {
     const info = order.customer_info && typeof order.customer_info === 'object' ? (order.customer_info as any) : null
-    return info?.delivery_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
+    if (order.table_name && order.table_name.toLowerCase() === 'retirada') {
+      return 'takeout';
+    }
+    return info?.delivery_type || order.order_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
   }
 
   const getTotalItems = () => {
@@ -516,10 +519,14 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       )
     }
 
-    const type = info?.delivery_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
+    let type = info?.delivery_type || order.order_type || (order as any).delivery_type || (order.table_name ? 'dine_in' : 'delivery')
+    if (order.table_name && order.table_name.toLowerCase() === 'retirada') {
+      type = 'takeout';
+    }
     const badges: Record<string, { label: string; color: string }> = {
       dine_in: { label: 'Mesa / Local', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400' },
       takeout: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400' },
+      pickup: { label: 'Retirada', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400' },
       delivery: { label: 'Delivery', color: 'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:bg-sky-500/20 dark:text-sky-400' }
     }
     const config = badges[type] || badges.dine_in
@@ -692,7 +699,13 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
         {order.table_name && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 font-medium">
             <MapPin className="h-3.5 w-3.5 text-primary opacity-80" />
-            <span>Mesa: <strong className="text-foreground">{order.table_name}</strong></span>
+            <span>
+              {order.table_name.toLowerCase() === 'retirada' ? (
+                <strong className="text-foreground">Retirada</strong>
+              ) : (
+                <>Mesa: <strong className="text-foreground">{order.table_name}</strong></>
+              )}
+            </span>
           </div>
         )}
 

@@ -250,7 +250,9 @@ export function ReportsDashboard({
                         {getStatusLabel(order.status)}
                       </span>
                       {order.table_name && (
-                        <span className="text-xs text-muted-foreground">Mesa {order.table_name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {order.table_name.toLowerCase() === 'retirada' ? 'Retirada' : `Mesa ${order.table_name}`}
+                        </span>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground">

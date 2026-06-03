@@ -224,6 +224,7 @@ export function usePrinting() {
         const deliveryTypeMap: { [key: string]: string } = {
           delivery: 'DELIVERY',
           takeout: 'RETIRADA',
+          pickup: 'RETIRADA',
           dine_in: 'MESA/LOCAL'
         }
         const tipoEntrega = order.is_takeaway ? 'VIAGEM' : (deliveryTypeMap[order.delivery_type] || order.delivery_type || 'MESA')
