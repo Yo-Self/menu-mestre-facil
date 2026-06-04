@@ -27,6 +27,9 @@ interface Restaurant {
   table_payment: boolean;
   table_ordering: boolean;
   online_payment: boolean;
+  online_ordering_enabled?: boolean | null;
+  pix_payment_enabled?: boolean | null;
+  infinitepay_handle?: string | null;
 }
 
 interface Profile {
@@ -308,6 +311,14 @@ export default function RestaurantDetailPage() {
                 <Badge variant={restaurant.table_ordering ? "default" : "secondary"} className="flex items-center gap-1">
                   <ShoppingCart className="h-3 w-3" />
                   {restaurant.table_ordering ? "Habilitado" : "Desabilitado"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Pedidos Online:</span>
+                <Badge variant={restaurant.online_ordering_enabled !== false ? "default" : "secondary"} className="flex items-center gap-1">
+                  <ShoppingCart className="h-3 w-3" />
+                  {restaurant.online_ordering_enabled !== false ? "Habilitado" : "Desabilitado"}
                 </Badge>
               </div>
 

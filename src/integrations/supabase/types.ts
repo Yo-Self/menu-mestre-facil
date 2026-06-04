@@ -1025,6 +1025,7 @@ export type Database = {
           stripe_connect_id: string | null
           infinitepay_handle: string | null
           pix_payment_enabled: boolean
+          online_ordering_enabled: boolean
           delivery_enabled: boolean
           delivery_max_distance: number
           delivery_base_fee: number
@@ -1064,6 +1065,7 @@ export type Database = {
           stripe_connect_id?: string | null
           infinitepay_handle?: string | null
           pix_payment_enabled?: boolean
+          online_ordering_enabled?: boolean
           delivery_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number
@@ -1103,6 +1105,7 @@ export type Database = {
           stripe_connect_id?: string | null
           infinitepay_handle?: string | null
           pix_payment_enabled?: boolean
+          online_ordering_enabled?: boolean
           delivery_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number

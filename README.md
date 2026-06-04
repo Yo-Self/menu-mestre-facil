@@ -48,9 +48,8 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Totalizador em Tempo Real**: Calcula instantaneamente o valor total do pedido com base nos preços atualizados durante as edições.
 - **Integração com Cozinha & Impressão**: As alterações atualizam os bancos de dados em tempo real, sincronizando-se com as vias de impressão térmica e telas de preparo.
 
-### 💳 Sincronização Automatizada de Pagamentos
-- **Fluxo de Transição Automática**: Pedidos em **Aguardando Pagamento** passam para **Novos** quando o pagamento online é confirmado (Stripe via `stripe_payment_intent_id` ou PIX InfinitePay via webhook → `status = new`, `payment_provider = infinitepay`).
-- **PIX InfinitePay (opt-in)**: Em *Editar restaurante*, configure o InfiniteTag e ative *Pagamento PIX online*. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
+- **Feature Flags de Pedidos e Pagamentos Online**: A chave master *Permitir Fazer Pedidos Online* (`online_ordering_enabled`) controla se os clientes podem fazer pedidos e pagar online no cardápio. Se desativada, desliga e oculta todos os checkouts online (Stripe e InfinitePay PIX). Se ativada, libera as sub-flags individuais para **Stripe** (cartão e Apple/Google Pay) e **InfinitePay** (PIX).
+- **PIX InfinitePay (opt-in)**: Em *Editar restaurante* (sob *Pedidos Online*), configure o InfiniteTag e ative *Pagamento PIX online*. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
 - **Tempo Real & Resiliência**: Funciona instantaneamente por meio de assinaturas em tempo real do Supabase (Realtime) se o painel estiver aberto, e também possui um mecanismo de atualização em lote no carregamento inicial para processar pagamentos realizados enquanto o painel administrativo estava offline.
 
 ### 📥 Importador e Scraping de Cardápios (iFood)

@@ -107,6 +107,7 @@ export default function NewRestaurantPage() {
             address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
             table_payment: tablePaymentEnabled,
             table_ordering: tableOrderingEnabled,
+            online_ordering_enabled: true,
             online_payment: onlinePaymentEnabled,
             min_order_value: minOrderEnabled ? minOrderValue : 0,
             open: true,

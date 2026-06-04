@@ -1,12 +1,30 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, MessageCircle, Palette, CreditCard } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  MessageCircle,
+  Palette,
+  CreditCard,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
@@ -38,7 +56,7 @@ const cuisineTypes = [
   "Doceria",
   "Cafeteria",
   "Bar",
-  "Outros"
+  "Outros",
 ];
 
 interface Restaurant {
@@ -63,6 +81,7 @@ interface Restaurant {
   stripe_connect_id?: string | null;
   infinitepay_handle?: string | null;
   pix_payment_enabled?: boolean;
+  online_ordering_enabled?: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -91,14 +110,17 @@ export default function EditRestaurantPage() {
   const [stripeConnectId, setStripeConnectId] = useState("");
   const [pixPaymentEnabled, setPixPaymentEnabled] = useState(false);
   const [infinitepayHandle, setInfinitepayHandle] = useState("");
+  const [onlineOrderingEnabled, setOnlineOrderingEnabled] = useState(true);
   const [minOrderValue, setMinOrderValue] = useState(0);
   const [minOrderEnabled, setMinOrderEnabled] = useState(false);
-  
+
   // Table configuration states
   const [hasTables, setHasTables] = useState(true);
   const [tablesCount, setTablesCount] = useState(12);
-  const [tableCategories, setTableCategories] = useState("Balcão, Salão Principal, Varanda");
-  
+  const [tableCategories, setTableCategories] = useState(
+    "Balcão, Salão Principal, Varanda",
+  );
+
   const [addressData, setAddressData] = useState({
     address: "",
     latitude: null as number | null,
@@ -140,6 +162,7 @@ export default function EditRestaurantPage() {
       setStripeConnectId(data.stripe_connect_id || "");
       setPixPaymentEnabled(data.pix_payment_enabled === true);
       setInfinitepayHandle((data.infinitepay_handle || "").replace(/^\$/, ""));
+      setOnlineOrderingEnabled(data.online_ordering_enabled ?? true);
       setAddressData({
         address: data.address || "",
         latitude: data.latitude,
@@ -150,7 +173,9 @@ export default function EditRestaurantPage() {
       setMinOrderEnabled((data.min_order_value ?? 0) > 0);
       setHasTables(data.has_tables ?? true);
       setTablesCount(data.tables_count ?? 12);
-      setTableCategories(data.table_categories || "Balcão, Salão Principal, Varanda");
+      setTableCategories(
+        data.table_categories || "Balcão, Salão Principal, Varanda",
+      );
     } catch (error: any) {
       toast({
         title: "Erro ao carregar restaurante",
@@ -171,9 +196,17 @@ export default function EditRestaurantPage() {
       // Gerar slug único se foi alterado
       let slug = formData.slug;
       if (formData.slug.trim()) {
-        slug = await generateUniqueSlug(generateSlug(formData.slug), 'restaurants', id);
+        slug = await generateUniqueSlug(
+          generateSlug(formData.slug),
+          "restaurants",
+          id,
+        );
       } else {
-        slug = await generateUniqueSlug(generateSlug(formData.name), 'restaurants', id);
+        slug = await generateUniqueSlug(
+          generateSlug(formData.name),
+          "restaurants",
+          id,
+        );
       }
 
       const { error } = await supabase
@@ -192,13 +225,23 @@ export default function EditRestaurantPage() {
           address: addressData.address || null,
           latitude: addressData.latitude,
           longitude: addressData.longitude,
-          address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
+          address_active:
+            addressActive &&
+            !!addressData.address &&
+            addressData.address.trim().length > 0,
           table_payment: tablePaymentEnabled,
           table_ordering: tableOrderingEnabled,
+          online_ordering_enabled: onlineOrderingEnabled,
           online_payment: onlinePaymentEnabled,
-          stripe_connect_id: (onlinePaymentEnabled || tablePaymentEnabled) ? (stripeConnectId.trim() || null) : null,
+          stripe_connect_id:
+            (onlineOrderingEnabled && onlinePaymentEnabled) ||
+            tablePaymentEnabled
+              ? stripeConnectId.trim() || null
+              : null,
           pix_payment_enabled: pixPaymentEnabled && !!infinitepayHandle.trim(),
-          infinitepay_handle: pixPaymentEnabled ? (infinitepayHandle.trim().replace(/^\$/, "") || null) : null,
+          infinitepay_handle: pixPaymentEnabled
+            ? infinitepayHandle.trim().replace(/^\$/, "") || null
+            : null,
           min_order_value: minOrderEnabled ? minOrderValue : 0,
           has_tables: hasTables,
           tables_count: tablesCount,
@@ -225,7 +268,9 @@ export default function EditRestaurantPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -261,7 +306,9 @@ export default function EditRestaurantPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-primary">Editar Restaurante</h1>
+          <h1 className="text-3xl font-bold text-primary">
+            Editar Restaurante
+          </h1>
           <p className="text-muted-foreground">
             Atualize as informações do seu restaurante
           </p>
@@ -299,13 +346,19 @@ export default function EditRestaurantPage() {
                 placeholder="ex: restaurante-do-chef"
               />
               <p className="text-sm text-muted-foreground">
-                Deixe em branco para gerar automaticamente a partir do nome. Seu restaurante será acessível em: yo-self.com/restaurant/{formData.slug || '[slug-gerado]'}
+                Deixe em branco para gerar automaticamente a partir do nome. Seu
+                restaurante será acessível em: yo-self.com/restaurant/
+                {formData.slug || "[slug-gerado]"}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="cuisine_type">Tipo de Culinária</Label>
-              <Select value={formData.cuisine_type} onValueChange={handleCuisineTypeChange} required>
+              <Select
+                value={formData.cuisine_type}
+                onValueChange={handleCuisineTypeChange}
+                required
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo de culinária" />
                 </SelectTrigger>
@@ -353,16 +406,32 @@ export default function EditRestaurantPage() {
                   Endereço Ativo
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Ativa a função de digitar o endereço no menu. Só é possível ativar se o endereço estiver preenchido.
+                  Ativa a função de digitar o endereço no menu. Só é possível
+                  ativar se o endereço estiver preenchido.
                 </p>
               </div>
               <Switch
-                checked={addressActive && !!addressData.address && addressData.address.trim().length > 0}
+                checked={
+                  addressActive &&
+                  !!addressData.address &&
+                  addressData.address.trim().length > 0
+                }
                 onCheckedChange={(checked) => {
-                  if (checked && !(addressData.address && addressData.address.trim().length > 0)) return;
+                  if (
+                    checked &&
+                    !(
+                      addressData.address &&
+                      addressData.address.trim().length > 0
+                    )
+                  )
+                    return;
                   setAddressActive(checked);
                 }}
-                disabled={!(addressData.address && addressData.address.trim().length > 0)}
+                disabled={
+                  !(
+                    addressData.address && addressData.address.trim().length > 0
+                  )
+                }
               />
             </div>
 
@@ -414,71 +483,112 @@ export default function EditRestaurantPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Ativar pagamento online
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Ativa o pagamento online para receber pagamentos via plataforma no menu digital
-                </p>
-              </div>
-              <Switch
-                checked={onlinePaymentEnabled}
-                onCheckedChange={setOnlinePaymentEnabled}
-              />
-            </div>
-
-            {(onlinePaymentEnabled || tablePaymentEnabled) && (
-              <div className="space-y-2 pl-6 border-l-2 border-primary/20 animate-fade-in">
-                <Label htmlFor="stripe_connect_id">ID da Conta Stripe Connect (Produção / Testes)</Label>
-                <Input
-                  id="stripe_connect_id"
-                  value={stripeConnectId}
-                  onChange={(e) => setStripeConnectId(e.target.value)}
-                  placeholder="Ex: acct_xxxxxxxxxxxx"
-                  className="max-w-xs font-mono"
-                  required={onlinePaymentEnabled || tablePaymentEnabled}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Insira o ID da sua conta vinculada Stripe Connect para receber as vendas diretamente. Ex: acct_xxxxxxxxxxxx.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-4 border-t pt-4">
+            <div className="space-y-4 border-t pt-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-emerald-600" />
-                    Pagamento PIX online (InfinitePay)
+                  <Label className="flex items-center gap-2 font-bold">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    Permitir Fazer Pedidos Online
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Exibe o botão &quot;Pagar com PIX&quot; no cardápio digital (independente do Stripe)
+                    Habilita o recebimento de pedidos e pagamentos online no
+                    cardápio digital (Stripe/InfinitePay)
                   </p>
                 </div>
                 <Switch
-                  checked={pixPaymentEnabled}
-                  onCheckedChange={setPixPaymentEnabled}
+                  checked={onlineOrderingEnabled}
+                  onCheckedChange={setOnlineOrderingEnabled}
                 />
               </div>
 
-              {pixPaymentEnabled && (
-                <div className="space-y-2 pl-6 border-l-2 border-emerald-500/30 animate-fade-in">
-                  <Label htmlFor="infinitepay_handle">InfiniteTag (InfinitePay)</Label>
-                  <Input
-                    id="infinitepay_handle"
-                    value={infinitepayHandle}
-                    onChange={(e) => setInfinitepayHandle(e.target.value.replace(/^\$/, ""))}
-                    placeholder="Ex: exampleuser"
-                    className="max-w-xs font-mono"
-                    required={pixPaymentEnabled}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Seu usuário InfinitePay sem o símbolo $. Cadastre a URL do cardápio em InfinitePay → Configurações → Link integrado.
-                    Valor mínimo por pedido: R$ 1,00. Para só PIX no checkout, desative cartão nas configurações da conta InfinitePay.
-                  </p>
+              {onlineOrderingEnabled && (
+                <div className="space-y-6 pl-6 border-l-2 border-primary/20 animate-fade-in">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="flex items-center gap-2">
+                          Ativar pagamento online (Stripe)
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Libera pagamento com cartão de crédito e Apple
+                          Pay/Google Pay via Stripe
+                        </p>
+                      </div>
+                      <Switch
+                        checked={onlinePaymentEnabled}
+                        onCheckedChange={setOnlinePaymentEnabled}
+                      />
+                    </div>
+
+                    {(onlinePaymentEnabled || tablePaymentEnabled) && (
+                      <div className="space-y-2 pl-6 border-l-2 border-primary/20 animate-fade-in">
+                        <Label htmlFor="stripe_connect_id">
+                          ID da Conta Stripe Connect (Produção / Testes)
+                        </Label>
+                        <Input
+                          id="stripe_connect_id"
+                          value={stripeConnectId}
+                          onChange={(e) => setStripeConnectId(e.target.value)}
+                          placeholder="Ex: acct_xxxxxxxxxxxx"
+                          className="max-w-xs font-mono"
+                          required={
+                            (onlineOrderingEnabled && onlinePaymentEnabled) ||
+                            tablePaymentEnabled
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Insira o ID da sua conta vinculada Stripe Connect para
+                          receber as vendas diretamente. Ex: acct_xxxxxxxxxxxx.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="flex items-center gap-2 text-emerald-600">
+                          Ativar pagamento online pela InfinitePay
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Exibe o botão "Pagar com PIX" quando stripe ativado e
+                          "Pagar online" quando stripe desativado no cardápio
+                          digital.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={pixPaymentEnabled}
+                        onCheckedChange={setPixPaymentEnabled}
+                      />
+                    </div>
+
+                    {pixPaymentEnabled && (
+                      <div className="space-y-2 pl-6 border-l-2 border-emerald-500/30 animate-fade-in">
+                        <Label htmlFor="infinitepay_handle">
+                          InfiniteTag (InfinitePay)
+                        </Label>
+                        <Input
+                          id="infinitepay_handle"
+                          value={infinitepayHandle}
+                          onChange={(e) =>
+                            setInfinitepayHandle(
+                              e.target.value.replace(/^\$/, ""),
+                            )
+                          }
+                          placeholder="Ex: exampleuser"
+                          className="max-w-xs font-mono"
+                          required={onlineOrderingEnabled && pixPaymentEnabled}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Seu usuário InfinitePay sem o símbolo $. Cadastre a
+                          URL do cardápio em InfinitePay → Configurações → Link
+                          integrado. Valor mínimo por pedido: R$ 1,00. Para só
+                          PIX no checkout, desative cartão nas configurações da
+                          conta InfinitePay.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -491,7 +601,8 @@ export default function EditRestaurantPage() {
                     Pedidos pelo WhatsApp
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Permite que os clientes façam pedidos diretamente pelo WhatsApp
+                    Permite que os clientes façam pedidos diretamente pelo
+                    WhatsApp
                   </p>
                 </div>
                 <Switch
@@ -511,7 +622,8 @@ export default function EditRestaurantPage() {
                     className="max-w-xs"
                   />
                   <p className="text-sm text-muted-foreground">
-                    Digite o número completo com código do país e DDD (ex: 5511999999999)
+                    Digite o número completo com código do país e DDD (ex:
+                    5511999999999)
                   </p>
                 </div>
               )}
@@ -523,13 +635,17 @@ export default function EditRestaurantPage() {
                   🛋️ Configuração de Mesas / Comandas
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Gerencie se este restaurante utiliza mesas e como elas são organizadas no mapa do PDV
+                  Gerencie se este restaurante utiliza mesas e como elas são
+                  organizadas no mapa do PDV
                 </p>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="has_tables" className="flex items-center gap-2">
+                  <Label
+                    htmlFor="has_tables"
+                    className="flex items-center gap-2"
+                  >
                     Possui Mesas / Comandas
                   </Label>
                   <p className="text-xs text-muted-foreground">
@@ -553,7 +669,9 @@ export default function EditRestaurantPage() {
                       min={1}
                       max={100}
                       value={tablesCount}
-                      onChange={(e) => setTablesCount(parseInt(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setTablesCount(parseInt(e.target.value) || 0)
+                      }
                       required
                     />
                     <p className="text-xs text-muted-foreground">
@@ -562,7 +680,9 @@ export default function EditRestaurantPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="table_categories">Zonas / Categorias das Mesas</Label>
+                    <Label htmlFor="table_categories">
+                      Zonas / Categorias das Mesas
+                    </Label>
                     <Input
                       id="table_categories"
                       type="text"
@@ -591,9 +711,12 @@ export default function EditRestaurantPage() {
 
               <div className="flex items-center justify-between pl-6 border-l-2 border-primary/20">
                 <div className="space-y-0.5">
-                  <Label htmlFor="min_order_enabled">Ativar Pedido Mínimo</Label>
+                  <Label htmlFor="min_order_enabled">
+                    Ativar Pedido Mínimo
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Bloqueia a finalização do pedido se o total for inferior ao valor estipulado.
+                    Bloqueia a finalização do pedido se o total for inferior ao
+                    valor estipulado.
                   </p>
                 </div>
                 <Switch
@@ -605,14 +728,18 @@ export default function EditRestaurantPage() {
 
               {minOrderEnabled && (
                 <div className="space-y-2 pl-6 border-l-2 border-primary/20 animate-fade-in">
-                  <Label htmlFor="min_order_value">Valor de Pedido Mínimo (R$)</Label>
+                  <Label htmlFor="min_order_value">
+                    Valor de Pedido Mínimo (R$)
+                  </Label>
                   <Input
                     id="min_order_value"
                     type="number"
                     step="0.01"
                     min="0"
                     value={minOrderValue || ""}
-                    onChange={(e) => setMinOrderValue(parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setMinOrderValue(parseFloat(e.target.value) || 0)
+                    }
                     placeholder="Ex: 20.00"
                     className="max-w-xs font-mono font-bold"
                   />
@@ -633,7 +760,9 @@ export default function EditRestaurantPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="background_light">Fundo para Tema Claro</Label>
+                  <Label htmlFor="background_light">
+                    Fundo para Tema Claro
+                  </Label>
                   <Input
                     id="background_light"
                     name="background_light"
@@ -647,7 +776,9 @@ export default function EditRestaurantPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="background_night">Fundo para Tema Escuro</Label>
+                  <Label htmlFor="background_night">
+                    Fundo para Tema Escuro
+                  </Label>
                   <Input
                     id="background_night"
                     name="background_night"
@@ -666,7 +797,11 @@ export default function EditRestaurantPage() {
               <Button type="submit" disabled={loading}>
                 {loading ? "Salvando..." : "Salvar Alterações"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(-1)}
+              >
                 Cancelar
               </Button>
             </div>
