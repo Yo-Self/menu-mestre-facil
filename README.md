@@ -49,7 +49,8 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Integração com Cozinha & Impressão**: As alterações atualizam os bancos de dados em tempo real, sincronizando-se com as vias de impressão térmica e telas de preparo.
 
 ### 💳 Sincronização Automatizada de Pagamentos
-- **Fluxo de Transição Automática**: Pedidos que entram no sistema com o status **Aguardando Pagamento** são automaticamente movidos para a fila de **Novos** assim que o pagamento online é concluído (quando a tag `stripe_payment_intent_id` é registrada).
+- **Fluxo de Transição Automática**: Pedidos em **Aguardando Pagamento** passam para **Novos** quando o pagamento online é confirmado (Stripe via `stripe_payment_intent_id` ou PIX InfinitePay via webhook → `status = new`, `payment_provider = infinitepay`).
+- **PIX InfinitePay (opt-in)**: Em *Editar restaurante*, configure o InfiniteTag e ative *Pagamento PIX online*. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
 - **Tempo Real & Resiliência**: Funciona instantaneamente por meio de assinaturas em tempo real do Supabase (Realtime) se o painel estiver aberto, e também possui um mecanismo de atualização em lote no carregamento inicial para processar pagamentos realizados enquanto o painel administrativo estava offline.
 
 ### 📥 Importador e Scraping de Cardápios (iFood)

@@ -61,6 +61,8 @@ interface Restaurant {
   online_payment: boolean;
   min_order_value?: number | null;
   stripe_connect_id?: string | null;
+  infinitepay_handle?: string | null;
+  pix_payment_enabled?: boolean;
 }
 
 export default function EditRestaurantPage() {
@@ -87,6 +89,8 @@ export default function EditRestaurantPage() {
   const [tableOrderingEnabled, setTableOrderingEnabled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [stripeConnectId, setStripeConnectId] = useState("");
+  const [pixPaymentEnabled, setPixPaymentEnabled] = useState(false);
+  const [infinitepayHandle, setInfinitepayHandle] = useState("");
   const [minOrderValue, setMinOrderValue] = useState(0);
   const [minOrderEnabled, setMinOrderEnabled] = useState(false);
   
@@ -134,6 +138,8 @@ export default function EditRestaurantPage() {
       setTableOrderingEnabled(data.table_ordering ?? false);
       setOnlinePaymentEnabled(data.online_payment ?? false);
       setStripeConnectId(data.stripe_connect_id || "");
+      setPixPaymentEnabled(data.pix_payment_enabled === true);
+      setInfinitepayHandle((data.infinitepay_handle || "").replace(/^\$/, ""));
       setAddressData({
         address: data.address || "",
         latitude: data.latitude,
@@ -191,6 +197,8 @@ export default function EditRestaurantPage() {
           table_ordering: tableOrderingEnabled,
           online_payment: onlinePaymentEnabled,
           stripe_connect_id: (onlinePaymentEnabled || tablePaymentEnabled) ? (stripeConnectId.trim() || null) : null,
+          pix_payment_enabled: pixPaymentEnabled && !!infinitepayHandle.trim(),
+          infinitepay_handle: pixPaymentEnabled ? (infinitepayHandle.trim().replace(/^\$/, "") || null) : null,
           min_order_value: minOrderEnabled ? minOrderValue : 0,
           has_tables: hasTables,
           tables_count: tablesCount,
@@ -438,6 +446,42 @@ export default function EditRestaurantPage() {
                 </p>
               </div>
             )}
+
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                    Pagamento PIX online (InfinitePay)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Exibe o botão &quot;Pagar com PIX&quot; no cardápio digital (independente do Stripe)
+                  </p>
+                </div>
+                <Switch
+                  checked={pixPaymentEnabled}
+                  onCheckedChange={setPixPaymentEnabled}
+                />
+              </div>
+
+              {pixPaymentEnabled && (
+                <div className="space-y-2 pl-6 border-l-2 border-emerald-500/30 animate-fade-in">
+                  <Label htmlFor="infinitepay_handle">InfiniteTag (InfinitePay)</Label>
+                  <Input
+                    id="infinitepay_handle"
+                    value={infinitepayHandle}
+                    onChange={(e) => setInfinitepayHandle(e.target.value.replace(/^\$/, ""))}
+                    placeholder="Ex: exampleuser"
+                    className="max-w-xs font-mono"
+                    required={pixPaymentEnabled}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Seu usuário InfinitePay sem o símbolo $. Cadastre a URL do cardápio em InfinitePay → Configurações → Link integrado.
+                    Valor mínimo por pedido: R$ 1,00. Para só PIX no checkout, desative cartão nas configurações da conta InfinitePay.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-4 border-t pt-6">
               <div className="flex items-center justify-between">

@@ -19,6 +19,7 @@ import {
   Volume2
 } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/ui/WhatsappIcon'
+import { isOrderPaidOnline, getOnlinePaymentProviderLabel } from '@/lib/orderPayment'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -601,10 +602,10 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               })()}
               {getDeliveryTypeBadge()}
               {getTimerBadge()}
-              {order.stripe_payment_intent_id && (
+              {isOrderPaidOnline(order) && (
                 <Badge variant="secondary" className="text-[10px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/15 border-0 px-1.5 py-0 flex items-center">
                   <CreditCard className="h-2.5 w-2.5 mr-0.5" />
-                  Pago
+                  {getOnlinePaymentProviderLabel(order) ?? 'Pago'}
                 </Badge>
               )}
             </div>

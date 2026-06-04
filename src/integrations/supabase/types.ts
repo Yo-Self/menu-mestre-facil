@@ -737,6 +737,9 @@ export type Database = {
           restaurant_id: string
           status: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id: string | null
+          infinitepay_invoice_slug: string | null
+          infinitepay_transaction_nsu: string | null
+          payment_provider: string | null
           table_name: string | null
           total_price: number
           updated_at: string
@@ -757,6 +760,9 @@ export type Database = {
           restaurant_id: string
           status?: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id?: string | null
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          payment_provider?: string | null
           table_name?: string | null
           total_price: number
           updated_at?: string
@@ -777,6 +783,9 @@ export type Database = {
           restaurant_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id?: string | null
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          payment_provider?: string | null
           table_name?: string | null
           total_price?: number
           updated_at?: string
@@ -1014,6 +1023,8 @@ export type Database = {
           table_categories: string | null
           min_order_value: number | null
           stripe_connect_id: string | null
+          infinitepay_handle: string | null
+          pix_payment_enabled: boolean
           delivery_enabled: boolean
           delivery_max_distance: number
           delivery_base_fee: number
@@ -1051,6 +1062,8 @@ export type Database = {
           table_categories?: string | null
           min_order_value?: number | null
           stripe_connect_id?: string | null
+          infinitepay_handle?: string | null
+          pix_payment_enabled?: boolean
           delivery_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number
@@ -1088,6 +1101,8 @@ export type Database = {
           table_categories?: string | null
           min_order_value?: number | null
           stripe_connect_id?: string | null
+          infinitepay_handle?: string | null
+          pix_payment_enabled?: boolean
           delivery_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number

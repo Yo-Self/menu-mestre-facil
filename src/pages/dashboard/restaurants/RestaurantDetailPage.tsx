@@ -318,6 +318,23 @@ export default function RestaurantDetailPage() {
                   {restaurant.online_payment ? "Habilitado" : "Desabilitado"}
                 </Badge>
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">PIX online (InfinitePay):</span>
+                <Badge
+                  variant={
+                    restaurant.pix_payment_enabled && restaurant.infinitepay_handle
+                      ? "default"
+                      : "secondary"
+                  }
+                  className="flex items-center gap-1"
+                >
+                  <CreditCard className="h-3 w-3" />
+                  {restaurant.pix_payment_enabled && restaurant.infinitepay_handle
+                    ? `@${String(restaurant.infinitepay_handle).replace(/^\$/, "")}`
+                    : "Desabilitado"}
+                </Badge>
+              </div>
               
               {restaurant.whatsapp_enabled && restaurant.whatsapp_phone && (
                 <div className="flex items-center gap-2">

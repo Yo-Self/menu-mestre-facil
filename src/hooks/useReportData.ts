@@ -27,6 +27,8 @@ export interface ReportOrder {
   order_items: ReportOrderItem[];
   order_payments?: ReportOrderPayment[];
   stripe_payment_intent_id?: string | null;
+  infinitepay_transaction_nsu?: string | null;
+  payment_provider?: string | null;
 }
 
 export interface PaymentMethodData {
@@ -156,6 +158,7 @@ function aggregateOrders(orders: ReportOrder[], expenses: any[] = []): ReportSum
       debit_card: 'Cartão de Débito',
       pix: 'Pix',
       stripe: 'Stripe (Online)',
+      infinitepay: 'Pago PIX',
       card: 'Cartão',
       online: 'Pago pelo App',
       other: 'Outro/Não especificado'
@@ -182,7 +185,9 @@ function aggregateOrders(orders: ReportOrder[], expenses: any[] = []): ReportSum
       // Fallback
       let methodKey = (order as any).payment_method;
       if (!methodKey) {
-        if (order.stripe_payment_intent_id) {
+        if ((order as ReportOrder).payment_provider === 'infinitepay' || (order as ReportOrder).infinitepay_transaction_nsu) {
+          methodKey = 'infinitepay';
+        } else if (order.stripe_payment_intent_id) {
           methodKey = 'stripe';
         } else {
           methodKey = 'other';
@@ -243,6 +248,8 @@ async function fetchOrdersForPeriod(
       origin,
       restaurant_id,
       stripe_payment_intent_id,
+      infinitepay_transaction_nsu,
+      payment_provider,
       order_items (
         id,
         quantity,

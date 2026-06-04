@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { isOrderPaidOnline } from '@/lib/orderPayment'
 
 const getPaymentLabel = (method: string) => {
   const paymentMap: { [key: string]: string } = {
@@ -7,6 +8,7 @@ const getPaymentLabel = (method: string) => {
     debit_card: 'Cartão de Débito',
     pix: 'PIX',
     stripe: 'Online (Stripe)',
+    infinitepay: 'Pago PIX',
     card: 'Cartão (Débito/Crédito)',
     online: 'Pago pelo App'
   }
@@ -409,7 +411,7 @@ export function usePrinting() {
         }
 
         // Aviso de pedido pago online (nada a cobrar na entrega)
-        if (order.stripe_payment_intent_id) {
+        if (isOrderPaidOnline(order)) {
           items.push({
             type: 'text',
             value: 'PEDIDO PAGO ONLINE, NADA A COBRAR NA ENTREGA',
@@ -561,7 +563,7 @@ export function usePrinting() {
               }
               return '';
             })()}
-            ${order.stripe_payment_intent_id ? `
+            ${isOrderPaidOnline(order) ? `
               <div style="font-weight: bold; font-size: 12px; color: #15803d; border: 1px solid #15803d; background-color: #f0fdf4; padding: 6px; margin-top: 8px; text-align: center;">
                 PEDIDO PAGO ONLINE, NADA A COBRAR NA ENTREGA
               </div>
