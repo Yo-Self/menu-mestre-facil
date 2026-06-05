@@ -1,24 +1,17 @@
 -- Migration: add_online_payment_to_restaurants
 -- Description: Add online_payment boolean column to public.restaurants and update public.get_public_restaurant_data function to include it
 
--- 1. Add online_payment column to restaurants table
+-- 1. Add online_payment and table_payment columns to restaurants table
 ALTER TABLE public.restaurants 
-ADD COLUMN IF NOT EXISTS online_payment boolean NOT NULL DEFAULT false;
+ADD COLUMN IF NOT EXISTS online_payment boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS table_payment boolean NOT NULL DEFAULT false;
 
--- Add comment to document the field
+-- Add comments to document the fields
 COMMENT ON COLUMN public.restaurants.online_payment IS 'Controls if the restaurant allows online payments (e.g., Stripe) in the digital menu.';
+COMMENT ON COLUMN public.restaurants.table_payment IS 'Controls if the restaurant allows table payments (e.g., PIX or card at table) in the digital menu.';
 
 -- 2. Update get_public_restaurant_data function to include online_payment
-CREATE OR REPLACE FUNCTION public.get_public_restaurant_data(p_restaurant_slug text)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO public
-AS $$
-DECLARE
-  v_result jsonb;
-END;
-$$;
+-- (Stub removed to avoid PL/pgSQL syntax errors)
 
 -- We will completely rewrite the function below
 CREATE OR REPLACE FUNCTION public.get_public_restaurant_data(p_restaurant_slug text)
