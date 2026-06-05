@@ -4,6 +4,8 @@ import { useRestaurant } from "@/components/providers/RestaurantProvider";
 import { usePrinting as useAppPrinting } from "@/hooks/usePrinting";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { getOptimizedImageUrl } from "@/utils/imageUrl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -1356,7 +1358,7 @@ export default function PhysicalMenuPage() {
                   <div 
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 opacity-[0.05] pointer-events-none bg-center bg-no-repeat bg-contain"
                     style={{ 
-                      backgroundImage: `url(${selectedRestaurant.image_url})`,
+                      backgroundImage: `url(${getOptimizedImageUrl(selectedRestaurant.image_url, 200)})`,
                       transform: 'translate(-50%, -50%) rotate(-10deg)',
                       zIndex: 0
                     }} 
@@ -1367,10 +1369,11 @@ export default function PhysicalMenuPage() {
                   {/* Logo + Title Header */}
                   <div className="text-center mb-6 flex flex-col items-center">
                     {showImages && selectedRestaurant?.image_url && selectedTemplate !== "thermal" && (
-                      <img 
-                        src={selectedRestaurant.image_url} 
-                        alt="Logo" 
-                        className="h-14 w-14 rounded-full object-cover border border-stone-200 shadow-sm mb-2" 
+                      <OptimizedImage
+                        src={selectedRestaurant.image_url}
+                        alt="Logo"
+                        className="h-14 w-14 rounded-full object-cover border border-stone-200 shadow-sm mb-2"
+                        width={56}
                       />
                     )}
                     <h2 
@@ -1474,20 +1477,29 @@ export default function PhysicalMenuPage() {
                             >
                               {/* Gallery template image: occupies top width of card */}
                               {showImages && dish.image_url && selectedTemplate === "gallery" && (
-                                <img 
-                                  src={dish.image_url} 
-                                  alt={dish.name} 
-                                  onError={(e) => { if (selectedRestaurant?.image_url) e.currentTarget.src = selectedRestaurant.image_url; }}
-                                  className="w-full h-24 object-cover flex-shrink-0 border-b border-slate-100" 
+                                <OptimizedImage
+                                  src={dish.image_url}
+                                  alt={dish.name}
+                                  onError={(e) => {
+                                    if (selectedRestaurant?.image_url) {
+                                      e.currentTarget.src = getOptimizedImageUrl(selectedRestaurant.image_url, 80);
+                                    }
+                                  }}
+                                  className="w-full h-24 object-cover flex-shrink-0 border-b border-slate-100"
+                                  width={200}
                                 />
                               )}
 
                               {/* Standard / Gourmet template circular thumbnail image */}
                               {showImages && dish.image_url && selectedTemplate !== "thermal" && selectedTemplate !== "gallery" && (
-                                <img 
-                                  src={dish.image_url} 
-                                  alt={dish.name} 
-                                  onError={(e) => { if (selectedRestaurant?.image_url) e.currentTarget.src = selectedRestaurant.image_url; }}
+                                <OptimizedImage
+                                  src={dish.image_url}
+                                  alt={dish.name}
+                                  onError={(e) => {
+                                    if (selectedRestaurant?.image_url) {
+                                      e.currentTarget.src = getOptimizedImageUrl(selectedRestaurant.image_url, 80);
+                                    }
+                                  }}
                                   className={`flex-shrink-0 object-cover border shadow-sm ${
                                     selectedTemplate === "gourmet" 
                                       ? "h-11 w-11 rounded-full border-2" 

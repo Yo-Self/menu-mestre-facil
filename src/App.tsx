@@ -51,7 +51,15 @@ import NotFound from "./pages/NotFound";
 
 
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Detecta se a aplicação está rodando dentro do Electron
 const isElectron = typeof window !== "undefined" && window.navigator.userAgent.toLowerCase().includes("electron");

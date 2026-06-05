@@ -8,6 +8,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { CategoryImage } from "@/components/ui/category-image";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface Dish {
   id: string;
@@ -249,10 +250,11 @@ export default function CategoryDishesPage() {
               {dishes.map((dish) => (
                 <Card key={dish.id} className="overflow-hidden">
                   <div className="aspect-video relative">
-                    <img
+                    <OptimizedImage
                       src={dish.image_url}
                       alt={dish.name}
                       className="w-full h-full object-cover"
+                      width={400}
                     />
                     {dish.is_featured && (
                       <div className="absolute top-2 right-2">

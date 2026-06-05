@@ -28,9 +28,15 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
   const mergedOptions: ImageUploadOptions = {
     maxSize: 10 * 1024 * 1024, // 10MB padrão
     allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif'],
-    enableCompression: true, // Habilitar compressão por padrão
-    compressionThreshold: 1024 * 1024, // 1MB - comprimir se maior que isso
-    ...options, // Opções fornecidas têm prioridade
+    enableCompression: true,
+    compressionThreshold: 0, // Sempre comprimir uploads para reduzir cached egress
+    compressionOptions: {
+      maxWidth: 800,
+      maxHeight: 800,
+      quality: 0.82,
+      format: 'webp',
+    },
+    ...options,
   };
 
   const validateFile = (file: File): string | null => {
@@ -63,15 +69,14 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
       let fileToUpload = file;
       let compressionResult: any = null;
 
-      // Aplicar compressão se habilitada e necessária
-      if (mergedOptions.enableCompression && 
-          mergedOptions.compressionThreshold && 
-          file.size > mergedOptions.compressionThreshold) {
-        
+      if (
+        mergedOptions.enableCompression &&
+        file.size > (mergedOptions.compressionThreshold ?? 0)
+      ) {
         try {
-          // Usar configurações sugeridas ou personalizadas
-          const compressionOptions = mergedOptions.compressionOptions || 
-                                   imageCompressionService.suggestCompressionOptions(file);
+          const compressionOptions =
+            mergedOptions.compressionOptions ||
+            imageCompressionService.suggestCompressionOptions(file);
           
           compressionResult = await imageCompressionService.compressImage(file, compressionOptions);
           fileToUpload = compressionResult.file;

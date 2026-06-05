@@ -4,6 +4,7 @@ import { useRestaurant } from '../../../hooks/useRestaurant'
 import { useOrders } from '../../../hooks/useOrders'
 import { Utensils, CheckCircle, Tv, Volume2 } from 'lucide-react'
 import { supabase } from '../../../integrations/supabase/client'
+import { OptimizedImage } from '@/components/ui/optimized-image'
 
 const openIndexedDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -516,10 +517,11 @@ export default function OrderPresentationPage() {
               {restaurant?.image_url ? (
                 <div className="relative group shrink-0 ml-3">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-xl blur opacity-40 group-hover:opacity-75 transition duration-300" />
-                  <img 
-                    src={restaurant.image_url} 
-                    alt={restaurant.name} 
+                  <OptimizedImage
+                    src={restaurant.image_url}
+                    alt={restaurant.name}
                     className="relative h-24 w-auto max-w-[140px] rounded-xl object-contain border-2 border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#0e0e0e] p-1"
+                    width={140}
                   />
                 </div>
               ) : (
@@ -677,10 +679,11 @@ export default function OrderPresentationPage() {
               {restaurant?.image_url ? (
                 <div className="relative group shrink-0 ml-3">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-xl blur opacity-40 group-hover:opacity-75 transition duration-300" />
-                  <img 
-                    src={restaurant.image_url} 
-                    alt={restaurant.name} 
+                  <OptimizedImage
+                    src={restaurant.image_url}
+                    alt={restaurant.name}
                     className="relative h-24 w-auto max-w-[140px] rounded-xl object-contain border-2 border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#0e0e0e] p-1"
+                    width={140}
                   />
                 </div>
               ) : (

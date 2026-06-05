@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "playwright:install": "npx playwright install chromium",
     "playwright:test": "node scripts/playwright-scraper.js",
+    "update-images-cache": "node --env-file=.env.local scripts/update-images-cache-control.js",
     "dev:desktop": "electron-vite dev",
     "build:desktop": "electron-vite build",
     "package:win": "npm run build:desktop && electron-builder --win",

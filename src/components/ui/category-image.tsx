@@ -1,4 +1,5 @@
 import { useCategoryImage } from '@/hooks/useCategoryImage';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 
 interface CategoryImageProps {
   categoryId: string;
@@ -53,12 +54,12 @@ export function CategoryImage({
   }
 
   return (
-    <img
+    <OptimizedImage
       src={imageUrl}
       alt={alt}
       className={className}
       onError={handleImageError}
-      loading="lazy"
+      width={300}
     />
   );
 }

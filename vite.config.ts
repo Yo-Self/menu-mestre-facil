@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || 'https://wulazaggdihidadkhilg.supabase.co';
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bGF6YWdnZGloaWRhZGtoaWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NzkxODQsImV4cCI6MjA3MDA1NTE4NH0.MxXnFZAUoMPCy9LJFTWv_6-X_8AmLr553wrAhoeRrOQ';
   const googleMapsKey = process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const devImageMode =
+    process.env.NEXT_PUBLIC_DEV_IMAGE_MODE || env.NEXT_PUBLIC_DEV_IMAGE_MODE || 'unsplash-fallback';
   
   // Log das variáveis que serão expostas (em todos os modos)
   console.log('🔧 Configuração Vite para modo:', mode);
@@ -101,6 +103,7 @@ export default defineConfig(({ mode }) => {
       'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
       'process.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
+      'import.meta.env.NEXT_PUBLIC_DEV_IMAGE_MODE': JSON.stringify(devImageMode),
     },
   };
 });

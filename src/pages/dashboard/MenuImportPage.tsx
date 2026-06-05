@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { Analytics } from '@/services/analytics';
 import posthog from 'posthog-js';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 
 // Tipagem para os dados que esperamos receber do scraper
 interface ScrapedMenuItem {
@@ -213,7 +214,7 @@ export default function MenuImportPage() {
             <div className="space-y-2 border p-4 rounded-lg">
                 <h3 className="text-lg font-semibold">Detalhes do Restaurante</h3>
                 <div className="flex items-center space-x-4">
-                    <img src={scrapedData.restaurant_image} alt="Logo" className="w-24 h-24 rounded-md object-cover" />
+                    <OptimizedImage src={scrapedData.restaurant_image} alt="Logo" className="w-24 h-24 rounded-md object-cover" width={96} />
                     <div className="flex-grow">
                         <label htmlFor="restaurant_name" className="block text-sm font-medium text-gray-700">Nome do Restaurante</label>
                         <Input
@@ -244,7 +245,7 @@ export default function MenuImportPage() {
                 <div className="max-h-[600px] overflow-y-auto space-y-4 pr-2">
                   {scrapedData.menu_items.map((item, index) => (
                     <div key={index} className="flex items-start space-x-4 border p-3 rounded-lg">
-                      <img src={item.image} alt={item.name} className="w-20 h-20 rounded-md object-cover bg-gray-100" />
+                      <OptimizedImage src={item.image} alt={item.name} className="w-20 h-20 rounded-md object-cover bg-gray-100" width={80} />
                       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                               <label className="block text-sm font-medium">Nome do Prato</label>

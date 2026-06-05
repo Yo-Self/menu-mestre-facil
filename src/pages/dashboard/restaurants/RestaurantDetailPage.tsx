@@ -8,6 +8,7 @@ import { UrlPreview } from "@/components/ui/url-preview";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRestaurantUrl, generatePublicMenuUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { useRestaurant } from "@/components/providers/RestaurantProvider";
 
 interface Restaurant {
@@ -250,10 +251,11 @@ export default function RestaurantDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="aspect-video relative rounded-lg overflow-hidden">
-                <img
+                <OptimizedImage
                   src={restaurant.image_url}
                   alt={restaurant.name}
                   className="w-full h-full object-cover"
+                  width={600}
                 />
               </div>
               

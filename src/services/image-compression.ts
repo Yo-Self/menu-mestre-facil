@@ -220,39 +220,30 @@ class ImageCompressionService {
   suggestCompressionOptions(file: File): CompressionOptions {
     const fileSizeMB = file.size / (1024 * 1024);
 
-    if (fileSizeMB > 10) {
-      // Imagens muito grandes: compressão agressiva
+    if (fileSizeMB > 5) {
       return {
-        maxWidth: 1200,
+        maxWidth: 800,
         maxHeight: 800,
-        quality: 0.75,
-        format: 'jpeg',
-      };
-    } else if (fileSizeMB > 5) {
-      // Imagens grandes: compressão moderada
-      return {
-        maxWidth: 1600,
-        maxHeight: 1200,
-        quality: 0.80,
-        format: 'jpeg',
-      };
-    } else if (fileSizeMB > 2) {
-      // Imagens médias: compressão leve
-      return {
-        maxWidth: 1920,
-        maxHeight: 1080,
-        quality: 0.85,
-        format: 'jpeg',
-      };
-    } else {
-      // Imagens pequenas: apenas otimização
-      return {
-        maxWidth: 1920,
-        maxHeight: 1080,
-        quality: 0.90,
-        format: 'jpeg',
+        quality: 0.78,
+        format: 'webp',
       };
     }
+
+    if (fileSizeMB > 1) {
+      return {
+        maxWidth: 800,
+        maxHeight: 800,
+        quality: 0.82,
+        format: 'webp',
+      };
+    }
+
+    return {
+      maxWidth: 800,
+      maxHeight: 800,
+      quality: 0.85,
+      format: 'webp',
+    };
   }
 }
 

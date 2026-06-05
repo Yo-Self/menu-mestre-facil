@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/components/providers/RestaurantProvider";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   Search,
   ShoppingCart,
@@ -1132,10 +1133,11 @@ export default function POSWaiterTerminal() {
 
                     {dish.image_url ? (
                       <div className="h-32 w-full overflow-hidden bg-muted relative">
-                        <img
+                        <OptimizedImage
                           src={dish.image_url}
                           alt={dish.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          width={300}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                             const parent = (e.target as HTMLImageElement).parentElement;

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface Restaurant {
   id: string;
@@ -125,10 +126,11 @@ export default function RestaurantsPage() {
           {restaurants.map((restaurant) => (
             <Card key={restaurant.id} className="overflow-hidden">
               <div className="aspect-video relative">
-                <img
+                <OptimizedImage
                   src={restaurant.image_url}
                   alt={restaurant.name}
                   className="w-full h-full object-cover"
+                  width={400}
                 />
               </div>
               <CardHeader>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface Dish {
   id: string;
@@ -192,10 +193,11 @@ export default function DishesPage() {
             return (
               <Card key={dish.id} className="overflow-hidden">
                 <div className="aspect-video relative">
-                  <img
+                  <OptimizedImage
                     src={dish.image_url}
                     alt={dish.name}
                     className="w-full h-full object-cover"
+                    width={400}
                   />
                   {dish.is_featured && (
                     <div className="absolute top-2 right-2">

@@ -8,6 +8,7 @@ import { Upload, Link, X, Image as ImageIcon, Edit3 } from "lucide-react";
 import { useImageUpload, ImageUploadOptions } from "@/hooks/useImageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { ImageEditor } from "./image-editor";
+import { getOptimizedImageUrl } from "@/utils/imageUrl";
 
 interface ImageUploadProps {
   value: string;
@@ -261,9 +262,11 @@ export function ImageUpload({
           <CardContent>
             <div className="aspect-video relative rounded-lg overflow-hidden bg-muted">
               <img
-                src={preview}
+                src={getOptimizedImageUrl(preview, 600)}
                 alt="Preview"
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
                 onError={() => {
                   setPreview(null);
                   toast({

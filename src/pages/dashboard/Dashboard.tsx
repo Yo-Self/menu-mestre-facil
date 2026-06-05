@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -549,10 +550,11 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/30">
-                        <img
+                        <OptimizedImage
                           src={restaurant.image_url}
                           alt={restaurant.name}
                           className="w-full h-full object-cover"
+                          width={80}
                         />
                       </div>
                       <div className="flex-1 min-w-0">

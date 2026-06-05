@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryImage } from "@/components/ui/category-image";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   DndContext,
   closestCenter,
@@ -85,10 +86,11 @@ function SortableDishItem({ dish }: { dish: Dish }) {
           </div>
           
           <div className="flex-shrink-0">
-            <img
+            <OptimizedImage
               src={dish.image_url}
               alt={dish.name}
               className="w-16 h-16 object-cover rounded-md"
+              width={64}
             />
           </div>
           
