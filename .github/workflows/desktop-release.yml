@@ -59,6 +59,9 @@ jobs:
           - os: ubuntu-latest
             platform: linux
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     env:
       ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
@@ -100,7 +103,6 @@ jobs:
         run: npm run build:desktop
 
       - name: Package Electron app (${{ matrix.platform }})
-        shell: bash
         run: |
           package_with_retry() {
             local args=("$@")
