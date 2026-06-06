@@ -5,6 +5,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 ## Funcionalidades Principais
 
 ### 🏪 Gestão de Restaurantes
+
 - Cadastro e edição de restaurantes
 - Configuração de tipo de culinária
 - Upload de imagens
@@ -12,18 +13,21 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Controle de Abertura em Tempo Real**: Chave seletora interativa ("Aberto / Fechado") na página inicial do painel ("Meus Restaurantes") para abrir ou fechar o estabelecimento instantaneamente, atualizando o status que bloqueia novos pedidos nos cardápios do cliente.
 
 ### 🍽️ Gestão de Cardápio
+
 - Criação de categorias de pratos
 - Cadastro de pratos com preços e descrições
 - Sistema de complementos e ingredientes
 - Menus ativos e inativos
 
 ### 🔔 Chamadas de Garçom
+
 - Sistema integrado para clientes chamarem garçons (cardápio público envia; gestor recebe)
 - **Notificações via Supabase Realtime**: o sino no header do painel (`WaiterCallNotifications`) escuta `postgres_changes` na tabela `waiter_calls` — sem polling periódico na API REST
 - Gestão de status das chamadas (atender / cancelar)
 - Atendimento por mesa
 
 ### 📱 Pedidos pelo WhatsApp & Delivery
+
 - **Integração do WhatsApp**: Envio de pedidos estruturados diretamente ao WhatsApp do estabelecimento.
 - **Configuração de Pedido Mínimo**:
   - Chave seletora premium (**Switch**) interativa no painel administrativo para habilitar ou desabilitar o valor mínimo de pedidos.
@@ -34,31 +38,35 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
   - **Zonamento com Mapas Interativos (Google Maps)**: Integração com mapa interativo do Google Maps exibindo a geolocalização do restaurante e o círculo de cobertura máxima. Suporta a criação de zonas personalizadas como círculos dinâmicos:
     - **Zonas de Exclusão (Sem Cobertura)**: Bloqueia compras de clientes localizados dentro dessa área (destacadas em vermelho).
     - **Zonas de Taxas Especiais**: Cobra uma taxa fixa específica para aquela área substituindo a taxa por quilometragem (destacadas em roxo).
-  - **Otimização de Rotas com TSP (Traveling Salesperson Problem)**: Painel de entregas ativas com seleção de múltiplos pedidos por checkbox. O sistema calcula a rota de entrega mais rápida no cliente usando a heurística *Nearest Neighbor* a partir das coordenadas do restaurante e gera o link direto do Google Maps com todos os `waypoints` perfeitamente ordenados.
+  - **Otimização de Rotas com TSP (Traveling Salesperson Problem)**: Painel de entregas ativas com seleção de múltiplos pedidos por checkbox. O sistema calcula a rota de entrega mais rápida no cliente usando a heurística _Nearest Neighbor_ a partir das coordenadas do restaurante e gera o link direto do Google Maps com todos os `waypoints` perfeitamente ordenados.
 
 ### 🍳 Roteamento Inteligente de Pedidos e Controle de Cozinha
+
 - **Classificação de Preparo**: Distinção automática entre pratos/bebidas que necessitam de preparo na cozinha (ex: hambúrguer) e itens prontos para consumo imediato (ex: refrigerante em lata).
 - **Roteamento Dinâmico**: Pedidos que contêm apenas itens prontos (que não precisam de preparo) pulam a fila da cozinha e mudam diretamente para o status **Concluído**.
 - **Controle de Itens Mistos (PDV)**: Caixa/Garçom possui a opção de "Receber tudo junto". Se desmarcado, apenas itens que requerem preparo são listados no painel de pedidos da cozinha e impressos na via de preparação.
 - **Checklist Auxiliar de Cozinha**: Quando um pedido contém mais de um item, o card de pedidos no painel Kanban exibe caixas de seleção (checkboxes) interativas ao lado de cada item. Isso permite que a cozinha risque e marque visualmente os pratos concluídos (com persistência local de status) sem que isso impeça ou bloqueie a movimentação do pedido para o status "Pronto".
 
 ### 📝 Edição Dinâmica de Pedidos (Painel Kanban)
+
 - **Acesso Rápido**: Opção "Editar Pedido" diretamente no menu de três pontos de cada cartão de pedido no Kanban.
 - **Gerenciamento de Itens**: Permite alterar quantidades, remover itens existentes ou adicionar novos pratos do cardápio em tempo real.
 - **Totalizador em Tempo Real**: Calcula instantaneamente o valor total do pedido com base nos preços atualizados durante as edições.
 - **Integração com Cozinha & Impressão**: As alterações atualizam os bancos de dados em tempo real, sincronizando-se com as vias de impressão térmica e telas de preparo.
 
-- **Feature Flags de Pedidos e Pagamentos Online**: A chave master *Permitir Fazer Pedidos Online* (`online_ordering_enabled`) controla se os clientes podem fazer pedidos e pagar online no cardápio. Se desativada, desliga e oculta todos os checkouts online (Stripe e InfinitePay PIX). Se ativada, libera as sub-flags individuais para **Stripe** (cartão e Apple/Google Pay) e **InfinitePay** (PIX).
-- **PIX InfinitePay (opt-in)**: Em *Editar restaurante* (sob *Pedidos Online*), configure o InfiniteTag e ative *Pagamento PIX online*. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
+- **Feature Flags de Pedidos e Pagamentos Online**: A chave master _Permitir Fazer Pedidos Online_ (`online_ordering_enabled`) controla se os clientes podem fazer pedidos e pagar online no cardápio. Se desativada, desliga e oculta todos os checkouts online (Stripe e InfinitePay PIX). Se ativada, libera as sub-flags individuais para **Stripe** (cartão e Apple/Google Pay) e **InfinitePay** (PIX).
+- **PIX InfinitePay (opt-in)**: Em _Editar restaurante_ (sob _Pedidos Online_), configure o InfiniteTag e ative _Pagamento PIX online_. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
 - **Tempo Real & Resiliência**: Funciona instantaneamente por meio de assinaturas em tempo real do Supabase (Realtime) se o painel estiver aberto, e também possui um mecanismo de atualização em lote no carregamento inicial para processar pagamentos realizados enquanto o painel administrativo estava offline.
 
 ### 📥 Importador e Scraping de Cardápios (iFood)
+
 - **Importador de Cardápio iFood**: Importação ágil de cardápios completos diretamente a partir de um link público do iFood.
 - **Resiliência a Bloqueios (CORS)**: Scraping automatizado implementado por meio de Supabase Edge Functions (`scrape-ifood`), garantindo desvio completo de bloqueios de CORS do frontend.
 
 ## Configuração do WhatsApp
 
 ### Para Restaurantes
+
 1. Acesse a página de edição do seu restaurante
 2. Ative a funcionalidade "Pedidos pelo WhatsApp"
 3. Digite o número completo (código do país + DDD + número)
@@ -66,6 +74,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 4. Salve as configurações
 
 ### Para Clientes
+
 - Quando a funcionalidade estiver ativa, os clientes verão um botão de WhatsApp no menu
 - Ao clicar, será redirecionado para o WhatsApp com uma mensagem pré-formatada
 - A mensagem incluirá os itens selecionados e informações do pedido
