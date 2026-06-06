@@ -59,6 +59,9 @@ jobs:
           - os: ubuntu-latest
             platform: linux
     runs-on: ${{ matrix.os }}
+    env:
+      ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -71,18 +74,50 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Cache Electron and builder downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .electron-cache
+            .electron-builder-cache
+          key: electron-builder-${{ matrix.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-builder-${{ matrix.os }}-
+
       - name: Install dependencies
         run: |
           npm config set fetch-retries 5
           npm config set fetch-retry-mintimeout 20000
           npm config set fetch-retry-maxtimeout 120000
-          npm ci
+          for attempt in 1 2 3; do
+            npm ci && exit 0
+            echo "npm ci failed (attempt ${attempt}/3), retrying in 15s..."
+            sleep 15
+          done
+          exit 1
 
       - name: Build production bundle
         run: npm run build:desktop
 
       - name: Package Electron app (${{ matrix.platform }})
-        run: npx electron-builder --${{ matrix.platform }} --publish never
+        shell: bash
+        run: |
+          package_with_retry() {
+            local args=("$@")
+            for attempt in 1 2 3; do
+              npx electron-builder "${args[@]}" --publish never && return 0
+              echo "electron-builder failed (attempt ${attempt}/3), retrying in 30s..."
+              sleep 30
+            done
+            return 1
+          }
+
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            package_with_retry --linux deb
+            package_with_retry --linux AppImage || echo "AppImage build failed after retries; continuing with deb artifact"
+          else
+            package_with_retry --${{ matrix.platform }}
+          fi
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -118,6 +153,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
       - name: Download all platform artifacts
         uses: actions/download-artifact@v4

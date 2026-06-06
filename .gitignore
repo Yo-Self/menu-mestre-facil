@@ -36,6 +36,8 @@ public/js/config.js
 out/
 release/
 .electron-vite/
+.electron-cache/
+.electron-builder-cache/
 
 # Dev & Backup Files
 check_logs.sh
