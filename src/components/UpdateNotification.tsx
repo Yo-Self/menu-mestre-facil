@@ -91,7 +91,7 @@ export default function UpdateNotification() {
 
           <div className="mt-1 text-xs text-slate-400">
             {updater.status === 'available' && (
-              <p>Uma nova versão ({updater.version}) está sendo baixada em segundo plano.</p>
+              <p>{updater.message ?? `Uma nova versão (${updater.version}) está sendo baixada em segundo plano.`}</p>
             )}
             {updater.status === 'downloading' && (
               <p>Baixando versão {updater.version}. Por favor, aguarde.</p>

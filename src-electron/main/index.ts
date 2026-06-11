@@ -8,6 +8,23 @@ import icon from '../../resources/icon.png?asset'
 import { PrintManager } from './printing/print-manager'
 import { ThermalPrinterManager } from './printing/thermal-printer'
 
+/** Compara semver simples (ex: 0.0.42 > 0.0.38). */
+function isNewerVersion(candidate: string, current: string): boolean {
+  const parse = (v: string) => v.replace(/^v/i, '').split('.').map((n) => Number.parseInt(n, 10) || 0)
+  const a = parse(candidate)
+  const b = parse(current)
+  const len = Math.max(a.length, b.length)
+  for (let i = 0; i < len; i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0)
+    if (diff !== 0) return diff > 0
+  }
+  return false
+}
+
+let downloadedUpdateVersion: string | null = null
+let downloadingVersion: string | null = null
+let updaterMainWindow: BrowserWindow | null = null
+
 process.on('uncaughtException', (err) => {
   const fs = require('fs')
   const path = require('path')
@@ -74,8 +91,11 @@ log.transports.file.level = 'info'
 autoUpdater.logger = log
 
 function setupAutoUpdater(mainWindow: BrowserWindow): void {
+  updaterMainWindow = mainWindow
   autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
+  // Evita instalar update antigo em cache ao fechar o app sem confirmação do usuário
+  autoUpdater.autoInstallOnAppQuit = false
+  autoUpdater.allowDowngrade = false
 
   // Handlers para os eventos de atualização
   autoUpdater.on('checking-for-update', () => {
@@ -83,6 +103,14 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('update-available', (info) => {
+    downloadingVersion = info.version
+
+    // Se já havia um update baixado mas surgiu um mais novo, invalida o anterior
+    if (downloadedUpdateVersion && isNewerVersion(info.version, downloadedUpdateVersion)) {
+      downloadedUpdateVersion = null
+      log.info(`Update ${info.version} substitui download pendente mais antigo`)
+    }
+
     mainWindow.webContents.send('updater-status', {
       status: 'available',
       version: info.version
@@ -96,14 +124,22 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
   autoUpdater.on('download-progress', (progressObj) => {
     mainWindow.webContents.send('updater-status', {
       status: 'downloading',
+      version: downloadingVersion ?? downloadedUpdateVersion ?? undefined,
       percent: progressObj.percent
     })
   })
 
   autoUpdater.on('update-downloaded', (info) => {
+    downloadedUpdateVersion = info.version
+    downloadingVersion = null
     mainWindow.webContents.send('updater-status', {
       status: 'downloaded',
       version: info.version
+    })
+
+    // Revalida o feed: se saiu versão mais nova enquanto baixava, busca a latest
+    autoUpdater.checkForUpdates().catch((err) => {
+      log.warn('Revalidação pós-download falhou:', err)
     })
   })
 
@@ -133,6 +169,43 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
         log.error('Erro ao verificar atualizações no intervalo agendado:', err)
       })
     }, 30 * 60 * 1000)
+  }
+}
+
+async function installPendingUpdate(): Promise<void> {
+  const currentVersion = app.getVersion()
+
+  try {
+    const checkResult = await autoUpdater.checkForUpdates()
+    const latestAvailable = checkResult?.updateInfo?.version
+
+    if (latestAvailable && downloadedUpdateVersion) {
+      if (isNewerVersion(latestAvailable, downloadedUpdateVersion)) {
+        log.info(
+          `Instalação adiada: v${latestAvailable} disponível, mas download pendente é v${downloadedUpdateVersion}`
+        )
+        updaterMainWindow?.webContents.send('updater-status', {
+          status: 'available',
+          version: latestAvailable,
+          message: 'Há uma versão mais recente. Aguarde o download terminar.'
+        })
+        return
+      }
+
+      if (!isNewerVersion(downloadedUpdateVersion, currentVersion)) {
+        log.warn(
+          `Instalação cancelada: v${downloadedUpdateVersion} não é mais nova que v${currentVersion}`
+        )
+        downloadedUpdateVersion = null
+        updaterMainWindow?.webContents.send('updater-status', { status: 'up-to-date' })
+        return
+      }
+    }
+
+    autoUpdater.quitAndInstall(false, true)
+  } catch (err) {
+    log.error('Erro ao validar update antes de instalar, tentando instalação direta:', err)
+    autoUpdater.quitAndInstall(false, true)
   }
 }
 
@@ -185,7 +258,7 @@ app.whenReady().then(() => {
 
   // IPC para o autoUpdater
   ipcMain.on('install-update', () => {
-    autoUpdater.quitAndInstall()
+    void installPendingUpdate()
   })
 
   ipcMain.handle('get-app-version', () => {
