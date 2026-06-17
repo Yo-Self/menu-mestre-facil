@@ -18,12 +18,33 @@ interface ChecklistItem {
   external?: boolean;
 }
 
+function getPreviewCompletedKey(userId: string) {
+  return `onboarding_checklist_preview_${userId}`;
+}
+
 export function OnboardingChecklist() {
   const { profile, dismissChecklist } = useOnboarding();
   const navigate = useNavigate();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+
+  const markPreviewCompleted = (userId: string) => {
+    localStorage.setItem(getPreviewCompletedKey(userId), 'true');
+    setItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === 'preview' ? { ...item, completed: true } : item
+      );
+      const allComplete = updated.length > 0 && updated.every((item) => item.completed);
+      if (allComplete) {
+        setDismissed(true);
+        dismissChecklist().catch(() => {
+          // local dismiss is enough
+        });
+      }
+      return updated;
+    });
+  };
 
   useEffect(() => {
     if (profile?.onboarding_checklist_dismissed_at) {
@@ -80,6 +101,8 @@ export function OnboardingChecklist() {
         const hasDelivery = restaurant.delivery_enabled === true;
 
         const publicUrl = `https://yo-self.com${generatePublicMenuUrl('', restaurant.slug)}`;
+        const hasPreviewed =
+          localStorage.getItem(getPreviewCompletedKey(user.id)) === 'true';
 
         setItems([
           {
@@ -115,7 +138,7 @@ export function OnboardingChecklist() {
           {
             id: 'preview',
             label: 'Visualizar cardápio público',
-            completed: false,
+            completed: hasPreviewed,
             href: publicUrl,
             external: true,
           },
@@ -127,6 +150,18 @@ export function OnboardingChecklist() {
 
     loadChecklist();
   }, [profile]);
+
+  useEffect(() => {
+    if (loading || dismissed || items.length === 0) return;
+
+    const allComplete = items.every((item) => item.completed);
+    if (!allComplete) return;
+
+    setDismissed(true);
+    dismissChecklist().catch(() => {
+      // local dismiss is enough
+    });
+  }, [items, loading, dismissed, dismissChecklist]);
 
   if (loading || dismissed || !profile || profile.onboarding_step !== 'completed') {
     return null;
@@ -149,7 +184,12 @@ export function OnboardingChecklist() {
   };
 
   const handleItemClick = (item: ChecklistItem) => {
+    if (item.id === 'preview' && profile && !item.completed) {
+      markPreviewCompleted(profile.id);
+    }
+
     Analytics.trackOnboardingChecklistItemCompleted(item.id);
+
     if (item.external && item.href) {
       window.open(item.href, '_blank');
     } else if (item.href) {
