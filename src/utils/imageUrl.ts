@@ -61,8 +61,8 @@ export function getOptimizedImageUrl(
     }
 
     if (devImageMode === 'local-storage') {
-      const localSupabaseUrl = (import.meta.env as Record<string, string | undefined>)
-        .NEXT_PUBLIC_SUPABASE_URL;
+      const env = import.meta.env as Record<string, string | undefined>;
+      const localSupabaseUrl = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
       if (localSupabaseUrl) {
         return `${localSupabaseUrl}/storage/v1/object/public/images/${path}`;
       }

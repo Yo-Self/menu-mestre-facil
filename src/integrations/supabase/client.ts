@@ -8,6 +8,14 @@ import { getSupabaseConfig, isConfigComplete } from '@/config/global-config';
 
 let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 
+function getAuthStorage(): Storage | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return window.sessionStorage;
+}
+
 function getSupabaseClient(): ReturnType<typeof createClient<Database>> {
   if (supabaseInstance) {
     return supabaseInstance;
@@ -22,7 +30,7 @@ function getSupabaseClient(): ReturnType<typeof createClient<Database>> {
   
   supabaseInstance = createClient<Database>(config.url, config.anonKey, {
     auth: {
-      storage: localStorage,
+      storage: getAuthStorage(),
       persistSession: true,
       autoRefreshToken: true,
     }

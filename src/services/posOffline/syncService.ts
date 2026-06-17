@@ -16,8 +16,8 @@ let syncInProgress = false;
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 let onlineListenerAttached = false;
 let activeRestaurantId: string | undefined;
-let listeners = new Set<(pendingCount: number) => void>();
-let resultListeners = new Set<
+const listeners = new Set<(pendingCount: number) => void>();
+const resultListeners = new Set<
   (result: { synced: number; failed: number; remaining: number; stockWarnings: string[] }) => void
 >();
 

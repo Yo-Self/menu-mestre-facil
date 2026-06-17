@@ -94,25 +94,29 @@ async function setup() {
     envContent = fs.readFileSync(envPath, 'utf8');
   }
 
-  // Update or insert NEXT_PUBLIC_SUPABASE_URL
-  if (envContent.includes('NEXT_PUBLIC_SUPABASE_URL=')) {
+  // Update or insert VITE_SUPABASE_URL
+  if (envContent.includes('VITE_SUPABASE_URL=')) {
     envContent = envContent.replace(
-      /NEXT_PUBLIC_SUPABASE_URL=.*/,
-      `NEXT_PUBLIC_SUPABASE_URL=${supabaseUrl}`
+      /VITE_SUPABASE_URL=.*/,
+      `VITE_SUPABASE_URL=${supabaseUrl}`
     );
   } else {
-    envContent += `\nNEXT_PUBLIC_SUPABASE_URL=${supabaseUrl}`;
+    envContent += `\nVITE_SUPABASE_URL=${supabaseUrl}`;
   }
 
-  // Update or insert NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (envContent.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY=')) {
+  // Update or insert VITE_SUPABASE_PUBLISHABLE_KEY
+  if (envContent.includes('VITE_SUPABASE_PUBLISHABLE_KEY=')) {
     envContent = envContent.replace(
-      /NEXT_PUBLIC_SUPABASE_ANON_KEY=.*/,
-      `NEXT_PUBLIC_SUPABASE_ANON_KEY=${anonKey}`
+      /VITE_SUPABASE_PUBLISHABLE_KEY=.*/,
+      `VITE_SUPABASE_PUBLISHABLE_KEY=${anonKey}`
     );
   } else {
-    envContent += `\nNEXT_PUBLIC_SUPABASE_ANON_KEY=${anonKey}`;
+    envContent += `\nVITE_SUPABASE_PUBLISHABLE_KEY=${anonKey}`;
   }
+
+  envContent = envContent
+    .replace(/^NEXT_PUBLIC_SUPABASE_URL=.*\n?/gm, '')
+    .replace(/^NEXT_PUBLIC_SUPABASE_ANON_KEY=.*\n?/gm, '');
 
   fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf8');
   console.log('📝 .env.development created/updated successfully!');

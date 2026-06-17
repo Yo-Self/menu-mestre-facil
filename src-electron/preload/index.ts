@@ -48,8 +48,8 @@ if (process.contextIsolated) {
   }
 } else {
   // Fallback caso o isolamento de contexto esteja desativado
-  // @ts-ignore (define in dts)
+  // @ts-expect-error (define in dts)
   window.electron = electronAPI
-  // @ts-ignore (define in dts)
+  // @ts-expect-error (define in dts)
   window.api = api
 }

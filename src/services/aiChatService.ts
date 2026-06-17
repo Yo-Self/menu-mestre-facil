@@ -1,5 +1,6 @@
 // Service para integração com a Edge Function AI Chat
 import { supabase } from '@/integrations/supabase/client'
+import { getSupabaseConfig } from '@/config/global-config'
 import posthog from 'posthog-js'
 
 export interface ChatMessage {
@@ -46,9 +47,7 @@ export class AIChatService {
         throw new Error('User not authenticated')
       }
 
-      const supabaseUrl =
-        import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
-        import.meta.env.VITE_SUPABASE_URL
+      const supabaseUrl = getSupabaseConfig().url
       if (!supabaseUrl || typeof supabaseUrl !== 'string') {
         throw new Error('Supabase URL not configured')
       }

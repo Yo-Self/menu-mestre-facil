@@ -5,7 +5,7 @@
  *   node --env-file=.env.local scripts/update-images-cache-control.js
  *
  * Required env (.env.local):
- *   SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
+ *   SUPABASE_URL or VITE_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY (legacy JWT) OR SUPABASE_SECRET_KEY (sb_secret_...)
  */
 
@@ -27,9 +27,12 @@ function getAdminApiKey() {
   return key;
 }
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 if (!supabaseUrl) {
-  console.error('❌ Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) in .env.local');
+  console.error('❌ Missing SUPABASE_URL (or VITE_SUPABASE_URL) in .env.local');
   process.exit(1);
 }
 

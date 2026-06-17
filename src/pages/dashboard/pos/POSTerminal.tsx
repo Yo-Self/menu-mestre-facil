@@ -1348,7 +1348,7 @@ export default function POSTerminal() {
 
   const renderTableMap = () => {
     const stats = (() => {
-      let total = tablesConfig.length;
+      const total = tablesConfig.length;
       let occupied = 0;
       let free = 0;
       let totalActiveRevenue = 0;

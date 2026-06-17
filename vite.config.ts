@@ -15,18 +15,24 @@ export default defineConfig(({ mode }) => {
   if (mode === 'development') {
     console.log('🔧 Modo de desenvolvimento detectado');
     console.log('📋 Variáveis carregadas:', {
-      SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
-      SUPABASE_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
+      SUPABASE_URL: env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
+      SUPABASE_KEY: env.VITE_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
     });
   }
   
   // Garantir que as variáveis tenham valores padrão se não estiverem definidas
   // Priorizar process.env (GitHub Actions) sobre env (arquivos .env)
   const supabaseUrl =
+    process.env.VITE_SUPABASE_URL ||
+    env.VITE_SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     env.NEXT_PUBLIC_SUPABASE_URL ||
     '';
   const supabaseKey =
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    env.VITE_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
@@ -51,9 +57,13 @@ export default defineConfig(({ mode }) => {
   
   // Log adicional para debug
   console.log('🔍 Debug - Variáveis de ambiente disponíveis:', {
+    'env.VITE_SUPABASE_URL': env.VITE_SUPABASE_URL ? 'true' : 'false',
+    'env.VITE_SUPABASE_PUBLISHABLE_KEY': env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'true' : 'false',
     'env.NEXT_PUBLIC_SUPABASE_URL': env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
     'env.NEXT_PUBLIC_SUPABASE_ANON_KEY': env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
     'env.VITE_GOOGLE_MAPS_API_KEY': env.VITE_GOOGLE_MAPS_API_KEY ? 'true' : 'false',
+    'process.env.VITE_SUPABASE_URL': process.env.VITE_SUPABASE_URL ? 'true' : 'false',
+    'process.env.VITE_SUPABASE_PUBLISHABLE_KEY': process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'true' : 'false',
     'process.env.NEXT_PUBLIC_SUPABASE_URL': process.env.NEXT_PUBLIC_SUPABASE_URL ? 'true' : 'false',
     'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'true' : 'false',
     'process.env.VITE_GOOGLE_MAPS_API_KEY': process.env.VITE_GOOGLE_MAPS_API_KEY ? 'true' : 'false',
@@ -123,6 +133,8 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Expor variáveis de ambiente específicas com valores padrão
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
+      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
       'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
       'import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
@@ -131,10 +143,14 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SENTRY_RELEASE': JSON.stringify(sentryRelease),
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
       // Garantir que as variáveis estejam disponíveis globalmente
+      'globalThis.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
+      'globalThis.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
       'globalThis.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'globalThis.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
       'globalThis.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
       // Expor também como variáveis globais do processo (para compatibilidade)
+      'process.env.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
+      'process.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
       'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
       'process.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),

@@ -16,7 +16,7 @@ export function DashboardLayout() {
 
   // Extrair o ID do restaurante da URL quando estiver em uma página de restaurante
   const getRestaurantIdFromUrl = () => {
-    const match = location.pathname.match(/\/restaurants\/([^\/]+)/);
+    const match = location.pathname.match(/\/restaurants\/([^/]+)/);
     return match ? match[1] : null;
   };
 
@@ -35,7 +35,7 @@ export function DashboardLayout() {
     if (!headerRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
+      for (const entry of entries) {
         setHeaderHeight(entry.target.clientHeight);
       }
     });

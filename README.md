@@ -118,6 +118,13 @@ Após concluir, o dashboard exibe um **checklist opcional** com horários, compl
 3. Configure as variáveis de ambiente do Supabase
 4. Execute: `npm run dev`
 
+## Segurança e Variáveis de Ambiente
+
+- Use `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` para o cliente do gestor. Variáveis `VITE_*` são públicas no bundle e nunca devem receber service role, `sb_secret_*`, tokens privados ou chaves de webhook.
+- Secrets privados (`SUPABASE_SECRET_KEY`, `SB_SECRET_KEY`, `GOOGLE_AI_API_KEY`, `POSTHOG_API_KEY`, `SENTRY_AUTH_TOKEN`, tokens de Telegram e certificados) devem ficar no gitnode/plataforma de segredos ou em Supabase Edge Function Secrets, conforme o runtime.
+- O build executa `npm run security:env` antes de gerar artefatos. A validação bloqueia segredos em env público e URLs Supabase sem HTTPS em produção.
+- A sessão Supabase do gestor usa `sessionStorage`; não persista JWT ou refresh token em `localStorage`.
+
 ## Contribuição
 
 1. Fork o projeto

@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { existsSync, writeFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { init as sentryMainInit } from '@sentry/electron/main'
 import pkg from 'electron-updater'
@@ -36,19 +37,19 @@ if (sentryDsn) {
 }
 
 process.on('uncaughtException', (err) => {
-  const fs = require('fs')
-  const path = require('path')
   try {
-    fs.writeFileSync(path.join(app.getPath('userData'), 'uncaught-error.log'), String(err.stack || err))
-  } catch(e) {}
+    writeFileSync(join(app.getPath('userData'), 'uncaught-error.log'), String(err.stack || err))
+  } catch {
+    // Ignore logging failures during fatal exception handling.
+  }
 })
 
 process.on('unhandledRejection', (err) => {
-  const fs = require('fs')
-  const path = require('path')
   try {
-    fs.writeFileSync(path.join(app.getPath('userData'), 'unhandled-rejection.log'), String((err as any)?.stack || err))
-  } catch(e) {}
+    writeFileSync(join(app.getPath('userData'), 'unhandled-rejection.log'), String((err as any)?.stack || err))
+  } catch {
+    // Ignore logging failures during fatal rejection handling.
+  }
 })
 
 function createWindow(): void {
@@ -60,7 +61,7 @@ function createWindow(): void {
     autoHideMenuBar: false, // Deixar ativo para menu da aplicação
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
-      preload: require('fs').existsSync(join(__dirname, '../preload/index.mjs'))
+      preload: existsSync(join(__dirname, '../preload/index.mjs'))
         ? join(__dirname, '../preload/index.mjs')
         : join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -290,9 +291,7 @@ app.whenReady().then(() => {
 }).catch(err => {
   console.error('Failed to initialize app:', err)
   // Don't quit silently, log it to a file
-  const fs = require('fs')
-  const path = require('path')
-  fs.writeFileSync(path.join(app.getPath('userData'), 'init-error.log'), String(err.stack || err))
+  writeFileSync(join(app.getPath('userData'), 'init-error.log'), String(err.stack || err))
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

@@ -15,8 +15,10 @@ npm run lint             # Linting do projeto (ESLint + TypeScript)
 
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 ```
+
+Variáveis `VITE_*` são públicas no bundle. Nunca use service role, `sb_secret_*`, tokens de CI, webhooks ou chaves privadas com prefixos públicos. Secrets de Edge Functions devem ser configurados via Supabase/gitnode antes de deploy/build.
 
 ## Tech stack
 

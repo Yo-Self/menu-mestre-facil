@@ -33,9 +33,9 @@ jobs:
 
       - name: Verify RPC
         run: |
-          curl -sf -X POST "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/create_pos_order" \
-            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+          curl -sf -X POST "${{ secrets.VITE_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/create_pos_order" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"p_client_order_id":"00000000-0000-0000-0000-000000000001","p_restaurant_id":"00000000-0000-0000-0000-000000000002","p_pos_session_id":"00000000-0000-0000-0000-000000000003","p_table_name":"test","p_customer_info":{},"p_items":[]}' \
             | tee /tmp/rpc-response.txt
