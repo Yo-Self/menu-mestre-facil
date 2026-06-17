@@ -41,10 +41,13 @@ import {
 } from "@/components/ui/sheet";
 import {
   getCurrentPOSSession,
-  createPOSOrder,
   POSSession,
   POSOrderItemInput,
 } from "@/services/posService";
+import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
+import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
+import { submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
+import { usePOSResilience } from "@/hooks/usePOSResilience";
 
 interface CartItem {
   id: string; // unique cart item id (timestamp + dish_id)
@@ -113,6 +116,20 @@ export default function POSWaiterTerminal() {
   const [loadingTableDetails, setLoadingTableDetails] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
+  const applyCatalogSnapshot = (snapshot: Awaited<ReturnType<typeof loadPOSCatalogWithFallback>>["snapshot"]) => {
+    setTablesConfig(snapshot.tables_config);
+    setCategories(snapshot.categories);
+    setDishes(snapshot.dishes);
+    setActiveOrders(snapshot.active_orders);
+  };
+
+  const { connectivityStatus, pendingSyncCount, isSyncing, runSync } = usePOSResilience({
+    restaurantId: currentRestaurantId,
+    onReconnected: () => {
+      void loadPOSData();
+    },
+  });
+
   useEffect(() => {
     if (!currentRestaurantId) {
       navigate("/dashboard/pos");
@@ -128,7 +145,22 @@ export default function POSWaiterTerminal() {
   const verifySessionAndLoadData = async () => {
     setLoading(true);
     try {
-      const session = await getCurrentPOSSession(currentRestaurantId!);
+      let session: POSSession | null = null;
+      try {
+        session = await getCurrentPOSSession(currentRestaurantId!);
+        if (session) {
+          await cachePOSSession(currentRestaurantId!, session);
+        }
+      } catch {
+        session = await getCachedPOSSession(currentRestaurantId!);
+        if (session) {
+          toast({
+            title: "Sessão em cache",
+            description: "Conexão instável. Usando a última sessão de caixa conhecida.",
+          });
+        }
+      }
+
       if (!session) {
         toast({
           title: "Caixa Fechado",
@@ -150,88 +182,14 @@ export default function POSWaiterTerminal() {
 
   const loadPOSData = async () => {
     try {
-      // 0. Fetch restaurant details
-      const { data: rest, error: restErr } = await supabase
-        .from("restaurants")
-        .select("name, has_tables, tables_count, table_categories")
-        .eq("id", currentRestaurantId!)
-        .single();
+      const { snapshot, fromCache } = await loadPOSCatalogWithFallback(currentRestaurantId!);
+      applyCatalogSnapshot(snapshot);
 
-      if (!restErr && rest) {
-        const hasTbls = rest.has_tables ?? true;
-        if (hasTbls) {
-          const count = rest.tables_count ?? 12;
-          const categoriesRaw = rest.table_categories || "Balcão, Salão Principal, Varanda";
-          const categoriesList = categoriesRaw.split(",").map(c => c.trim()).filter(Boolean);
-          
-          const newTablesConfig: any[] = [];
-          
-          const hasBalcaoZone = categoriesList.some(c => c.toLowerCase() === "balcão");
-          if (hasBalcaoZone) {
-            newTablesConfig.push({ name: "Balcão", zone: "Balcão" });
-          }
-          
-          const restCategories = categoriesList.filter(c => c.toLowerCase() !== "balcão");
-          if (restCategories.length > 0) {
-            let tableIndex = 1;
-            for (let i = 0; i < count; i++) {
-              const zoneName = restCategories[i % restCategories.length];
-              const tableNumStr = String(tableIndex).padStart(2, "0");
-              newTablesConfig.push({
-                name: `Mesa ${tableNumStr}`,
-                zone: zoneName
-              });
-              tableIndex++;
-            }
-          } else {
-            for (let i = 1; i <= count; i++) {
-              newTablesConfig.push({
-                name: `Mesa ${String(i).padStart(2, "0")}`,
-                zone: "Salão Principal"
-              });
-            }
-          }
-          setTablesConfig(newTablesConfig);
-        } else {
-          setTablesConfig([{ name: "Balcão", zone: "Balcão" }]);
-        }
-      }
-
-      // 1. Fetch categories
-      const { data: cats, error: catsErr } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("restaurant_id", currentRestaurantId!)
-        .order("position", { ascending: true });
-
-      if (catsErr) throw catsErr;
-      setCategories(cats || []);
-
-      // 2. Fetch dishes
-      const { data: items, error: itemsErr } = await supabase
-        .from("dishes")
-        .select("*")
-        .eq("restaurant_id", currentRestaurantId!)
-        .eq("is_available", true)
-        .order("name", { ascending: true });
-
-      if (itemsErr) throw itemsErr;
-
-      const dishesInCents = (items || []).map(dish => ({
-        ...dish,
-        price: Math.round((dish.price || 0) * 100)
-      }));
-      setDishes(dishesInCents);
-
-      // 3. Fetch active orders to determine table occupancy dynamically
-      const { data: activeOrds, error: ordsErr } = await supabase
-        .from("orders")
-        .select("id, table_name, status, total_price, created_at")
-        .eq("restaurant_id", currentRestaurantId!)
-        .in("status", ["new", "in_preparation", "ready"]);
-
-      if (!ordsErr) {
-        setActiveOrders(activeOrds || []);
+      if (fromCache) {
+        toast({
+          title: "Dados em cache",
+          description: "Conexão instável. Exibindo o último cardápio e mapa de mesas salvos.",
+        });
       }
     } catch (err) {
       console.error("Erro ao carregar dados do PDV Garçom:", err);
@@ -588,32 +546,35 @@ export default function POSWaiterTerminal() {
         needs_preparation: item.dish.needs_preparation !== false
       }));
 
-      await createPOSOrder(
-        currentRestaurantId!,
-        activeSession.id,
-        tableName,
-        customerName || null,
-        customerPhone || null,
-        orderItemsInput,
-        [], // empty payments -> sets status: "new"
-        null,
-        false,
-        null,
-        receiveAllTogether
-      );
+      const { queued } = await submitPOSOrder({
+        restaurant_id: currentRestaurantId!,
+        pos_session_id: activeSession.id,
+        table_name: tableName,
+        customer_name: customerName || null,
+        customer_phone: customerPhone || null,
+        items: orderItemsInput,
+        payments: [],
+        is_takeaway: false,
+        observation: null,
+        receive_all_together: receiveAllTogether,
+      });
 
       toast({
-        title: "Pedido Enviado!",
-        description: `Os itens foram enviados para a cozinha na ${tableName}.`,
+        title: queued ? "Pedido salvo localmente" : "Pedido Enviado!",
+        description: queued
+          ? "Conexão instável. O pedido será sincronizado automaticamente."
+          : `Os itens foram enviados para a cozinha na ${tableName}.`,
+        variant: queued ? "destructive" : "default",
       });
 
       setCart([]);
       setCustomerName("");
       setCustomerPhone("");
 
-      // Reload active orders to update table occupancy dynamically
-      await loadPOSData();
-      setViewMode("tables");
+      if (!queued) {
+        await loadPOSData();
+        setViewMode("tables");
+      }
     } catch (err: any) {
       toast({
         title: "Erro ao enviar pedido",
@@ -1023,10 +984,39 @@ export default function POSWaiterTerminal() {
               </div>
               
               <div className="hidden sm:flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/40 text-xs font-semibold h-fit">
-                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  Modo Garçom
+                <div className={`flex items-center gap-1.5 ${
+                  connectivityStatus === "online"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : connectivityStatus === "degraded"
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-red-600 dark:text-red-400"
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${
+                    connectivityStatus === "online"
+                      ? "bg-blue-500 animate-pulse"
+                      : connectivityStatus === "degraded"
+                        ? "bg-amber-500 animate-pulse"
+                        : "bg-red-500"
+                  }`} />
+                  {connectivityStatus === "online"
+                    ? "Modo Garçom"
+                    : connectivityStatus === "degraded"
+                      ? "Conexão instável"
+                      : "Sem conexão"}
                 </div>
+                {pendingSyncCount > 0 && (
+                  <>
+                    <span className="text-muted-foreground">|</span>
+                    <button
+                      type="button"
+                      onClick={() => void runSync()}
+                      className="text-amber-600 dark:text-amber-400 hover:underline"
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? "Sincronizando..." : `${pendingSyncCount} pendente(s)`}
+                    </button>
+                  </>
+                )}
                 <span className="text-muted-foreground">|</span>
                 <div className="text-muted-foreground">
                   Operador: Garçom

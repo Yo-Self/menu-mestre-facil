@@ -36,11 +36,14 @@ import {
 } from "@/components/ui/dialog";
 import {
   getCurrentPOSSession,
-  createPOSOrder,
   POSSession,
   POSOrderItemInput,
   POSOrderPaymentInput,
 } from "@/services/posService";
+import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
+import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
+import { generateQueuePassword, submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
+import { usePOSResilience } from "@/hooks/usePOSResilience";
 
 interface CartItem {
   id: string; // unique cart item id (timestamp + dish_id)
@@ -132,7 +135,6 @@ export default function POSTerminal() {
   } | null>(null);
 
   const [viewMode, setViewMode] = useState<"grid" | "tables">("grid");
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [tablesConfig, setTablesConfig] = useState<any[]>([
     { name: "Balcão", zone: "Balcão" },
@@ -158,6 +160,22 @@ export default function POSTerminal() {
   const [tableActiveOrders, setTableActiveOrders] = useState<any[]>([]);
   const [loadingTableDetails, setLoadingTableDetails] = useState(false);
   const [activeOrderIdsBeingClosed, setActiveOrderIdsBeingClosed] = useState<string[]>([]);
+
+  const applyCatalogSnapshot = (snapshot: Awaited<ReturnType<typeof loadPOSCatalogWithFallback>>["snapshot"]) => {
+    setRestaurantName(snapshot.restaurant_name);
+    setRestaurantLogo(snapshot.restaurant_logo);
+    setTablesConfig(snapshot.tables_config);
+    setCategories(snapshot.categories);
+    setDishes(snapshot.dishes);
+    setActiveOrders(snapshot.active_orders);
+  };
+
+  const { connectivityStatus, pendingSyncCount, isSyncing, runSync } = usePOSResilience({
+    restaurantId: currentRestaurantId,
+    onReconnected: () => {
+      void loadPOSData();
+    },
+  });
 
   useEffect(() => {
     if (!currentRestaurantId) {
@@ -213,31 +231,25 @@ export default function POSTerminal() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [cart, payments, tableName, customerName, customerPhone, isTakeaway, orderObservation]);
 
-  useEffect(() => {
-    const updateOnlineStatus = () => {
-      const online = navigator.onLine;
-      setIsOnline(online);
-      toast({
-        title: online ? "Conexão Restabelecida" : "Modo Offline Ativado",
-        description: online 
-          ? "O caixa está sincronizado em tempo real com a nuvem." 
-          : "Suas vendas locais serão guardadas em cache e sincronizadas posteriormente.",
-        variant: online ? "default" : "destructive"
-      });
-    };
-
-    window.addEventListener("online", updateOnlineStatus);
-    window.addEventListener("offline", updateOnlineStatus);
-    return () => {
-      window.removeEventListener("online", updateOnlineStatus);
-      window.removeEventListener("offline", updateOnlineStatus);
-    };
-  }, []);
-
   const verifySessionAndLoadData = async () => {
     setLoading(true);
     try {
-      const session = await getCurrentPOSSession(currentRestaurantId!);
+      let session: POSSession | null = null;
+      try {
+        session = await getCurrentPOSSession(currentRestaurantId!);
+        if (session) {
+          await cachePOSSession(currentRestaurantId!, session);
+        }
+      } catch {
+        session = await getCachedPOSSession(currentRestaurantId!);
+        if (session) {
+          toast({
+            title: "Sessão em cache",
+            description: "Conexão instável. Usando a última sessão de caixa conhecida.",
+          });
+        }
+      }
+
       if (!session) {
         toast({
           title: "Caixa Fechado",
@@ -259,95 +271,14 @@ export default function POSTerminal() {
 
   const loadPOSData = async () => {
     try {
-      // 0. Fetch restaurant details
-      const { data: rest, error: restErr } = await supabase
-        .from("restaurants")
-        .select("name, has_tables, tables_count, table_categories, image_url")
-        .eq("id", currentRestaurantId!)
-        .single();
+      const { snapshot, fromCache } = await loadPOSCatalogWithFallback(currentRestaurantId!);
+      applyCatalogSnapshot(snapshot);
 
-      if (!restErr && rest) {
-        setRestaurantName(rest.name);
-        setRestaurantLogo(rest.image_url || "");
-        
-        const hasTbls = rest.has_tables ?? true;
-        if (hasTbls) {
-          const count = rest.tables_count ?? 12;
-          const categoriesRaw = rest.table_categories || "Balcão, Salão Principal, Varanda";
-          const categoriesList = categoriesRaw.split(",").map(c => c.trim()).filter(Boolean);
-          
-          const newTablesConfig: any[] = [];
-          
-          // Always add Balcão first if "Balcão" is in the categories or as a default zone
-          const hasBalcaoZone = categoriesList.some(c => c.toLowerCase() === "balcão");
-          if (hasBalcaoZone) {
-            newTablesConfig.push({ name: "Balcão", zone: "Balcão" });
-          }
-          
-          // Distribute the table numbers among the rest of the categories
-          const restCategories = categoriesList.filter(c => c.toLowerCase() !== "balcão");
-          if (restCategories.length > 0) {
-            let tableIndex = 1;
-            for (let i = 0; i < count; i++) {
-              const zoneName = restCategories[i % restCategories.length];
-              const tableNumStr = String(tableIndex).padStart(2, "0");
-              newTablesConfig.push({
-                name: `Mesa ${tableNumStr}`,
-                zone: zoneName
-              });
-              tableIndex++;
-            }
-          } else {
-            // Fallback if only Balcão or empty
-            for (let i = 1; i <= count; i++) {
-              newTablesConfig.push({
-                name: `Mesa ${String(i).padStart(2, "0")}`,
-                zone: "Salão Principal"
-              });
-            }
-          }
-          setTablesConfig(newTablesConfig);
-        } else {
-          // If has_tables is false, only Balcão exists
-          setTablesConfig([{ name: "Balcão", zone: "Balcão" }]);
-        }
-      }
-
-      // 1. Fetch categories
-      const { data: cats, error: catsErr } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("restaurant_id", currentRestaurantId!)
-        .order("position", { ascending: true });
-
-      if (catsErr) throw catsErr;
-      setCategories(cats || []);
-
-      // 2. Fetch dishes
-      const { data: items, error: itemsErr } = await supabase
-        .from("dishes")
-        .select("*")
-        .eq("restaurant_id", currentRestaurantId!)
-        .eq("is_available", true)
-        .order("name", { ascending: true });
-
-      if (itemsErr) throw itemsErr;
-
-      const dishesInCents = (items || []).map(dish => ({
-        ...dish,
-        price: Math.round((dish.price || 0) * 100)
-      }));
-      setDishes(dishesInCents);
-
-      // 3. Fetch active orders to determine table occupancy dynamically
-      const { data: activeOrds, error: ordsErr } = await supabase
-        .from("orders")
-        .select("id, table_name, status, total_price, created_at")
-        .eq("restaurant_id", currentRestaurantId!)
-        .in("status", ["new", "in_preparation", "ready"]);
-
-      if (!ordsErr) {
-        setActiveOrders(activeOrds || []);
+      if (fromCache) {
+        toast({
+          title: "Cardápio em cache",
+          description: "Conexão instável. Exibindo o último cardápio salvo localmente.",
+        });
       }
     } catch (err) {
       console.error("Erro ao carregar dados do PDV:", err);
@@ -675,113 +606,29 @@ export default function POSTerminal() {
         needs_preparation: item.dish.needs_preparation !== false
       }));
 
-      // Gerar senha da fila se a configuração estiver ativa
-      let queuePassword = null;
-      if (localStorage.getItem("thermal_print_password") === "true") {
-        const today = new Date().toLocaleDateString('pt-BR');
-        const lastDate = localStorage.getItem("queue_date") || "";
-        let currentCounter = parseInt(localStorage.getItem("queue_counter") || "0", 10);
-        if (lastDate !== today) {
-          currentCounter = 0;
-          localStorage.setItem("queue_date", today);
-        }
-        currentCounter += 1;
-        localStorage.setItem("queue_counter", currentCounter.toString());
-        queuePassword = currentCounter.toString().padStart(3, '0');
-      }
+      const queuePassword = generateQueuePassword();
 
       // Calculate received cash and change in cents
       const cashPayment = payments.find(p => p.method === "cash");
       const savedReceivedCash = cashPayment ? Math.round((parseFloat(receivedCashAmount) || 0) * 100) : null;
       const savedChange = cashPayment ? Math.max(0, (savedReceivedCash || 0) - cashPayment.amount) : null;
 
-      if (!isOnline) {
-        // Save local queue
-        const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
-        offlineQueue.push({
-          id: `OFF-${Date.now()}`,
-          restaurant_id: currentRestaurantId,
-          pos_session_id: activeSession.id,
-          table_name: tableName,
-          items: orderItemsInput,
-          payments: payments,
-          created_at: new Date().toISOString(),
-          customer_info: {
-            name: customerName || "",
-            phone: customerPhone || "",
-            queue_password: queuePassword,
-            is_takeaway: isTakeaway,
-            observation: orderObservation || null,
-            received_cash: savedReceivedCash,
-            change: savedChange
-          }
-        });
-        localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
-
-        toast({
-          title: "Venda Salva Offline!",
-          description: "O caixa está offline. O pedido foi guardado localmente e será sincronizado depois.",
-        });
-
-        const offlineOrder = {
-          id: `OFF-${Date.now()}`,
-          created_at: new Date().toISOString(),
-          customer_info: {
-            name: customerName || "",
-            phone: customerPhone || "",
-            queue_password: queuePassword,
-            is_takeaway: isTakeaway,
-            observation: orderObservation || null,
-            received_cash: savedReceivedCash,
-            change: savedChange
-          }
-        };
-        setCreatedOrder(offlineOrder);
-        const snapshot = {
-          items: [...cart],
-          subtotal: subtotal,
-          tableName: tableName,
-          customerName: customerName,
-          receiveAllTogether: receiveAllTogether,
-          payments: [...payments],
-          receivedCashAmount: parseFloat(receivedCashAmount) || 0,
-          cashChange: cashChange / 100
-        };
-        setReceiptSnapshot(snapshot);
-        setCheckoutModalOpen(false);
-        setSuccessModalOpen(true);
-        setCart([]);
-        setTableName("Balcão");
-        setCustomerName("");
-        setCustomerPhone("");
-        setPayments([]);
-        setIsTakeaway(false);
-        setOrderObservation("");
-
-        // Impressão automática no fechamento offline se ativada nas configurações
-        if (localStorage.getItem("thermal_print_automatic") === "true") {
-          setTimeout(() => {
-            printReceipt(offlineOrder, snapshot);
-          }, 150);
-        }
-        return;
-      }
-
-      const finalOrder = await createPOSOrder(
-        currentRestaurantId!,
-        activeSession.id,
-        tableName,
-        customerName || null,
-        customerPhone || null,
-        orderItemsInput,
+      const { order: finalOrder, queued } = await submitPOSOrder({
+        restaurant_id: currentRestaurantId!,
+        pos_session_id: activeSession.id,
+        table_name: tableName,
+        customer_name: customerName || null,
+        customer_phone: customerPhone || null,
+        items: orderItemsInput,
         payments,
-        queuePassword,
-        isTakeaway,
-        orderObservation || null,
-        receiveAllTogether,
-        savedReceivedCash,
-        savedChange
-      );
+        queue_password: queuePassword,
+        is_takeaway: isTakeaway,
+        observation: orderObservation || null,
+        receive_all_together: receiveAllTogether,
+        received_cash: savedReceivedCash,
+        change: savedChange,
+        active_order_ids_to_close: activeOrderIdsBeingClosed.length > 0 ? activeOrderIdsBeingClosed : undefined,
+      });
 
       setCreatedOrder(finalOrder);
       const snapshot = {
@@ -796,8 +643,11 @@ export default function POSTerminal() {
       };
       setReceiptSnapshot(snapshot);
       toast({
-        title: "Venda Concluída!",
-        description: "O pedido foi registrado com sucesso.",
+        title: queued ? "Venda salva localmente" : "Venda Concluída!",
+        description: queued
+          ? "Conexão instável. O pedido será sincronizado automaticamente."
+          : "O pedido foi registrado com sucesso.",
+        variant: queued ? "destructive" : "default",
       });
       setCheckoutModalOpen(false);
       setSuccessModalOpen(true);
@@ -809,24 +659,21 @@ export default function POSTerminal() {
       setIsTakeaway(false);
       setOrderObservation("");
 
-      // Impressão automática no fechamento online se ativada nas configurações
+      if (queued) {
+        setActiveOrderIdsBeingClosed([]);
+      }
+
+      // Impressão automática no fechamento se ativada nas configurações
       if (localStorage.getItem("thermal_print_automatic") === "true") {
         setTimeout(() => {
           printReceipt(finalOrder, snapshot);
         }, 150);
       }
 
-      // If we are closing table orders, update their status to "finished" in Supabase
-      if (activeOrderIdsBeingClosed.length > 0) {
-        await supabase
-          .from("orders")
-          .update({ status: "finished" })
-          .in("id", activeOrderIdsBeingClosed);
+      if (!queued) {
         setActiveOrderIdsBeingClosed([]);
+        await loadPOSData();
       }
-      
-      // Reload active orders to update table occupancy dynamically
-      await loadPOSData();
     } catch (err: any) {
       toast({
         title: "Erro ao registrar venda",
@@ -853,72 +700,28 @@ export default function POSTerminal() {
         needs_preparation: item.dish.needs_preparation !== false
       }));
 
-      // Gerar senha da fila se a configuração estiver ativa
-      let queuePassword = null;
-      if (localStorage.getItem("thermal_print_password") === "true") {
-        const today = new Date().toLocaleDateString('pt-BR');
-        const lastDate = localStorage.getItem("queue_date") || "";
-        let currentCounter = parseInt(localStorage.getItem("queue_counter") || "0", 10);
-        if (lastDate !== today) {
-          currentCounter = 0;
-          localStorage.setItem("queue_date", today);
-        }
-        currentCounter += 1;
-        localStorage.setItem("queue_counter", currentCounter.toString());
-        queuePassword = currentCounter.toString().padStart(3, '0');
-      }
+      const queuePassword = generateQueuePassword();
 
-      if (!isOnline) {
-        const offlineQueue = JSON.parse(localStorage.getItem("pos_offline_orders") || "[]");
-        offlineQueue.push({
-          id: `OFF-${Date.now()}`,
-          restaurant_id: currentRestaurantId,
-          pos_session_id: activeSession.id,
-          table_name: tableName,
-          items: orderItemsInput,
-          payments: [],
-          created_at: new Date().toISOString(),
-          customer_info: {
-            name: customerName || "",
-            phone: customerPhone || "",
-            queue_password: queuePassword,
-            is_takeaway: isTakeaway,
-            observation: orderObservation || null
-          }
-        });
-        localStorage.setItem("pos_offline_orders", JSON.stringify(offlineQueue));
-
-        toast({
-          title: "Pedido Offline Salvo!",
-          description: "O caixa está offline. O pedido foi salvo localmente.",
-        });
-
-        setCart([]);
-        setTableName("Balcão");
-        setCustomerName("");
-        setCustomerPhone("");
-        setIsTakeaway(false);
-        setOrderObservation("");
-        return;
-      }
-
-      await createPOSOrder(
-        currentRestaurantId!,
-        activeSession.id,
-        tableName,
-        customerName || null,
-        customerPhone || null,
-        orderItemsInput,
-        [],
-        queuePassword,
-        isTakeaway,
-        orderObservation || null,
-        receiveAllTogether
-      );
+      const { queued } = await submitPOSOrder({
+        restaurant_id: currentRestaurantId!,
+        pos_session_id: activeSession.id,
+        table_name: tableName,
+        customer_name: customerName || null,
+        customer_phone: customerPhone || null,
+        items: orderItemsInput,
+        payments: [],
+        queue_password: queuePassword,
+        is_takeaway: isTakeaway,
+        observation: orderObservation || null,
+        receive_all_together: receiveAllTogether,
+      });
 
       toast({
-        title: "Pedido Enviado!",
-        description: `Os itens foram enviados para preparação da cozinha na ${tableName}.`,
+        title: queued ? "Pedido salvo localmente" : "Pedido Enviado!",
+        description: queued
+          ? "Conexão instável. O pedido será sincronizado automaticamente."
+          : `Os itens foram enviados para preparação da cozinha na ${tableName}.`,
+        variant: queued ? "destructive" : "default",
       });
 
       setCart([]);
@@ -928,8 +731,9 @@ export default function POSTerminal() {
       setIsTakeaway(false);
       setOrderObservation("");
 
-      // Reload active orders to update table occupancy dynamically
-      await loadPOSData();
+      if (!queued) {
+        await loadPOSData();
+      }
     } catch (err: any) {
       toast({
         title: "Erro ao enviar pedido",
@@ -1716,8 +1520,41 @@ export default function POSTerminal() {
           
           {/* Quick status bar */}
           <div className="hidden sm:flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/40 text-xs font-semibold">
+            <div className={`flex items-center gap-1.5 ${
+              connectivityStatus === "online"
+                ? "text-green-600 dark:text-green-400"
+                : connectivityStatus === "degraded"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-red-600 dark:text-red-400"
+            }`}>
+              <span className={`h-2 w-2 rounded-full ${
+                connectivityStatus === "online"
+                  ? "bg-green-500 animate-pulse"
+                  : connectivityStatus === "degraded"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-red-500"
+              }`} />
+              {connectivityStatus === "online"
+                ? "Conectado"
+                : connectivityStatus === "degraded"
+                  ? "Conexão instável"
+                  : "Sem conexão"}
+            </div>
+            {pendingSyncCount > 0 && (
+              <>
+                <span className="text-muted-foreground">|</span>
+                <button
+                  type="button"
+                  onClick={() => void runSync()}
+                  className="text-amber-600 dark:text-amber-400 hover:underline"
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? "Sincronizando..." : `${pendingSyncCount} pendente(s)`}
+                </button>
+              </>
+            )}
+            <span className="text-muted-foreground">|</span>
             <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               Caixa Aberto
             </div>
             <span className="text-muted-foreground">|</span>

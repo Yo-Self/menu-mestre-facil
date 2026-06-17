@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import type { POSOutboxOrder } from "@/services/posOffline/types";
 
 export type POSSession = Database["public"]["Tables"]["pos_sessions"]["Row"];
 export type POSTransaction = Database["public"]["Tables"]["pos_transactions"]["Row"];
@@ -260,6 +261,56 @@ export async function createPOSOrder(
   }
 
   return order;
+}
+
+function buildCustomerInfoFromOutbox(order: POSOutboxOrder) {
+  if (
+    !order.customer_name &&
+    !order.customer_phone &&
+    !order.queue_password &&
+    !order.is_takeaway &&
+    !order.observation &&
+    order.received_cash === undefined &&
+    order.change === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    name: order.customer_name || "",
+    phone: order.customer_phone || "",
+    queue_password: order.queue_password || null,
+    is_takeaway: order.is_takeaway || false,
+    observation: order.observation || null,
+    received_cash: order.received_cash ?? null,
+    change: order.change ?? null,
+  };
+}
+
+/**
+ * Create a POS order via idempotent RPC (used for online submit and offline sync).
+ */
+export async function createPOSOrderFromOutbox(order: POSOutboxOrder) {
+  const { data, error } = await supabase.rpc("create_pos_order" as never, {
+    p_client_order_id: order.client_order_id,
+    p_restaurant_id: order.restaurant_id,
+    p_pos_session_id: order.pos_session_id,
+    p_table_name: order.table_name,
+    p_customer_info: buildCustomerInfoFromOutbox(order),
+    p_items: order.items,
+    p_payments: order.payments,
+    p_receive_all_together: order.receive_all_together,
+    p_active_order_ids_to_close: order.active_order_ids_to_close?.length
+      ? order.active_order_ids_to_close
+      : null,
+  } as never);
+
+  if (error) {
+    console.error("Error creating POS order via RPC:", error);
+    throw error;
+  }
+
+  return data as Database["public"]["Tables"]["orders"]["Row"];
 }
 
 /**
