@@ -214,10 +214,7 @@ export function MenuStep() {
       Analytics.trackOnboardingStepCompleted('menu');
       Analytics.trackOnboardingCompleted(rest.id, dishesCount);
 
-      const menuUrl =
-        profile && typeof window !== 'undefined'
-          ? `${window.location.origin}${generatePublicMenuUrl(profile.slug, rest.slug)}`
-          : '';
+      const menuUrl = `https://yo-self.com${generatePublicMenuUrl('', rest.slug)}`;
 
       setPublicMenuUrl(menuUrl);
       setRestaurant(rest);

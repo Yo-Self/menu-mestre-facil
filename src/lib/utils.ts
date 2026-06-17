@@ -66,7 +66,7 @@ export function generateOrganizationUrl(organizationSlug: string): string {
 }
 
 export function generatePublicMenuUrl(organizationSlug: string, restaurantSlug: string): string {
-  return `/menu/${organizationSlug}/${restaurantSlug}`;
+  return `/restaurant/${restaurantSlug}`;
 }
 
 // ─── Reports helpers ──────────────────────────────────────────────────────────

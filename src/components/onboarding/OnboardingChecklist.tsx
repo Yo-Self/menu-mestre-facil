@@ -79,10 +79,7 @@ export function OnboardingChecklist() {
           !!restaurant.infinitepay_handle;
         const hasDelivery = restaurant.delivery_enabled === true;
 
-        const publicUrl =
-          typeof window !== 'undefined'
-            ? `${window.location.origin}${generatePublicMenuUrl(profile.slug, restaurant.slug)}`
-            : '';
+        const publicUrl = `https://yo-self.com${generatePublicMenuUrl('', restaurant.slug)}`;
 
         setItems([
           {
