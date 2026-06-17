@@ -22,12 +22,20 @@ nsis:
   createDesktopShortcut: always
 mac:
   category: public.app-category.business
-  identity: "-"
+  # Assinatura: usa o certificado "Developer ID Application" do Keychain (local) ou CSC_LINK (CI)
   hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # zip é obrigatório para o electron-updater no macOS
+  target:
+    - dmg
+    - zip
   extendInfo:
     NSCameraUsageDescription: O aplicativo precisa de acesso à câmera para ler QR Codes.
     NSDocumentsFolderUsageDescription: O aplicativo solicita acesso para salvar arquivos de relatórios.
-  notarize: false
+  # Notarização via APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID (CI ou local)
+  notarize: true
 dmg:
   artifactName: ${productName}-${version}.${ext}
 linux:
