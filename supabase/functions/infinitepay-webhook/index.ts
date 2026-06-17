@@ -1,10 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
+import { verifyInfinitePayPayment } from '../_shared/infinitepay-payment-check.ts'
 import { captureEdgeException } from '../_shared/sentry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-callback-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 interface InfinitePayWebhookPayload {
@@ -21,42 +22,6 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-function timingSafeEqualHex(a: string, b: string): boolean {
-  const left = a.toLowerCase()
-  const right = b.toLowerCase()
-  if (left.length !== right.length) return false
-  let mismatch = 0
-  for (let i = 0; i < left.length; i++) {
-    mismatch |= left.charCodeAt(i) ^ right.charCodeAt(i)
-  }
-  return mismatch === 0
-}
-
-/** InfinitePay/WooCommerce plugin: HMAC-SHA256(hex) of raw body with shared secret. */
-async function verifyCallbackSignature(
-  rawBody: string,
-  signatureHeader: string | null,
-  secret: string,
-): Promise<boolean> {
-  if (!signatureHeader?.trim()) return false
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody))
-  const expectedHex = bytesToHex(new Uint8Array(digest))
-
-  return timingSafeEqualHex(expectedHex, signatureHeader.trim())
 }
 
 serve(async (req) => {
@@ -80,16 +45,6 @@ serve(async (req) => {
     }
 
     const rawBody = await req.text()
-    const webhookSecret = Deno.env.get('INFINITEPAY_WEBHOOK_SECRET')?.trim()
-
-    if (webhookSecret) {
-      const signature = req.headers.get('X-Callback-Signature')
-      const valid = await verifyCallbackSignature(rawBody, signature, webhookSecret)
-      if (!valid) {
-        console.error('InfinitePay webhook rejected: invalid or missing X-Callback-Signature')
-        return jsonResponse({ error: 'Invalid webhook signature' }, 401)
-      }
-    }
 
     let payload: InfinitePayWebhookPayload
     try {
@@ -106,11 +61,15 @@ serve(async (req) => {
       return jsonResponse({ error: 'order_nsu is required' }, 400)
     }
 
-    const eventKey = transactionNsu
-      ? `tx:${transactionNsu}`
-      : invoiceSlug
-        ? `slug:${invoiceSlug}`
-        : `order:${orderId}:${payload.paid_amount ?? payload.amount ?? 'unknown'}`
+    if (!transactionNsu) {
+      return jsonResponse({ error: 'transaction_nsu is required' }, 400)
+    }
+
+    if (!invoiceSlug) {
+      return jsonResponse({ error: 'invoice_slug is required' }, 400)
+    }
+
+    const eventKey = `tx:${transactionNsu}`
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -126,20 +85,27 @@ serve(async (req) => {
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, total_price, infinitepay_invoice_slug, payment_provider')
+      .select(`
+        id,
+        status,
+        total_price,
+        infinitepay_invoice_slug,
+        restaurant_id,
+        restaurants ( infinitepay_handle )
+      `)
       .eq('id', orderId)
       .single()
 
     if (orderError || !order) {
       console.error('Order not found for InfinitePay webhook:', orderId, orderError)
-      return jsonResponse({ error: 'Order not found' }, 500)
+      return jsonResponse({ error: 'Order not found' }, 400)
     }
 
     if (order.status !== 'pending_payment') {
       await supabase.from('infinitepay_webhook_events').insert({
         event_key: eventKey,
         order_nsu: orderId,
-        transaction_nsu: transactionNsu ?? null,
+        transaction_nsu: transactionNsu,
       })
       return jsonResponse({ received: true, skipped: true }, 200)
     }
@@ -153,31 +119,44 @@ serve(async (req) => {
       return jsonResponse({ error: 'Order not linked to InfinitePay checkout' }, 400)
     }
 
-    if (!invoiceSlug || invoiceSlug !== storedSlug) {
+    if (invoiceSlug !== storedSlug) {
       console.error('InfinitePay webhook rejected: invoice_slug mismatch', {
         orderId,
         expected: storedSlug,
-        received: invoiceSlug ?? null,
+        received: invoiceSlug,
       })
       return jsonResponse({ error: 'Invoice slug mismatch' }, 400)
     }
 
-    const paidAmount = typeof payload.paid_amount === 'number'
-      ? payload.paid_amount
-      : typeof payload.amount === 'number'
-        ? payload.amount
-        : null
+    const restaurant = order.restaurants as { infinitepay_handle?: string | null } | null
+    const devHandle = Deno.env.get('INFINITEPAY_DEV_HANDLE')?.replace(/^\$/, '').trim()
+    const handle = (restaurant?.infinitepay_handle || devHandle || '').replace(/^\$/, '').trim()
 
-    if (paidAmount === null) {
-      console.error('InfinitePay webhook missing amount:', orderId)
-      return jsonResponse({ error: 'Missing payment amount' }, 400)
+    if (!handle) {
+      console.error('InfinitePay webhook rejected: restaurant handle not configured', orderId)
+      return jsonResponse({ error: 'Restaurant InfinitePay handle not configured' }, 400)
     }
 
-    if (paidAmount < order.total_price) {
-      console.error('InfinitePay payment amount too low:', {
+    const paymentCheck = await verifyInfinitePayPayment({
+      handle,
+      orderNsu: orderId,
+      transactionNsu,
+      slug: invoiceSlug,
+    })
+
+    if (!paymentCheck.ok) {
+      console.error('InfinitePay payment_check rejected webhook:', {
+        orderId,
+        reason: paymentCheck.reason,
+      })
+      return jsonResponse({ error: 'Payment not verified with InfinitePay' }, 400)
+    }
+
+    if (paymentCheck.paidAmount < order.total_price) {
+      console.error('InfinitePay verified amount too low:', {
         orderId,
         expected: order.total_price,
-        received: paidAmount,
+        verified: paymentCheck.paidAmount,
       })
       return jsonResponse({ error: 'Payment amount mismatch' }, 400)
     }
@@ -185,8 +164,8 @@ serve(async (req) => {
     const updateData: Record<string, unknown> = {
       status: 'new',
       payment_provider: 'infinitepay',
+      infinitepay_transaction_nsu: transactionNsu,
     }
-    if (transactionNsu) updateData.infinitepay_transaction_nsu = transactionNsu
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -202,14 +181,15 @@ serve(async (req) => {
     const { error: eventInsertError } = await supabase.from('infinitepay_webhook_events').insert({
       event_key: eventKey,
       order_nsu: orderId,
-      transaction_nsu: transactionNsu ?? null,
+      transaction_nsu: transactionNsu,
     })
 
     if (eventInsertError) {
       console.error('Error recording InfinitePay webhook event:', eventInsertError)
     }
 
-    console.log(`Order ${orderId} paid via InfinitePay (${payload.capture_method ?? 'unknown'})`)
+    const captureMethod = paymentCheck.captureMethod ?? payload.capture_method ?? 'unknown'
+    console.log(`Order ${orderId} paid via InfinitePay (${captureMethod})`)
 
     return jsonResponse({ received: true }, 200)
   } catch (error) {

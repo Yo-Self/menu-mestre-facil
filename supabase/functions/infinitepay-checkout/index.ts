@@ -9,8 +9,8 @@ const corsHeaders = {
 }
 
 const INFINITEPAY_LINK_ENDPOINTS = [
-  'https://api.infinitepay.io/invoices/public/checkout/links',
   'https://api.checkout.infinitepay.io/links',
+  'https://api.infinitepay.io/invoices/public/checkout/links',
 ]
 
 /** InfinitePay rejects orders with total <= R$ 1,00 (100 centavos). */
