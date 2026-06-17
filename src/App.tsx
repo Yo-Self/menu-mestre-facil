@@ -48,6 +48,8 @@ import PhysicalMenuPage from "./pages/dashboard/physical-menu/PhysicalMenuPage";
 import FinancialPage from "./pages/dashboard/financial/FinancialPage";
 import DeliveryPage from "./pages/dashboard/delivery/DeliveryPage";
 import NotFound from "./pages/NotFound";
+import OnboardingPage from "./pages/onboarding/OnboardingPage";
+import { OnboardingGuard } from "./components/onboarding/OnboardingGuard";
 
 
 
@@ -86,11 +88,23 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route
+                  path="/onboarding/*"
+                  element={
+                    <AuthGuard>
+                      <OnboardingGuard mode="wizard">
+                        <OnboardingPage />
+                      </OnboardingGuard>
+                    </AuthGuard>
+                  }
+                />
                 <Route path="/orders/:restaurantId/presentation" element={<OrderPresentationPage />} />
                 <Route path="/tv/:restaurantId" element={<OrderPresentationPage />} />
                 <Route element={
                   <AuthGuard>
-                    <DashboardLayout />
+                    <OnboardingGuard mode="dashboard">
+                      <DashboardLayout />
+                    </OnboardingGuard>
                   </AuthGuard>
                 }>
                   <Route path="/dashboard" element={<Dashboard />} />

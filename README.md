@@ -97,6 +97,20 @@ src/
 └── lib/               # Utilitários e helpers
 ```
 
+## Onboarding de Novos Usuários
+
+Após cadastro ou login, novos usuários passam por um wizard guiado em 3 etapas (bloqueante até concluir):
+
+1. **Conta** (`/onboarding/account`): nome, tipo de conta, slug da organização, avatar e telefone.
+2. **Restaurante** (`/onboarding/restaurant`): nome, tipo de cozinha, logo e descrição essenciais.
+3. **Cardápio com IA** (`/onboarding/menu`): upload em lote de fotos dos pratos; a Edge Function `ai-analyze-dish` (Gemini Vision) sugere nome, descrição, categoria e preço para revisão antes de publicar (mínimo de 3 pratos).
+
+Após concluir, o dashboard exibe um **checklist opcional** com horários, complementos, WhatsApp, pagamentos e delivery.
+
+**Campos de progresso** em `profiles`: `onboarding_step`, `onboarding_completed_at`, `onboarding_checklist_dismissed_at`.
+
+**Telemetria**: eventos `onboarding_started`, `onboarding_step_completed`, `onboarding_menu_ai_analyzed`, `onboarding_completed`.
+
 ## Como Executar
 
 1. Clone o repositório

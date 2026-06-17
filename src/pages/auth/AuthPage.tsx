@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
+import { getPostAuthRedirect } from "@/lib/authRedirect";
 import { useToast } from "@/hooks/use-toast";
 import { Analytics } from "@/services/analytics";
 
@@ -18,8 +19,21 @@ export default function AuthPage() {
   const [accountType, setAccountType] = useState<"individual" | "organization">("individual");
   const [organizationSlug, setOrganizationSlug] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const redirectTo = await getPostAuthRedirect();
+        navigate(redirectTo, { replace: true });
+      }
+      setCheckingSession(false);
+    };
+    checkSession();
+  }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,10 +81,20 @@ export default function AuthPage() {
       // Telemetria de sucesso de cadastro
       Analytics.trackSignup(user.id, email);
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Verifique seu email para confirmar a conta.",
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const redirectTo = await getPostAuthRedirect();
+        navigate(redirectTo, { replace: true });
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Vamos configurar sua conta.",
+        });
+      } else {
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Verifique seu email para confirmar a conta.",
+        });
+      }
     } catch (error: any) {
       // Telemetria de erro de cadastro
       Analytics.trackError(error, { email, action: 'signup' });
@@ -101,7 +125,8 @@ export default function AuthPage() {
         Analytics.trackLogin(user.id, email);
       }
 
-      navigate("/dashboard");
+      const redirectTo = await getPostAuthRedirect();
+      navigate(redirectTo, { replace: true });
     } catch (error: any) {
       // Telemetria de erro de login
       Analytics.trackError(error, { email, action: 'signin' });
@@ -121,6 +146,14 @@ export default function AuthPage() {
       setOrganizationSlug("");
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">

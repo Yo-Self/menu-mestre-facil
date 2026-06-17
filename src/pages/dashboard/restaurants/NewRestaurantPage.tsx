@@ -8,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Bell, MessageCircle, Palette, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { AddressSelector } from "@/components/ui/address-selector";
+import { createRestaurant } from "@/services/restaurantService";
 
 const cuisineTypes = [
   "Brasileira",
@@ -81,45 +81,33 @@ export default function NewRestaurantPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Gerar slug único
-      let slug = "";
-      if (formData.slug.trim()) {
-        slug = await generateUniqueSlug(generateSlug(formData.slug), 'restaurants');
-      } else {
-        slug = await generateUniqueSlug(generateSlug(formData.name), 'restaurants');
-      }
-
-      const { data, error } = await supabase
-        .from("restaurants")
-        .insert([
-          {
-            ...formData,
-            user_id: user.id,
-            slug,
-            waiter_call_enabled: waiterCallEnabled,
-            whatsapp_phone: whatsappPhone.trim() || null,
-            whatsapp_enabled: whatsappEnabled,
-            background_light: formData.background_light || "#ffffff",
-            background_night: formData.background_night || "#1a1a1a",
-            address: addressData.address || null,
-            latitude: addressData.latitude,
-            longitude: addressData.longitude,
-            address_active: addressActive && !!addressData.address && addressData.address.trim().length > 0,
-            table_payment: tablePaymentEnabled,
-            table_ordering: tableOrderingEnabled,
-            online_ordering_enabled: true,
-            online_payment: onlinePaymentEnabled,
-            min_order_value: minOrderEnabled ? minOrderValue : 0,
-            open: true,
-            has_tables: hasTables,
-            tables_count: tablesCount,
-            table_categories: tableCategories,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await createRestaurant(
+        user.id,
+        {
+          ...formData,
+          address: addressData.address || null,
+          latitude: addressData.latitude,
+          longitude: addressData.longitude,
+          address_active:
+            addressActive &&
+            !!addressData.address &&
+            addressData.address.trim().length > 0,
+        },
+        {
+          mode: 'full',
+          waiter_call_enabled: waiterCallEnabled,
+          whatsapp_phone: whatsappPhone,
+          whatsapp_enabled: whatsappEnabled,
+          table_payment: tablePaymentEnabled,
+          table_ordering: tableOrderingEnabled,
+          online_payment: onlinePaymentEnabled,
+          min_order_value: minOrderValue,
+          min_order_enabled: minOrderEnabled,
+          has_tables: hasTables,
+          tables_count: tablesCount,
+          table_categories: tableCategories,
+        }
+      );
 
       toast({
         title: "Restaurante criado com sucesso!",

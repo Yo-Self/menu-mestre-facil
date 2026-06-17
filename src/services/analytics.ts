@@ -124,4 +124,27 @@ export const Analytics = {
       difference: diff,
     });
   },
+
+  trackOnboardingStarted() {
+    track('onboarding_started');
+  },
+
+  trackOnboardingStepCompleted(step: string) {
+    track('onboarding_step_completed', { step });
+  },
+
+  trackOnboardingMenuAiAnalyzed(success: boolean, latencyMs: number) {
+    track('onboarding_menu_ai_analyzed', { success, latency_ms: latencyMs });
+  },
+
+  trackOnboardingCompleted(restaurantId: string, dishesCount: number) {
+    track('onboarding_completed', {
+      restaurant_id: restaurantId,
+      dishes_count: dishesCount,
+    });
+  },
+
+  trackOnboardingChecklistItemCompleted(itemId: string) {
+    track('onboarding_checklist_item_completed', { item_id: itemId });
+  },
 };

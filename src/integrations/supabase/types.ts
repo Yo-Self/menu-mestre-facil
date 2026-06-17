@@ -918,6 +918,10 @@ export type Database = {
           full_name: string | null
           id: string
           is_organization: boolean | null
+          onboarding_checklist_dismissed_at: string | null
+          onboarding_completed_at: string | null
+          onboarding_step: string
+          phone: string | null
           slug: string
           updated_at: string
         }
@@ -928,6 +932,10 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_organization?: boolean | null
+          onboarding_checklist_dismissed_at?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: string
+          phone?: string | null
           slug: string
           updated_at?: string
         }
@@ -938,6 +946,10 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_organization?: boolean | null
+          onboarding_checklist_dismissed_at?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: string
+          phone?: string | null
           slug?: string
           updated_at?: string
         }

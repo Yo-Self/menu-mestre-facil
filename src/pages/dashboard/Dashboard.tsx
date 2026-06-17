@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivities } from "@/hooks/useActivities";
 import { QuickAction } from "@/types/activity";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 
 interface Stats {
   restaurants: number;
@@ -445,6 +446,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <OnboardingChecklist />
+
       <div className="flex flex-col gap-1">
         <h1 className="text-3.5xl font-extrabold font-heading text-primary bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent">
           Dashboard Geral
