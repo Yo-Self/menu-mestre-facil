@@ -36,7 +36,7 @@ import {
   DialogFooter,
 } from '../../components/ui/dialog'
 import { Edit, Plus, Minus, Trash2, Search } from 'lucide-react'
-import { OrderStatus, OrderWithItems } from '../../types/orders'
+import { OrderStatus, OrderWithItems, isLocalOutboxOrder } from '../../types/orders'
 import { usePrinting } from '../../hooks/usePrinting'
 import { useRestaurant } from '../../hooks/useRestaurant'
 import { supabase } from '../../integrations/supabase/client'
@@ -68,6 +68,7 @@ const STATUS_COLOR_MAP: Record<OrderStatus, string> = {
 
 export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardProps) {
   const { toast } = useToast()
+  const isLocal = isLocalOutboxOrder(order)
   const [elapsedMinutes, setElapsedMinutes] = useState(0)
 
   useEffect(() => {
@@ -409,6 +410,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     isDragging,
   } = useDraggable({
     id: order.id,
+    disabled: isLocal,
   })
 
   const style = transform ? {
@@ -572,11 +574,13 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
     <Card 
       ref={setNodeRef}
       style={style}
-      className={`cursor-pointer border border-border/50 rounded-xl relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+      className={`border border-border/50 rounded-xl relative overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+        isLocal ? 'cursor-default border-amber-500/30 bg-amber-500/5' : 'cursor-pointer'
+      } ${
         isDragging ? 'opacity-40 rotate-2 shadow-2xl scale-[0.98]' : ''
       }`}
-      {...listeners}
-      {...attributes}
+      {...(isLocal ? {} : listeners)}
+      {...(isLocal ? {} : attributes)}
     >
       {/* Indicador Visual de Status na Lateral */}
       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${STATUS_COLOR_MAP[currentStatus] || 'bg-gray-300'}`} />
@@ -601,6 +605,18 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                 return null;
               })()}
               {getDeliveryTypeBadge()}
+              {isLocal && (
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] font-bold uppercase rounded-lg px-2 py-0.5 ${
+                    order._outboxStatus === 'failed'
+                      ? 'bg-red-500/10 text-red-600 border-red-500/30'
+                      : 'bg-amber-500/10 text-amber-700 border-amber-500/30'
+                  }`}
+                >
+                  {order._outboxStatus === 'failed' ? '⚠ Falha sync' : '☁ Local'}
+                </Badge>
+              )}
               {getTimerBadge()}
               {isOrderPaidOnline(order) && (
                 <Badge variant="secondary" className="text-[10px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/15 border-0 px-1.5 py-0 flex items-center">
@@ -638,10 +654,12 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                   className="h-8 w-8 p-0 rounded-full hover:bg-muted/80"
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
+                  disabled={isLocal}
                 >
                   <MoreVertical className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
+              {!isLocal && (
               <DropdownMenuContent align="end" className="rounded-xl border-border/60">
                 <DropdownMenuItem
                   className="text-xs font-bold rounded-lg text-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground flex items-center gap-1.5 cursor-pointer"
@@ -666,6 +684,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                   )
                 ))}
               </DropdownMenuContent>
+              )}
             </DropdownMenu>
           </div>
         </div>
@@ -834,6 +853,12 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               <Check className="h-3 w-3 stroke-[3]" />
               Finalizar
             </Button>
+          </div>
+        ) : isLocal ? (
+          <div className="mt-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
+            {order._outboxStatus === 'failed'
+              ? `Falha ao sincronizar${order._lastError ? `: ${order._lastError}` : ''}`
+              : 'Aguardando sincronização com a nuvem — a cozinha pode preparar normalmente'}
           </div>
         ) : action && (
           <Button

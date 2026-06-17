@@ -41,6 +41,9 @@ import {
   POSSession,
   POSTransaction,
 } from "@/services/posService";
+import { getOutboxStats, type OutboxStats } from "@/services/posOffline/orderOutbox";
+import { subscribePOSSync, syncPendingPOSOrders } from "@/services/posOffline/syncService";
+import { OutboxOrdersPanel } from "@/components/pos/OutboxOrdersPanel";
 
 export default function POSDashboard() {
   const navigate = useNavigate();
@@ -69,6 +72,12 @@ export default function POSDashboard() {
   // Sales inside current session
   const [sessionRevenue, setSessionRevenue] = useState(0);
   const [sessionSalesCount, setSessionSalesCount] = useState(0);
+  const [outboxStats, setOutboxStats] = useState<OutboxStats>({
+    pendingCount: 0,
+    failedCount: 0,
+    pendingRevenueCents: 0,
+    pendingCashCents: 0,
+  });
 
   // Cash Calculator States for Blind Cash Closure
   const [bill100, setBill100] = useState("");
@@ -101,8 +110,38 @@ export default function POSDashboard() {
     if (currentRestaurantId) {
       fetchSessionData();
       fetchHistoryData();
+      refreshOutboxStats();
     }
   }, [currentRestaurantId]);
+
+  useEffect(() => {
+    if (!currentRestaurantId) return;
+
+    const refresh = () => {
+      void refreshOutboxStats();
+      void fetchSessionData();
+    };
+
+    const unsubscribe = subscribePOSSync(() => {
+      void refreshOutboxStats();
+      void fetchSessionData();
+    });
+
+    const interval = setInterval(refreshOutboxStats, 15_000);
+    window.addEventListener("focus", refresh);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [currentRestaurantId]);
+
+  const refreshOutboxStats = async () => {
+    if (!currentRestaurantId) return;
+    const stats = await getOutboxStats(currentRestaurantId);
+    setOutboxStats(stats);
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -217,6 +256,26 @@ export default function POSDashboard() {
   const handleCloseSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSession) return;
+
+    if (outboxStats.pendingCount > 0) {
+      const proceed = window.confirm(
+        `Existem ${outboxStats.pendingCount} pedido(s) aguardando sincronização (R$ ${(outboxStats.pendingRevenueCents / 100).toFixed(2)}).\n\nDeseja sincronizar agora antes de fechar o caixa?`
+      );
+
+      if (proceed && currentRestaurantId) {
+        const result = await syncPendingPOSOrders(currentRestaurantId);
+        await refreshOutboxStats();
+
+        if (result.remaining > 0) {
+          const forceClose = window.confirm(
+            `Ainda restam ${result.remaining} pedido(s) não sincronizados.\nFechar o caixa mesmo assim? Eles continuarão na fila local deste dispositivo.`
+          );
+          if (!forceClose) return;
+        }
+      } else if (!proceed) {
+        return;
+      }
+    }
 
     const balanceInCents = Math.round(parseFloat(finalBalance) * 100);
     if (isNaN(balanceInCents) || balanceInCents < 0) {
@@ -428,6 +487,34 @@ export default function POSDashboard() {
                 </p>
               </CardContent>
             </Card>
+
+            {outboxStats.pendingCount > 0 && (
+              <Card className="relative overflow-hidden shadow-md border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-transparent sm:col-span-2 lg:col-span-1">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+                    Aguardando Sincronização
+                  </CardDescription>
+                  <CardTitle className="text-2xl font-black font-heading text-orange-600 dark:text-orange-400">
+                    {outboxStats.pendingCount} pedido(s)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-semibold">
+                    Valor: {(outboxStats.pendingRevenueCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                  {outboxStats.pendingCashCents > 0 && (
+                    <p className="text-xs text-muted-foreground font-semibold">
+                      Em dinheiro (local): {(outboxStats.pendingCashCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  )}
+                  {outboxStats.failedCount > 0 && (
+                    <p className="text-xs text-red-600 font-semibold">
+                      {outboxStats.failedCount} com falha de envio
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Quick Actions & Venda Button */}
@@ -663,6 +750,18 @@ export default function POSDashboard() {
                   </form>
                 </DialogContent>
               </Dialog>
+
+              {currentRestaurantId && (
+                <OutboxOrdersPanel
+                  restaurantId={currentRestaurantId}
+                  pendingCount={outboxStats.pendingCount}
+                  failedCount={outboxStats.failedCount}
+                  onChanged={() => {
+                    void refreshOutboxStats();
+                    void fetchSessionData();
+                  }}
+                />
+              )}
             </div>
 
             <Button
