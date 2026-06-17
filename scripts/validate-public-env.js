@@ -151,7 +151,7 @@ function validateSource() {
   const files = walkFiles(root);
 
   for (const file of files) {
-    const rel = relative(root, file);
+    const rel = relative(root, file).replace(/\\/g, '/');
     if (rel === 'scripts/validate-public-env.js') {
       continue;
     }
