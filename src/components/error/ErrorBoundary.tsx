@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import posthog from 'posthog-js';
+import { captureError } from '@/lib/observability';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -25,19 +25,17 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('⚠️ Capturado pelo ErrorBoundary do Dashboard:', error, errorInfo);
     
     try {
-      // Captura o erro com stack trace completo no PostHog Error Tracking
-      posthog.captureException(error, {
-        extra: {
-          componentStack: errorInfo.componentStack,
-        },
+      captureError(error, {
+        feature: 'react_error_boundary',
+        componentStack: errorInfo.componentStack,
         tags: {
           error_boundary: 'dashboard_global',
           source: 'react_error_boundary',
           url: window.location.href,
-        }
+        },
       });
-    } catch (phError) {
-      console.error('❌ Falha ao reportar erro para o PostHog:', phError);
+    } catch (reportError) {
+      console.error('❌ Falha ao reportar erro:', reportError);
     }
   }
 

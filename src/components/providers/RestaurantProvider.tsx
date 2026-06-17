@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import posthog from 'posthog-js';
+import { setObservabilityContext } from '@/lib/observability';
 
 interface RestaurantContextType {
   currentRestaurantId: string | null;
@@ -17,16 +17,9 @@ export function RestaurantProvider({ children }: RestaurantProviderProps) {
     return localStorage.getItem("currentRestaurantId");
   });
 
-  // Efeito para garantir associação de grupo caso o ID já esteja no localStorage
   useEffect(() => {
     if (currentRestaurantId && currentRestaurantId !== 'null') {
-      try {
-        posthog.group('restaurant', currentRestaurantId, {
-          name: `Restaurante #${currentRestaurantId}`
-        });
-      } catch (e) {
-        console.error('📢 PostHog: Falha ao persistir associação de grupo:', e);
-      }
+      setObservabilityContext({ restaurantId: currentRestaurantId });
     }
   }, [currentRestaurantId]);
 
@@ -34,13 +27,7 @@ export function RestaurantProvider({ children }: RestaurantProviderProps) {
     setCurrentRestaurantIdState(id);
     if (id) {
       localStorage.setItem("currentRestaurantId", id);
-      try {
-        posthog.group('restaurant', id, {
-          name: `Restaurante #${id}`
-        });
-      } catch (e) {
-        console.error('📢 PostHog: Falha ao associar grupo:', e);
-      }
+      setObservabilityContext({ restaurantId: id });
     } else {
       localStorage.removeItem("currentRestaurantId");
     }

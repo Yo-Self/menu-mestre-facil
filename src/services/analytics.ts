@@ -1,168 +1,127 @@
 import posthog from 'posthog-js';
+import { captureError } from '@/lib/observability';
+import { getAppPlatform, getAppVersion } from '@/lib/platform';
+
+function baseProps(extra?: Record<string, unknown>) {
+  return {
+    platform: getAppPlatform(),
+    app_version: getAppVersion(),
+    page_path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    timestamp: new Date().toISOString(),
+    ...extra,
+  };
+}
+
+function track(event: string, properties?: Record<string, unknown>) {
+  try {
+    posthog.capture(event, baseProps(properties));
+  } catch (e) {
+    console.error('Telemetria indisponível', e);
+  }
+}
 
 // Serviço unificado para telemetria e análise comportamental no painel
 export const Analytics = {
-  // --- Fluxos de Autenticação ---
   trackLogin(userId: string, email: string) {
-    try {
-      posthog.capture('user_logged_in', { userId, email });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('user_logged_in', { userId, email });
   },
-  
+
   trackSignup(userId: string, email: string) {
-    try {
-      posthog.capture('user_registered', { userId, email });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('user_registered', { userId, email });
   },
 
   trackLogout() {
+    track('user_logged_out');
     try {
-      posthog.capture('user_logged_out');
-      posthog.reset(); // Remove a identificação do usuário da sessão atual
+      posthog.reset();
     } catch (e) {
       console.error('Telemetria indisponível', e);
     }
   },
 
-  // --- Importador e Scraper de Cardápios (iFood / MenuDino) ---
   trackImportStart(url: string) {
-    try {
-      const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
-      posthog.capture('menu_import_started', { source, url });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
+    track('menu_import_started', { source, url });
   },
 
   trackImportSuccess(url: string, itemsCount: number) {
-    try {
-      const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
-      posthog.capture('menu_import_completed', { source, url, items_count: itemsCount });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
+    track('menu_import_completed', { source, url, items_count: itemsCount });
   },
 
   trackImportFailed(url: string, error: string) {
-    try {
-      const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
-      posthog.capture('menu_import_failed', { source, url, error });
-      
-      // Registra a exceção para que apareça na aba de Error Tracking
-      posthog.captureException(new Error(`Importador (${source}) falhou: ${error}`), {
-        extra: { url, error }
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    const source = url.includes('ifood.com.br') ? 'ifood' : 'menudino';
+    track('menu_import_failed', { source, url, error });
+    captureError(new Error(`Importador (${source}) falhou: ${error}`), {
+      feature: 'menu_import',
+      url,
+      error,
+    });
   },
 
-  // --- Gerenciamento de Pratos & Categorias ---
   trackDishCreated(restaurantId: string, categoryId: string, price: number) {
-    try {
-      posthog.capture('dish_created', { 
-        restaurant_id: restaurantId, 
-        category_id: categoryId, 
-        price 
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('dish_created', {
+      restaurant_id: restaurantId,
+      category_id: categoryId,
+      price,
+    });
   },
 
   trackImageUpload(fileSize: number, compressed: boolean) {
-    try {
-      posthog.capture('image_uploaded', { 
-        file_size_bytes: fileSize, 
-        was_compressed: compressed 
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('image_uploaded', {
+      file_size_bytes: fileSize,
+      was_compressed: compressed,
+    });
   },
 
-  // --- PDV (POS) e Pedidos Locais ---
   trackPOSOrderCreated(restaurantId: string, itemsCount: number, totalPrice: number) {
-    try {
-      posthog.capture('pos_order_created', { 
-        restaurant_id: restaurantId, 
-        items_count: itemsCount, 
-        total_price: totalPrice 
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('pos_order_created', {
+      restaurant_id: restaurantId,
+      items_count: itemsCount,
+      total_price: totalPrice,
+    });
   },
 
-  // --- Impressão Térmica (Electron) ---
   trackPrintJob(type: 'order' | 'report' | 'receipt', success: boolean, printerName?: string) {
-    try {
-      posthog.capture('thermal_print_job', { 
-        print_type: type, 
-        success, 
-        printer_name: printerName || 'default'
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('thermal_print_job', {
+      print_type: type,
+      success,
+      printer_name: printerName || 'default',
+    });
   },
 
-  // --- Captura de Exceções Manuais ---
-  trackError(error: Error | any, context?: Record<string, any>) {
+  trackError(error: Error | unknown, context?: Record<string, unknown>) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
     console.error('🚨 Telemetria capturou erro:', errorObj, context);
-    
-    try {
-      // 1. Captura evento customizado estruturado
-      posthog.capture('app_error', {
-        message: errorObj.message,
-        name: errorObj.name,
-        context
-      });
 
-      // 2. Reporta ao PostHog Error Tracking
-      posthog.captureException(errorObj, { extra: context });
-    } catch (e) {
-      console.error('Falha ao enviar exceção para a telemetria', e);
-    }
+    track('app_error', {
+      message: errorObj.message,
+      name: errorObj.name,
+      ...context,
+    });
+
+    captureError(errorObj, {
+      feature: 'app_error',
+      ...context,
+    });
   },
 
-  // --- Relatórios Globais ---
   trackReportPeriodChanged(periodName: string, isAllRestaurants: boolean) {
-    try {
-      posthog.capture('report_period_changed', { 
-        period_name: periodName, 
-        all_restaurants: isAllRestaurants 
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('report_period_changed', {
+      period_name: periodName,
+      all_restaurants: isAllRestaurants,
+    });
   },
 
   trackReportExported(format: 'pdf' | 'csv' | 'xlsx') {
-    try {
-      posthog.capture('report_exported', { 
-        format
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
+    track('report_exported', { format });
   },
 
-  // --- Gestão de Estoque ---
   trackStockUpdated(dishId: string, newQuantity: number, diff: number) {
-    try {
-      posthog.capture('stock_quantity_updated', { 
-        dish_id: dishId, 
-        new_quantity: newQuantity,
-        difference: diff
-      });
-    } catch (e) {
-      console.error('Telemetria indisponível', e);
-    }
-  }
+    track('stock_quantity_updated', {
+      dish_id: dishId,
+      new_quantity: newQuantity,
+      difference: diff,
+    });
+  },
 };

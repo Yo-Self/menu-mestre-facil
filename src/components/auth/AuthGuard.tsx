@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import posthog from "posthog-js";
+import { setObservabilityContext } from "@/lib/observability";
+import { Analytics } from "@/services/analytics";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -50,6 +52,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
               email: session.user.email,
               name: session.user.user_metadata?.name || 'Administrador',
               role: 'manager'
+            });
+            setObservabilityContext({
+              userId: session.user.id,
             });
           }
           setLoading(false);
@@ -110,10 +115,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
                 name: session.user.user_metadata?.name || 'Administrador',
                 role: 'manager'
               });
+              setObservabilityContext({ userId: session.user.id });
             }
           } else if (event === "SIGNED_OUT") {
             setAuthenticated(false);
-            posthog.reset(); // Reseta telemetria ao deslogar
+            Analytics.trackLogout();
             navigate("/auth");
           }
         }

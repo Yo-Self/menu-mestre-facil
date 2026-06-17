@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { init as sentryMainInit } from '@sentry/electron/main'
 import pkg from 'electron-updater'
 const { autoUpdater } = pkg
 import log from 'electron-log'
@@ -24,6 +25,15 @@ function isNewerVersion(candidate: string, current: string): boolean {
 let downloadedUpdateVersion: string | null = null
 let downloadingVersion: string | null = null
 let updaterMainWindow: BrowserWindow | null = null
+
+const sentryDsn = process.env.SENTRY_DSN
+if (sentryDsn) {
+  sentryMainInit({
+    dsn: sentryDsn,
+    environment: 'electron',
+    release: process.env.SENTRY_RELEASE,
+  })
+}
 
 process.on('uncaughtException', (err) => {
   const fs = require('fs')

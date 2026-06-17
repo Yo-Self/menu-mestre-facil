@@ -1,4 +1,5 @@
 import { createPOSOrderFromOutbox } from "@/services/posService";
+import { Analytics } from '@/services/analytics';
 import { checkSupabaseConnectivity, isRetryableError } from "./connectivity";
 import { enqueueOutboxOrder } from "./orderOutbox";
 import { startPOSSyncWorker, syncPendingPOSOrders } from "./syncService";
@@ -63,6 +64,15 @@ export async function submitPOSOrder(input: POSOrderSubmitInput): Promise<POSOrd
   if (canReachServer) {
     try {
       const order = await createPOSOrderFromOutbox(payload);
+      const totalPrice = payload.items.reduce(
+        (acc, item) => acc + item.price_at_time_of_order * item.quantity,
+        0,
+      );
+      Analytics.trackPOSOrderCreated(
+        input.restaurant_id,
+        payload.items.length,
+        totalPrice,
+      );
       return {
         order: order as unknown as Record<string, unknown>,
         queued: false,

@@ -1,6 +1,10 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "path";
+import { readFileSync } from "fs";
+
+const pkg = JSON.parse(readFileSync("./package.json", "utf-8")) as { version: string };
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -31,6 +35,11 @@ export default defineConfig(({ mode }) => {
   const googleMapsKey = process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY || '';
   const devImageMode =
     process.env.NEXT_PUBLIC_DEV_IMAGE_MODE || env.NEXT_PUBLIC_DEV_IMAGE_MODE || 'unsplash-fallback';
+  const sentryDsn = process.env.VITE_SENTRY_DSN || env.VITE_SENTRY_DSN || '';
+  const sentryRelease = process.env.VITE_SENTRY_RELEASE || env.VITE_SENTRY_RELEASE || pkg.version;
+  const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN || env.SENTRY_AUTH_TOKEN;
+  const sentryOrg = process.env.SENTRY_ORG || env.SENTRY_ORG;
+  const sentryProject = process.env.SENTRY_PROJECT || env.SENTRY_PROJECT;
   
   // Log das variáveis que serão expostas (em todos os modos)
   console.log('🔧 Configuração Vite para modo:', mode);
@@ -72,6 +81,19 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      ...(sentryAuthToken && sentryOrg && sentryProject
+        ? [
+            sentryVitePlugin({
+              org: sentryOrg,
+              project: sentryProject,
+              authToken: sentryAuthToken,
+              release: { name: sentryRelease },
+              sourcemaps: {
+                filesToDeleteAfterUpload: ["./dist/**/*.map"],
+              },
+            }),
+          ]
+        : []),
     ],
     resolve: {
       alias: {
@@ -79,6 +101,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      sourcemap: sentryAuthToken ? "hidden" : false,
       // Optimize bundle splitting for better loading performance
       rollupOptions: {
         output: {
@@ -104,6 +127,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
       'import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
       'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
+      'import.meta.env.VITE_SENTRY_DSN': JSON.stringify(sentryDsn),
+      'import.meta.env.VITE_SENTRY_RELEASE': JSON.stringify(sentryRelease),
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
       // Garantir que as variáveis estejam disponíveis globalmente
       'globalThis.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
       'globalThis.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),

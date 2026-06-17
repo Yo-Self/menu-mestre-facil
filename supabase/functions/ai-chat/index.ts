@@ -4,6 +4,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { GoogleGenerativeAI } from "npm:@google/generative-ai@^0.21.0"
+import { captureEdgeException } from '../_shared/sentry.ts'
+import { capturePostHogAiGeneration } from '../_shared/posthog-llm.ts'
 
 // Configure API version to use v1 instead of v1beta
 const API_VERSION = 'v1'
@@ -139,7 +141,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { message, history = [], systemInstruction } = body
+    const { message, history = [], systemInstruction, distinct_id, trace_id } = body
 
     // Validate message
     if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -167,6 +169,7 @@ Deno.serve(async (req) => {
     console.log('📜 History length:', history.length)
 
     const genAI = new GoogleGenerativeAI(apiKey)
+    const startedAt = Date.now()
 
     // Use retry logic with model fallback
     const result = await retryWithBackoff(
@@ -176,6 +179,20 @@ Deno.serve(async (req) => {
     )
 
     console.log('✅ Generated response successfully')
+
+    const latencyMs = Date.now() - startedAt
+    await capturePostHogAiGeneration({
+      distinctId: typeof distinct_id === 'string' ? distinct_id : 'gestor-anonymous',
+      input: message,
+      output: result.text,
+      model: result.model,
+      latencyMs,
+      traceId: typeof trace_id === 'string' ? trace_id : undefined,
+      properties: {
+        history_length: history.length,
+        has_system_instruction: Boolean(systemInstruction),
+      },
+    })
 
     return new Response(
       JSON.stringify({ 
@@ -190,6 +207,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error in ai-chat function:', error)
+    await captureEdgeException(error, { functionName: 'ai-chat' })
     
     // Safe error message extraction
     let errorMessage = 'Internal server error'

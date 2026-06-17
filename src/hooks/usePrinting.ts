@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { isOrderPaidOnline } from '@/lib/orderPayment'
+import { Analytics } from '@/services/analytics'
 
 const getPaymentLabel = (method: string) => {
   const paymentMap: { [key: string]: string } = {
@@ -93,16 +94,24 @@ export function usePrinting() {
   }, [isDesktop])
 
   // Função para imprimir conteúdo HTML
-  const printHtml = useCallback(async (html: string, options?: { printerName?: string; silent?: boolean }) => {
+  const printHtml = useCallback(async (
+    html: string,
+    options?: { printerName?: string; silent?: boolean; printType?: 'order' | 'report' | 'receipt' },
+  ) => {
+    const printType = options?.printType ?? 'receipt'
+
     if (isDesktop) {
       try {
-        return await window.api.print(html, {
+        const result = await window.api.print(html, {
           printerName: options?.printerName,
           silent: options?.silent ?? false,
           printBackground: true
         })
+        Analytics.trackPrintJob(printType, result.success, options?.printerName)
+        return result
       } catch (error: any) {
         console.error('Erro ao realizar impressão no desktop:', error)
+        Analytics.trackPrintJob(printType, false, options?.printerName)
         return { success: false, error: error.message }
       }
     }
@@ -114,16 +123,18 @@ export function usePrinting() {
         printWindow.document.write(html)
         printWindow.document.close()
         printWindow.focus()
-        // Dá um pequeno delay para carregar assets/CSS se houver
         setTimeout(() => {
           printWindow.print()
           printWindow.close()
         }, 250)
+        Analytics.trackPrintJob(printType, true, options?.printerName)
         return { success: true }
       }
+      Analytics.trackPrintJob(printType, false, options?.printerName)
       return { success: false, error: 'Bloqueador de popups impediu a janela de impressão' }
     } catch (error: any) {
       console.error('Erro ao abrir popup de impressão no browser:', error)
+      Analytics.trackPrintJob(printType, false, options?.printerName)
       return { success: false, error: error.message }
     }
   }, [isDesktop])

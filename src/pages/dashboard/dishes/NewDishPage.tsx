@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
+import { Analytics } from "@/services/analytics";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { useToast } from "@/hooks/use-toast";
 
@@ -151,9 +152,14 @@ export default function NewDishPage() {
 
         if (categoriesError) {
           console.error("Erro ao adicionar categorias:", categoriesError);
-          // Não falhar a criação do prato se houver erro nas categorias
         }
       }
+
+      Analytics.trackDishCreated(
+        restaurants[0].id,
+        selectedCategories[0] || dish.category_id || '',
+        parseFloat(price),
+      );
 
       toast({
         title: "Prato criado",

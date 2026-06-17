@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { cheerio } from 'https://deno.land/x/cheerio@1.0.7/mod.ts';
+import { captureEdgeException } from '../_shared/sentry.ts';
 
 // Definindo os headers do CORS diretamente aqui
 const corsHeaders = {
@@ -438,6 +439,7 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    await captureEdgeException(error, { functionName: 'scrape-ifood' });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

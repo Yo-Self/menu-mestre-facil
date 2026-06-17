@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client.ts';
 import { useToast } from '@/hooks/use-toast.ts';
 import { imageCompressionService, CompressionOptions } from '@/services/image-compression';
+import { Analytics } from '@/services/analytics';
 
 export interface ImageUploadOptions {
   maxSize?: number; // em bytes
@@ -122,6 +123,11 @@ export function useImageUpload(options: ImageUploadOptions = {}) {
       };
 
       console.log('✅ useImageUpload - Upload concluído com sucesso:', result);
+
+      Analytics.trackImageUpload(
+        compressionResult?.compressedSize ?? file.size,
+        Boolean(compressionResult),
+      );
 
       toast({
         title: "Imagem enviada com sucesso!",

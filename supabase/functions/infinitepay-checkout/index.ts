@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
+import { captureEdgeException } from '../_shared/sentry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -385,6 +386,10 @@ serve(async (req) => {
     return jsonResponse({ checkout_url: checkoutUrl, slug: invoiceSlug }, 200)
   } catch (error) {
     console.error('Unexpected error in infinitepay-checkout:', error)
+    await captureEdgeException(error, {
+      functionName: 'infinitepay-checkout',
+      extra: { path: req.url, method: req.method },
+    })
     return jsonResponse({ error: 'Internal server error' }, 500)
   }
 })

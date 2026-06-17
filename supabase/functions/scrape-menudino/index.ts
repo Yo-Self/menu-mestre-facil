@@ -7,6 +7,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
 import { Hono } from 'hono'
 import { createClient } from '@supabase/supabase-js'
+import { captureEdgeException } from '../_shared/sentry.ts'
 import { db, importLogs } from './db.ts'
 import { eq, and, desc } from 'drizzle-orm'
 
@@ -248,8 +249,8 @@ app.post('/scrape', async (c) => {
 
   } catch (error) {
     console.error("Error in /scrape endpoint:", error)
+    await captureEdgeException(error, { functionName: 'scrape-menudino-scrape' })
     
-    // Return HTTP 500 if database creation fails (AC 6)
     return c.json({ 
       error: "Failed to create import log",
       details: error instanceof Error ? error.message : "Unknown error"
@@ -308,6 +309,7 @@ app.post('/import', async (c) => {
 
   } catch (error) {
     console.error("Error in /import endpoint:", error)
+    await captureEdgeException(error, { functionName: 'scrape-menudino-import' })
     return c.json({ 
       error: "Internal server error",
       details: error instanceof Error ? error.message : "Unknown error"
