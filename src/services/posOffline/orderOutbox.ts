@@ -76,6 +76,26 @@ export async function getOutboxStats(restaurantId?: string): Promise<OutboxStats
   };
 }
 
+export async function listFailedOutboxOrders(restaurantId: string): Promise<POSOutboxOrder[]> {
+  const orders = await listOutboxOrders(restaurantId);
+  return orders.filter((order) => order.status === "failed");
+}
+
+export async function retryOutboxOrder(clientOrderId: string): Promise<void> {
+  const order = await getOutboxOrder(clientOrderId);
+  if (!order) return;
+
+  await updateOutboxOrder({
+    ...order,
+    status: "pending",
+    last_error: undefined,
+  });
+}
+
+export async function discardOutboxOrder(clientOrderId: string): Promise<void> {
+  await removeOutboxOrder(clientOrderId);
+}
+
 export async function migrateLegacyOfflineOrders(): Promise<number> {
   const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return 0;

@@ -43,6 +43,7 @@ import {
 } from "@/services/posService";
 import { getOutboxStats, type OutboxStats } from "@/services/posOffline/orderOutbox";
 import { subscribePOSSync, syncPendingPOSOrders } from "@/services/posOffline/syncService";
+import { OutboxOrdersPanel } from "@/components/pos/OutboxOrdersPanel";
 
 export default function POSDashboard() {
   const navigate = useNavigate();
@@ -749,6 +750,18 @@ export default function POSDashboard() {
                   </form>
                 </DialogContent>
               </Dialog>
+
+              {currentRestaurantId && (
+                <OutboxOrdersPanel
+                  restaurantId={currentRestaurantId}
+                  pendingCount={outboxStats.pendingCount}
+                  failedCount={outboxStats.failedCount}
+                  onChanged={() => {
+                    void refreshOutboxStats();
+                    void fetchSessionData();
+                  }}
+                />
+              )}
             </div>
 
             <Button

@@ -183,6 +183,13 @@ export default function POSTerminal() {
           description: `${result.synced} pedido(s) enviado(s) para a nuvem com sucesso.`,
         });
       }
+      if (result.stockWarnings.length > 0) {
+        toast({
+          title: "Atenção ao estoque",
+          description: result.stockWarnings.slice(0, 2).join(" · "),
+          variant: "destructive",
+        });
+      }
       if (result.failed > 0 && result.remaining > 0) {
         toast({
           title: "Alguns pedidos não sincronizaram",

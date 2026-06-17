@@ -1,12 +1,12 @@
 import React from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { OrderCard } from './OrderCard'
-import { OrderStatus, OrderWithItems } from '../../types/orders'
+import { OrderStatus, DisplayOrder } from '../../types/orders'
 
 interface KanbanColumnProps {
   title: string
   status: OrderStatus
-  orders: OrderWithItems[]
+  orders: DisplayOrder[]
   onStatusChange: (orderId: string, newStatus: OrderStatus) => void
   color: string
   textColor: string

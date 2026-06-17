@@ -17,7 +17,12 @@ import { migrateLegacyOfflineOrders } from "@/services/posOffline/orderOutbox";
 interface UsePOSResilienceOptions {
   restaurantId?: string | null;
   onReconnected?: () => void;
-  onSyncComplete?: (result: { synced: number; failed: number; remaining: number }) => void;
+  onSyncComplete?: (result: {
+    synced: number;
+    failed: number;
+    remaining: number;
+    stockWarnings: string[];
+  }) => void;
 }
 
 export function usePOSResilience({
@@ -44,7 +49,7 @@ export function usePOSResilience({
   }, [restaurantId]);
 
   const runSync = useCallback(async () => {
-    if (!restaurantId) return { synced: 0, failed: 0, remaining: 0 };
+    if (!restaurantId) return { synced: 0, failed: 0, remaining: 0, stockWarnings: [] };
     setIsSyncing(true);
     try {
       const result = await syncPendingPOSOrders(restaurantId);

@@ -1,5 +1,6 @@
 import { createPOSOrderFromOutbox } from "@/services/posService";
 import { checkSupabaseConnectivity } from "./connectivity";
+import { checkOutboxStockWarnings } from "./outboxVirtualOrders";
 import {
   listOutboxOrders,
   migrateLegacyOfflineOrders,
@@ -15,7 +16,9 @@ let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 let onlineListenerAttached = false;
 let activeRestaurantId: string | undefined;
 let listeners = new Set<(pendingCount: number) => void>();
-let resultListeners = new Set<(result: { synced: number; failed: number; remaining: number }) => void>();
+let resultListeners = new Set<
+  (result: { synced: number; failed: number; remaining: number; stockWarnings: string[] }) => void
+>();
 
 function runScheduledSync() {
   void syncPendingPOSOrders(activeRestaurantId);
@@ -25,8 +28,13 @@ function notifyListeners(pendingCount: number) {
   listeners.forEach((listener) => listener(pendingCount));
 }
 
-function notifyResultListeners(result: { synced: number; failed: number; remaining: number }) {
-  if (result.synced > 0 || result.failed > 0) {
+function notifyResultListeners(result: {
+  synced: number;
+  failed: number;
+  remaining: number;
+  stockWarnings: string[];
+}) {
+  if (result.synced > 0 || result.failed > 0 || result.stockWarnings.length > 0) {
     resultListeners.forEach((listener) => listener(result));
   }
 }
@@ -37,7 +45,12 @@ export function subscribePOSSync(listener: (pendingCount: number) => void): () =
 }
 
 export function subscribePOSSyncResults(
-  listener: (result: { synced: number; failed: number; remaining: number }) => void
+  listener: (result: {
+    synced: number;
+    failed: number;
+    remaining: number;
+    stockWarnings: string[];
+  }) => void
 ): () => void {
   resultListeners.add(listener);
   return () => resultListeners.delete(listener);
@@ -52,19 +65,31 @@ export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
   synced: number;
   failed: number;
   remaining: number;
+  stockWarnings: string[];
 }> {
   if (syncInProgress) {
-    return { synced: 0, failed: 0, remaining: await getPendingSyncCount(restaurantId) };
+    return {
+      synced: 0,
+      failed: 0,
+      remaining: await getPendingSyncCount(restaurantId),
+      stockWarnings: [],
+    };
   }
 
   const online = await checkSupabaseConnectivity();
   if (!online) {
-    return { synced: 0, failed: 0, remaining: await getPendingSyncCount(restaurantId) };
+    return {
+      synced: 0,
+      failed: 0,
+      remaining: await getPendingSyncCount(restaurantId),
+      stockWarnings: [],
+    };
   }
 
   syncInProgress = true;
   let synced = 0;
   let failed = 0;
+  const stockWarnings: string[] = [];
 
   try {
     await migrateLegacyOfflineOrders();
@@ -76,6 +101,11 @@ export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
       if (order.retry_count >= MAX_RETRIES) {
         failed += 1;
         continue;
+      }
+
+      const warnings = await checkOutboxStockWarnings(order);
+      if (warnings.length > 0) {
+        stockWarnings.push(...warnings.map((warning) => `Pedido ${order.table_name}: ${warning}`));
       }
 
       const syncingOrder = { ...order, status: "syncing" as const };
@@ -103,7 +133,7 @@ export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
   }
 
   const remaining = await getPendingSyncCount(restaurantId);
-  const result = { synced, failed, remaining };
+  const result = { synced, failed, remaining, stockWarnings };
   notifyResultListeners(result);
   return result;
 }

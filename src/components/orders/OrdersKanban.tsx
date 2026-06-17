@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { KanbanColumn } from './KanbanColumn'
 import { OrderCard } from './OrderCard'
-import { OrderStatus, OrderWithItems } from '../../types/orders'
+import { OrderStatus, OrderWithItems, DisplayOrder, isLocalOutboxOrder } from '../../types/orders'
 import { Button } from '../ui/button'
 import { ArrowLeft, Volume2, VolumeX, Settings } from 'lucide-react'
 import { useRestaurant } from '../../hooks/useRestaurant'
@@ -69,7 +69,7 @@ const deleteVideoFromDB = async (): Promise<void> => {
 }
 
 interface OrdersKanbanProps {
-  orders: OrderWithItems[]
+  orders: DisplayOrder[]
   onStatusChange: (orderId: string, newStatus: OrderStatus) => void
   loading: boolean
   onPlaySound?: () => void
@@ -126,7 +126,7 @@ const STATUS_ORDER: OrderStatus[] = [
 export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: OrdersKanbanProps) {
   const navigate = useNavigate()
   const { restaurantId } = useParams<{ restaurantId: string }>()
-  const [activeOrder, setActiveOrder] = useState<OrderWithItems | null>(null)
+  const [activeOrder, setActiveOrder] = useState<DisplayOrder | null>(null)
   const [chimeEnabled, setChimeEnabled] = useState(localStorage.getItem("queue_chime_enabled") !== "false")
 
   const handleToggleChime = () => {
@@ -320,6 +320,10 @@ export function OrdersKanban({ orders, onStatusChange, loading, onPlaySound }: O
     
     // Find the order to check current status
     const order = orders.find(o => o.id === orderId)
+    if (order && isLocalOutboxOrder(order)) {
+      setActiveOrder(null)
+      return
+    }
     if (order && order.status !== newStatus) {
       onStatusChange(orderId, newStatus)
     }
