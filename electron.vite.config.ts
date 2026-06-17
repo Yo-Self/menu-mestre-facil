@@ -23,6 +23,9 @@ export default defineConfig(({ mode }) => {
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     ''
+  const googleMapsKey = process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY || ''
+  const googleMapsElectronKey =
+    process.env.VITE_GOOGLE_MAPS_API_KEY_ELECTRON || env.VITE_GOOGLE_MAPS_API_KEY_ELECTRON || ''
   const sentryDsn = process.env.VITE_SENTRY_DSN || env.VITE_SENTRY_DSN || ''
   const sentryRelease =
     process.env.VITE_SENTRY_RELEASE || env.VITE_SENTRY_RELEASE || pkg.version
@@ -39,6 +42,12 @@ export default defineConfig(({ mode }) => {
     'import.meta.env.VITE_SENTRY_DSN': JSON.stringify(sentryDsn),
     'import.meta.env.VITE_SENTRY_RELEASE': JSON.stringify(sentryRelease),
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+    'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
+    'import.meta.env.VITE_GOOGLE_MAPS_API_KEY_ELECTRON': JSON.stringify(googleMapsElectronKey),
+    'globalThis.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
+    'globalThis.VITE_GOOGLE_MAPS_API_KEY_ELECTRON': JSON.stringify(googleMapsElectronKey),
+    'process.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(googleMapsKey),
+    'process.env.VITE_GOOGLE_MAPS_API_KEY_ELECTRON': JSON.stringify(googleMapsElectronKey),
     'globalThis.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
     'globalThis.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
     'globalThis.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),

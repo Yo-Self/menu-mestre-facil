@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
+import { buildGoogleMapsScriptUrl, getGoogleMapsApiKey } from '@/lib/google-maps';
 
 interface AddressData {
   address: string;
@@ -41,7 +42,7 @@ export function AddressSelector({
 
     // Load Google Maps API if not already loaded
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+    script.src = buildGoogleMapsScriptUrl();
     script.async = true;
     script.defer = true;
     
@@ -147,7 +148,7 @@ export function AddressSelector({
         </p>
       )}
       
-      {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+      {!getGoogleMapsApiKey() && (
         <p className="text-sm text-red-600">
           ⚠️ Chave da API do Google Maps não configurada. Configure VITE_GOOGLE_MAPS_API_KEY no arquivo .env
         </p>

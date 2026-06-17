@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { buildGoogleMapsScriptUrl, getGoogleMapsApiKey } from '@/lib/google-maps';
+import { getAppPlatform } from '@/lib/platform';
 import {
   Truck,
   MapPin,
@@ -89,6 +91,7 @@ export default function DeliveryPage() {
   const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
   const [map, setMap] = useState<any>(null);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
   const [restaurantMarker, setRestaurantMarker] = useState<any>(null);
@@ -103,18 +106,28 @@ export default function DeliveryPage() {
       return;
     }
 
-    const loadGoogleMaps = async () => {
-      try {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}&libraries=places,geometry`;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => setGoogleMapsLoaded(true);
-        script.onerror = () => console.error('Erro ao carregar Google Maps');
-        document.head.appendChild(script);
-      } catch (e) {
-        console.error(e);
-      }
+    const apiKey = getGoogleMapsApiKey();
+    if (!apiKey) {
+      setMapLoadError('Chave da API do Google Maps não configurada.');
+      return;
+    }
+
+    (window as Window & { gm_authFailure?: () => void }).gm_authFailure = () => {
+      setMapLoadError('referrer');
+      setGoogleMapsLoaded(false);
+    };
+
+    const loadGoogleMaps = () => {
+      const script = document.createElement('script');
+      script.src = buildGoogleMapsScriptUrl();
+      script.async = true;
+      script.defer = true;
+      script.onload = () => setGoogleMapsLoaded(true);
+      script.onerror = () => {
+        console.error('Erro ao carregar Google Maps');
+        setMapLoadError('load');
+      };
+      document.head.appendChild(script);
     };
 
     loadGoogleMaps();
@@ -1399,11 +1412,33 @@ export default function DeliveryPage() {
                 </CardHeader>
                 
                 {/* Google Maps Container */}
-                <div 
-                  ref={setMapContainer} 
-                  className="w-full bg-muted/30 border-t border-border/40"
-                  style={{ height: '520px', minHeight: '300px' }}
-                />
+                <div className="relative flex-1 min-h-[300px]">
+                  {mapLoadError && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/80 p-6 text-center">
+                      <div className="max-w-md space-y-2 text-xs text-muted-foreground">
+                        <AlertCircle className="h-8 w-8 mx-auto text-amber-500" />
+                        <p className="font-semibold text-foreground text-sm">Mapa indisponível no app desktop</p>
+                        {mapLoadError === 'referrer' ? (
+                          <p>
+                            A chave do Google Maps precisa autorizar o app desktop.
+                            {getAppPlatform() === 'electron' ? (
+                              <> Adicione <code className="text-[10px] bg-muted px-1 rounded">http://127.0.0.1:47832/*</code> nos referrers HTTP da chave no Google Cloud Console, ou configure <code className="text-[10px] bg-muted px-1 rounded">VITE_GOOGLE_MAPS_API_KEY_ELECTRON</code> sem restrição de referrer.</>
+                            ) : (
+                              <> Verifique as restrições de referrer da chave no Google Cloud Console.</>
+                            )}
+                          </p>
+                        ) : (
+                          <p>{mapLoadError === 'load' ? 'Falha ao carregar o script do Google Maps.' : mapLoadError}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div
+                    ref={setMapContainer}
+                    className="w-full h-full bg-muted/30 border-t border-border/40"
+                    style={{ height: '520px', minHeight: '300px' }}
+                  />
+                </div>
 
                 {/* Legendas de Mapa */}
                 <div className="absolute bottom-4 left-4 z-10 bg-background/95 backdrop-blur border border-border/60 p-3 rounded-xl shadow-lg text-[10px] space-y-1.5 pointer-events-none select-none font-sans">

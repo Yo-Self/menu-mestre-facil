@@ -22,15 +22,13 @@ export default function UpdateNotification() {
       const unsubscribe = window.api.onUpdaterStatus((data) => {
         console.log('🔄 Update Status Recebido:', data)
         setUpdater(data)
-        
-        // Determina a visibilidade baseada no status
+
+        if (data.status === 'checking') return
+
         if (['available', 'downloading', 'downloaded', 'error'].includes(data.status)) {
           setIsVisible(true)
-        } else {
-          // Oculta automaticamente se estiver atualizado
-          if (data.status === 'up-to-date') {
-            setIsVisible(false)
-          }
+        } else if (data.status === 'up-to-date') {
+          setIsVisible(false)
         }
       })
 
@@ -63,7 +61,7 @@ export default function UpdateNotification() {
             <Download className="w-5 h-5 animate-bounce" />
           )}
           {updater.status === 'available' && (
-            <RefreshCw className="w-5 h-5 animate-spin" />
+            <Download className="w-5 h-5" />
           )}
           {updater.status === 'downloaded' && (
             <Sparkles className="w-5 h-5 text-emerald-400" />
