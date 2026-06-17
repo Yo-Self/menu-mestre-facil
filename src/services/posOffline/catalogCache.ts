@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { idbGet, idbPut, POS_STORES } from "./posIndexedDB";
+import { fetchComplementsByDish } from "./complementsCache";
 import type { POSCatalogSnapshot } from "./types";
 
 export function buildTablesConfigFromRestaurant(rest: {
@@ -84,6 +85,15 @@ export async function fetchPOSCatalog(restaurantId: string): Promise<POSCatalogS
     price: Math.round((dish.price || 0) * 100),
   }));
 
+  const dishIds = dishesInCents.map((dish) => dish.id as string);
+  let complementsByDish: POSCatalogSnapshot["complements_by_dish"] = {};
+
+  try {
+    complementsByDish = await fetchComplementsByDish(dishIds);
+  } catch (error) {
+    console.warn("Não foi possível cachear complementos do cardápio:", error);
+  }
+
   return {
     restaurant_id: restaurantId,
     restaurant_name: rest.name,
@@ -92,6 +102,7 @@ export async function fetchPOSCatalog(restaurantId: string): Promise<POSCatalogS
     categories: categories || [],
     dishes: dishesInCents,
     active_orders: activeOrders || [],
+    complements_by_dish: complementsByDish,
     cached_at: new Date().toISOString(),
   };
 }

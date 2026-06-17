@@ -41,6 +41,41 @@ export async function removeOutboxOrder(clientOrderId: string): Promise<void> {
   await idbDelete(POS_STORES.OUTBOX, clientOrderId);
 }
 
+export interface OutboxStats {
+  pendingCount: number;
+  failedCount: number;
+  pendingRevenueCents: number;
+  pendingCashCents: number;
+}
+
+function sumOrderTotal(order: POSOutboxOrder): number {
+  return order.items.reduce(
+    (acc, item) => acc + item.price_at_time_of_order * item.quantity,
+    0
+  );
+}
+
+function sumCashPayments(order: POSOutboxOrder): number {
+  return order.payments
+    .filter((payment) => payment.method === "cash")
+    .reduce((acc, payment) => acc + payment.amount, 0);
+}
+
+export async function getOutboxStats(restaurantId?: string): Promise<OutboxStats> {
+  const orders = await listOutboxOrders(restaurantId);
+  const pendingOrders = orders.filter(
+    (order) => order.status === "pending" || order.status === "syncing"
+  );
+  const failedOrders = orders.filter((order) => order.status === "failed");
+
+  return {
+    pendingCount: pendingOrders.length,
+    failedCount: failedOrders.length,
+    pendingRevenueCents: pendingOrders.reduce((acc, order) => acc + sumOrderTotal(order), 0),
+    pendingCashCents: pendingOrders.reduce((acc, order) => acc + sumCashPayments(order), 0),
+  };
+}
+
 export async function migrateLegacyOfflineOrders(): Promise<number> {
   const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return 0;

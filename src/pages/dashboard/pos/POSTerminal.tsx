@@ -43,6 +43,7 @@ import {
 import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
 import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
 import { generateQueuePassword, submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
+import { getComplementsForDishWithFallback } from "@/services/posOffline/complementsCache";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
 
 interface CartItem {
@@ -174,6 +175,21 @@ export default function POSTerminal() {
     restaurantId: currentRestaurantId,
     onReconnected: () => {
       void loadPOSData();
+    },
+    onSyncComplete: (result) => {
+      if (result.synced > 0) {
+        toast({
+          title: "Pedidos sincronizados",
+          description: `${result.synced} pedido(s) enviado(s) para a nuvem com sucesso.`,
+        });
+      }
+      if (result.failed > 0 && result.remaining > 0) {
+        toast({
+          title: "Alguns pedidos não sincronizaram",
+          description: `${result.remaining} pedido(s) ainda aguardam reenvio.`,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -308,60 +324,16 @@ export default function POSTerminal() {
   };
 
   const getComplementsForDish = async (dishId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("dish_complement_groups")
-        .select(`
-          complement_group_id,
-          position,
-          complement_group:complement_groups (
-            id,
-            title,
-            description,
-            required,
-            max_selections
-          )
-        `)
-        .eq("dish_id", dishId)
-        .order("position", { ascending: true, nullsFirst: true });
+    if (!currentRestaurantId) return [];
 
-      if (error) throw error;
-
-      if (data) {
-        // Now fetch active complements for each group
-        const groupsWithComplements = await Promise.all(
-          data.map(async (item: any) => {
-            const group = item.complement_group;
-            if (!group) return null;
-
-            const { data: comps, error: compsErr } = await supabase
-              .from("complements")
-              .select("id, name, price, is_active")
-              .eq("group_id", group.id)
-              .eq("is_active", true)
-              .order("position", { ascending: true });
-
-            if (compsErr) throw compsErr;
-
-            const compsInCents = (comps || []).map(c => ({
-              ...c,
-              price: Math.round((c.price || 0) * 100)
-            }));
-
-            return {
-              ...group,
-              complements: compsInCents,
-            };
-          })
-        );
-
-        return groupsWithComplements.filter(g => g !== null);
-      }
-      return [];
-    } catch (err) {
-      console.error(err);
-      return [];
+    const { groups, fromCache } = await getComplementsForDishWithFallback(currentRestaurantId, dishId);
+    if (fromCache && groups.length > 0 && connectivityStatus !== "online") {
+      toast({
+        title: "Complementos em cache",
+        description: "Exibindo complementos salvos localmente.",
+      });
     }
+    return groups;
   };
 
   const handleProductClick = async (dish: any) => {
@@ -701,8 +673,15 @@ export default function POSTerminal() {
       }));
 
       const queuePassword = generateQueuePassword();
+      const kitchenSnapshot = {
+        items: [...cart],
+        subtotal: getCartSubtotal(),
+        tableName,
+        customerName,
+        receiveAllTogether,
+      };
 
-      const { queued } = await submitPOSOrder({
+      const { order, queued } = await submitPOSOrder({
         restaurant_id: currentRestaurantId!,
         pos_session_id: activeSession.id,
         table_name: tableName,
@@ -723,6 +702,12 @@ export default function POSTerminal() {
           : `Os itens foram enviados para preparação da cozinha na ${tableName}.`,
         variant: queued ? "destructive" : "default",
       });
+
+      if (queued && localStorage.getItem("thermal_print_kitchen") === "true") {
+        setTimeout(() => {
+          printKitchenReceipt(order, kitchenSnapshot);
+        }, 150);
+      }
 
       setCart([]);
       setTableName("Balcão");

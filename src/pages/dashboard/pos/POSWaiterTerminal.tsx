@@ -47,6 +47,7 @@ import {
 import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
 import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
 import { submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
+import { getComplementsForDishWithFallback } from "@/services/posOffline/complementsCache";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
 
 interface CartItem {
@@ -127,6 +128,14 @@ export default function POSWaiterTerminal() {
     restaurantId: currentRestaurantId,
     onReconnected: () => {
       void loadPOSData();
+    },
+    onSyncComplete: (result) => {
+      if (result.synced > 0) {
+        toast({
+          title: "Pedidos sincronizados",
+          description: `${result.synced} pedido(s) enviado(s) para a nuvem com sucesso.`,
+        });
+      }
     },
   });
 
@@ -219,59 +228,16 @@ export default function POSWaiterTerminal() {
   };
 
   const getComplementsForDish = async (dishId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("dish_complement_groups")
-        .select(`
-          complement_group_id,
-          position,
-          complement_group:complement_groups (
-            id,
-            title,
-            description,
-            required,
-            max_selections
-          )
-        `)
-        .eq("dish_id", dishId)
-        .order("position", { ascending: true, nullsFirst: true });
+    if (!currentRestaurantId) return [];
 
-      if (error) throw error;
-
-      if (data) {
-        const groupsWithComplements = await Promise.all(
-          data.map(async (item: any) => {
-            const group = item.complement_group;
-            if (!group) return null;
-
-            const { data: comps, error: compsErr } = await supabase
-              .from("complements")
-              .select("id, name, price, is_active")
-              .eq("group_id", group.id)
-              .eq("is_active", true)
-              .order("position", { ascending: true });
-
-            if (compsErr) throw compsErr;
-
-            const compsInCents = (comps || []).map(c => ({
-              ...c,
-              price: Math.round((c.price || 0) * 100)
-            }));
-
-            return {
-              ...group,
-              complements: compsInCents,
-            };
-          })
-        );
-
-        return groupsWithComplements.filter(g => g !== null);
-      }
-      return [];
-    } catch (err) {
-      console.error(err);
-      return [];
+    const { groups, fromCache } = await getComplementsForDishWithFallback(currentRestaurantId, dishId);
+    if (fromCache && groups.length > 0 && connectivityStatus !== "online") {
+      toast({
+        title: "Complementos em cache",
+        description: "Exibindo complementos salvos localmente.",
+      });
     }
+    return groups;
   };
 
   const handleProductClick = async (dish: any) => {

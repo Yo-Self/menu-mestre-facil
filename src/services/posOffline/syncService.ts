@@ -15,6 +15,7 @@ let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 let onlineListenerAttached = false;
 let activeRestaurantId: string | undefined;
 let listeners = new Set<(pendingCount: number) => void>();
+let resultListeners = new Set<(result: { synced: number; failed: number; remaining: number }) => void>();
 
 function runScheduledSync() {
   void syncPendingPOSOrders(activeRestaurantId);
@@ -24,9 +25,22 @@ function notifyListeners(pendingCount: number) {
   listeners.forEach((listener) => listener(pendingCount));
 }
 
+function notifyResultListeners(result: { synced: number; failed: number; remaining: number }) {
+  if (result.synced > 0 || result.failed > 0) {
+    resultListeners.forEach((listener) => listener(result));
+  }
+}
+
 export function subscribePOSSync(listener: (pendingCount: number) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+export function subscribePOSSyncResults(
+  listener: (result: { synced: number; failed: number; remaining: number }) => void
+): () => void {
+  resultListeners.add(listener);
+  return () => resultListeners.delete(listener);
 }
 
 export async function getPendingSyncCount(restaurantId?: string): Promise<number> {
@@ -89,7 +103,9 @@ export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
   }
 
   const remaining = await getPendingSyncCount(restaurantId);
-  return { synced, failed, remaining };
+  const result = { synced, failed, remaining };
+  notifyResultListeners(result);
+  return result;
 }
 
 export function startPOSSyncWorker(restaurantId?: string): void {

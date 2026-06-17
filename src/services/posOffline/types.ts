@@ -24,6 +24,20 @@ export interface POSOutboxOrder {
   last_error?: string;
 }
 
+export interface CachedComplementGroup {
+  id: string;
+  title: string;
+  description?: string;
+  required: boolean;
+  max_selections: number;
+  complements: {
+    id: string;
+    name: string;
+    price: number;
+    is_active: boolean;
+  }[];
+}
+
 export interface POSCatalogSnapshot {
   restaurant_id: string;
   restaurant_name: string;
@@ -32,6 +46,7 @@ export interface POSCatalogSnapshot {
   categories: Record<string, unknown>[];
   dishes: Record<string, unknown>[];
   active_orders: Record<string, unknown>[];
+  complements_by_dish?: Record<string, CachedComplementGroup[]>;
   cached_at: string;
 }
 
