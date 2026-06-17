@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isLocalOutboxOrder } from '@/types/orders'
 
 interface UseOrderNotificationsProps {
   orders: any[]
@@ -67,7 +68,8 @@ export function useOrderNotifications({
 
   useEffect(() => {
     if (!loading && orders) {
-      const currentOrderIds = new Set(orders.map(order => order.id))
+      const serverOrders = orders.filter((order) => !isLocalOutboxOrder(order))
+      const currentOrderIds = new Set(serverOrders.map((order) => order.id))
       
       if (isInitialLoad.current) {
         console.log('Initial load, setting previous order IDs')

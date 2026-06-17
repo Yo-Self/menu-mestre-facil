@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   checkSupabaseConnectivity,
   resolveConnectivityStatus,
@@ -12,7 +12,7 @@ import {
   subscribePOSSyncResults,
   syncPendingPOSOrders,
 } from "@/services/posOffline/syncService";
-import { migrateLegacyOfflineOrders } from "@/services/posOffline/orderOutbox";
+import { migrateLegacyOfflineOrders, recoverStuckSyncingOrders } from "@/services/posOffline/orderOutbox";
 
 interface UsePOSResilienceOptions {
   restaurantId?: string | null;
@@ -35,6 +35,13 @@ export function usePOSResilience({
   );
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const onReconnectedRef = useRef(onReconnected);
+  const onSyncCompleteRef = useRef(onSyncComplete);
+
+  useEffect(() => {
+    onReconnectedRef.current = onReconnected;
+    onSyncCompleteRef.current = onSyncComplete;
+  }, [onReconnected, onSyncComplete]);
 
   const refreshConnectivity = useCallback(async () => {
     const status = await resolveConnectivityStatus();
@@ -55,17 +62,19 @@ export function usePOSResilience({
       const result = await syncPendingPOSOrders(restaurantId);
       setPendingSyncCount(result.remaining);
       if (result.synced > 0) {
-        onReconnected?.();
-        onSyncComplete?.(result);
+        onReconnectedRef.current?.();
+        onSyncCompleteRef.current?.(result);
       }
       return result;
     } finally {
       setIsSyncing(false);
     }
-  }, [restaurantId, onReconnected, onSyncComplete]);
+  }, [restaurantId]);
 
   useEffect(() => {
-    void migrateLegacyOfflineOrders().then(() => refreshPendingCount());
+    void migrateLegacyOfflineOrders()
+      .then(() => recoverStuckSyncingOrders(restaurantId || undefined))
+      .then(() => refreshPendingCount());
     void refreshConnectivity();
 
     if (restaurantId) {
@@ -76,8 +85,8 @@ export function usePOSResilience({
     const unsubscribeResults = subscribePOSSyncResults((result) => {
       setPendingSyncCount(result.remaining);
       if (result.synced > 0) {
-        onReconnected?.();
-        onSyncComplete?.(result);
+        onReconnectedRef.current?.();
+        onSyncCompleteRef.current?.(result);
       }
     });
 
@@ -107,7 +116,7 @@ export function usePOSResilience({
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [restaurantId, refreshConnectivity, refreshPendingCount, runSync, onReconnected, onSyncComplete]);
+  }, [restaurantId, refreshConnectivity, refreshPendingCount, runSync]);
 
   const isServerReachable = connectivityStatus === "online";
 

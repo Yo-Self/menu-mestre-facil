@@ -46,6 +46,10 @@ BEGIN
     RAISE EXCEPTION 'invalid_payload';
   END IF;
 
+  IF NOT public.can_access_restaurant(p_restaurant_id) THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+
   IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'invalid_items';
   END IF;

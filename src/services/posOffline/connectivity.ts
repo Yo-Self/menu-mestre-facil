@@ -20,6 +20,20 @@ export function isRetryableError(error: unknown): boolean {
       ? String((error as { code: unknown }).code)
       : "";
 
+  const businessErrors = [
+    "pos_session_not_open",
+    "invalid_payload",
+    "invalid_items",
+    "forbidden",
+    "permission denied",
+    "violates",
+    "duplicate key",
+  ];
+
+  if (businessErrors.some((fragment) => normalized.includes(fragment))) {
+    return false;
+  }
+
   return (
     normalized.includes("fetch") ||
     normalized.includes("network") ||
@@ -27,7 +41,9 @@ export function isRetryableError(error: unknown): boolean {
     normalized.includes("failed to fetch") ||
     normalized.includes("aborterror") ||
     normalized.includes("load failed") ||
+    normalized.includes("connectivity_timeout") ||
     code === "PGRST301" ||
+    code === "PGRST000" ||
     code === "57014"
   );
 }

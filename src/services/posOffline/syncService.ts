@@ -4,6 +4,7 @@ import { checkOutboxStockWarnings } from "./outboxVirtualOrders";
 import {
   listOutboxOrders,
   migrateLegacyOfflineOrders,
+  recoverStuckSyncingOrders,
   removeOutboxOrder,
   updateOutboxOrder,
 } from "./orderOutbox";
@@ -58,7 +59,10 @@ export function subscribePOSSyncResults(
 
 export async function getPendingSyncCount(restaurantId?: string): Promise<number> {
   const orders = await listOutboxOrders(restaurantId);
-  return orders.filter((order) => order.status === "pending" || order.status === "failed").length;
+  return orders.filter(
+    (order) =>
+      order.status === "pending" || order.status === "failed" || order.status === "syncing"
+  ).length;
 }
 
 export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
@@ -93,6 +97,7 @@ export async function syncPendingPOSOrders(restaurantId?: string): Promise<{
 
   try {
     await migrateLegacyOfflineOrders();
+    await recoverStuckSyncingOrders(restaurantId);
     const pendingOrders = (await listOutboxOrders(restaurantId)).filter(
       (order) => order.status === "pending" || order.status === "failed"
     );

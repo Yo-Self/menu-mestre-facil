@@ -96,6 +96,23 @@ export async function discardOutboxOrder(clientOrderId: string): Promise<void> {
   await removeOutboxOrder(clientOrderId);
 }
 
+/** Resets outbox orders stuck in `syncing` (e.g. tab crash mid-sync) back to `pending`. */
+export async function recoverStuckSyncingOrders(restaurantId?: string): Promise<number> {
+  const orders = await listOutboxOrders(restaurantId);
+  const stuck = orders.filter((order) => order.status === "syncing");
+
+  await Promise.all(
+    stuck.map((order) =>
+      updateOutboxOrder({
+        ...order,
+        status: "pending",
+      })
+    )
+  );
+
+  return stuck.length;
+}
+
 export async function migrateLegacyOfflineOrders(): Promise<number> {
   const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return 0;
