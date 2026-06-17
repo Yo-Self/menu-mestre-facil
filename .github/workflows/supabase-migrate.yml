@@ -1,0 +1,46 @@
+name: Apply Supabase Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Digite "apply" para confirmar push de migrations'
+        required: true
+        default: ''
+
+jobs:
+  migrate:
+    if: github.event.inputs.confirm == 'apply'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref wulazaggdihidadkhilg
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Push migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Verify RPC
+        run: |
+          curl -sf -X POST "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/create_pos_order" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_client_order_id":"00000000-0000-0000-0000-000000000001","p_restaurant_id":"00000000-0000-0000-0000-000000000002","p_pos_session_id":"00000000-0000-0000-0000-000000000003","p_table_name":"test","p_customer_info":{},"p_items":[]}' \
+            | tee /tmp/rpc-response.txt
+          if grep -q 'Could not find the function' /tmp/rpc-response.txt; then
+            echo "RPC create_pos_order ainda não existe"
+            exit 1
+          fi
+          echo "RPC create_pos_order disponível (resposta esperada: invalid_items ou forbidden)"
