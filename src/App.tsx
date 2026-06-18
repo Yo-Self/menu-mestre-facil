@@ -10,7 +10,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { RestaurantProvider } from "./components/providers/RestaurantProvider";
-// import { RestaurantScheduleMonitor } from "./components/RestaurantScheduleMonitor";
+import { RestaurantScheduleMonitor } from "./components/RestaurantScheduleMonitor";
 import AuthPage from "./pages/auth/AuthPage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import RestaurantsPage from "./pages/dashboard/restaurants/RestaurantsPage";
@@ -85,6 +85,7 @@ const App = () => (
           <AppRouter>
             <PageViewTracker />
             <RestaurantProvider>
+              <RestaurantScheduleMonitor />
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/auth" element={<AuthPage />} />

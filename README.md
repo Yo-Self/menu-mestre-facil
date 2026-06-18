@@ -11,6 +11,9 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - Upload de imagens
 - URLs personalizadas para cada restaurante
 - **Controle de Abertura em Tempo Real**: Chave seletora interativa ("Aberto / Fechado") na página inicial do painel ("Meus Restaurantes") para abrir ou fechar o estabelecimento instantaneamente, atualizando o status que bloqueia novos pedidos nos cardápios do cliente.
+- **Abertura e Fechamento Automático** (em _Editar Restaurante_):
+  - **Por horário de funcionamento** (`auto_open_close_by_schedule`): abre e fecha a loja automaticamente conforme os horários cadastrados em _Horários de Funcionamento_.
+  - **Por caixa/PDV** (`auto_open_close_by_pos`): abre a loja ao abrir o caixa e fecha ao encerrar a sessão do PDV.
 
 ### 🍽️ Gestão de Cardápio
 

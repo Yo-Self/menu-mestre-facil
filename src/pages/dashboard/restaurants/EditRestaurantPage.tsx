@@ -6,6 +6,8 @@ import {
   MessageCircle,
   Palette,
   CreditCard,
+  Clock,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +115,8 @@ export default function EditRestaurantPage() {
   const [onlineOrderingEnabled, setOnlineOrderingEnabled] = useState(true);
   const [minOrderValue, setMinOrderValue] = useState(0);
   const [minOrderEnabled, setMinOrderEnabled] = useState(false);
+  const [autoOpenCloseBySchedule, setAutoOpenCloseBySchedule] = useState(false);
+  const [autoOpenCloseByPos, setAutoOpenCloseByPos] = useState(false);
 
   // Table configuration states
   const [hasTables, setHasTables] = useState(true);
@@ -171,6 +175,8 @@ export default function EditRestaurantPage() {
       setAddressActive(!!data.address_active);
       setMinOrderValue(data.min_order_value ?? 0);
       setMinOrderEnabled((data.min_order_value ?? 0) > 0);
+      setAutoOpenCloseBySchedule(data.auto_open_close_by_schedule ?? false);
+      setAutoOpenCloseByPos(data.auto_open_close_by_pos ?? false);
       setHasTables(data.has_tables ?? true);
       setTablesCount(data.tables_count ?? 12);
       setTableCategories(
@@ -243,6 +249,8 @@ export default function EditRestaurantPage() {
             ? infinitepayHandle.trim().replace(/^\$/, "") || null
             : null,
           min_order_value: minOrderEnabled ? minOrderValue : 0,
+          auto_open_close_by_schedule: autoOpenCloseBySchedule,
+          auto_open_close_by_pos: autoOpenCloseByPos,
           has_tables: hasTables,
           tables_count: tablesCount,
           table_categories: tableCategories,
@@ -433,6 +441,53 @@ export default function EditRestaurantPage() {
                   )
                 }
               />
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 font-bold">
+                  <Store className="h-4 w-4" />
+                  Abertura e Fechamento da Loja
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Configure como o status aberto/fechado do restaurante é
+                  atualizado automaticamente.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pl-6 border-l-2 border-primary/20">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Abrir e fechar no horário de funcionamento
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Abre e fecha a loja automaticamente conforme os horários
+                    configurados em Horários de Funcionamento.
+                  </p>
+                </div>
+                <Switch
+                  checked={autoOpenCloseBySchedule}
+                  onCheckedChange={setAutoOpenCloseBySchedule}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pl-6 border-l-2 border-primary/20">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Abrir e fechar com o caixa/PDV
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Abre a loja ao abrir o caixa e fecha ao encerrar a sessão
+                    do PDV.
+                  </p>
+                </div>
+                <Switch
+                  checked={autoOpenCloseByPos}
+                  onCheckedChange={setAutoOpenCloseByPos}
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between">

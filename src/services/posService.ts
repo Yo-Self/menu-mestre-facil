@@ -20,6 +20,34 @@ export interface POSOrderPaymentInput {
   amount: number; // in cents
 }
 
+async function syncRestaurantOpenWithPOS(
+  restaurantId: string,
+  shouldBeOpen: boolean
+): Promise<void> {
+  const { data: restaurant, error: fetchError } = await supabase
+    .from("restaurants")
+    .select("auto_open_close_by_pos, open")
+    .eq("id", restaurantId)
+    .single();
+
+  if (fetchError || !restaurant?.auto_open_close_by_pos) {
+    return;
+  }
+
+  if (restaurant.open === shouldBeOpen) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("restaurants")
+    .update({ open: shouldBeOpen })
+    .eq("id", restaurantId);
+
+  if (error) {
+    console.error("Error syncing restaurant open status with POS:", error);
+  }
+}
+
 /**
  * Get the currently open POS session for a restaurant
  */
@@ -63,6 +91,8 @@ export async function openPOSSession(
     throw error;
   }
 
+  await syncRestaurantOpenWithPOS(restaurantId, true);
+
   return data;
 }
 
@@ -87,6 +117,10 @@ export async function closePOSSession(
   if (error) {
     console.error("Error closing POS session:", error);
     throw error;
+  }
+
+  if (data?.restaurant_id) {
+    await syncRestaurantOpenWithPOS(data.restaurant_id, false);
   }
 
   return data;

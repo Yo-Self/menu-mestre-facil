@@ -20,13 +20,21 @@ export class RestaurantScheduleService {
       // Get restaurant current status
       const { data: restaurant, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('open, id')
+        .select('open, id, auto_open_close_by_schedule')
         .eq('id', restaurantId)
         .single();
 
       if (restaurantError || !restaurant) {
         console.error('Error fetching restaurant:', restaurantError);
         return null;
+      }
+
+      if (!restaurant.auto_open_close_by_schedule) {
+        return {
+          restaurantId,
+          shouldBeOpen: restaurant.open,
+          currentStatus: restaurant.open,
+        };
       }
 
       // Get hours for current day
@@ -109,11 +117,10 @@ export class RestaurantScheduleService {
    */
   static async updateAllRestaurantsStatus(): Promise<void> {
     try {
-      // Get all restaurants that have hours configured
       const { data: restaurants, error } = await supabase
         .from('restaurants')
         .select('id')
-        .not('id', 'is', null);
+        .eq('auto_open_close_by_schedule', true);
 
       if (error || !restaurants) {
         console.error('Error fetching restaurants:', error);

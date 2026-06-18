@@ -1007,6 +1007,8 @@ export type Database = {
         Row: {
           address: string | null
           address_active: boolean
+          auto_open_close_by_pos: boolean
+          auto_open_close_by_schedule: boolean
           background_light: string | null
           background_night: string | null
           created_at: string | null
@@ -1047,6 +1049,8 @@ export type Database = {
         Insert: {
           address?: string | null
           address_active?: boolean
+          auto_open_close_by_pos?: boolean
+          auto_open_close_by_schedule?: boolean
           background_light?: string | null
           background_night?: string | null
           created_at?: string | null
@@ -1087,6 +1091,8 @@ export type Database = {
         Update: {
           address?: string | null
           address_active?: boolean
+          auto_open_close_by_pos?: boolean
+          auto_open_close_by_schedule?: boolean
           background_light?: string | null
           background_night?: string | null
           created_at?: string | null
