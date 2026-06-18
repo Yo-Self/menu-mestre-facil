@@ -12,6 +12,7 @@ import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { UrlPreview } from "@/components/ui/url-preview";
 import { usePrinting } from "@/hooks/usePrinting";
+import { escapeHtml } from "@/lib/printHtml";
 
 
 interface Profile {
@@ -329,12 +330,14 @@ export default function SettingsPage() {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
       `https://yo-self.com/restaurant/${restaurant.slug}?table=${selectedTableForQr}`
     )}`;
+    const safeTable = escapeHtml(selectedTableForQr);
+    const safeRestaurantName = escapeHtml(restaurant.name);
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Imprimir QR Code - Mesa ${selectedTableForQr}</title>
+            <title>Imprimir QR Code - Mesa ${safeTable}</title>
             <style>
               body {
                 display: flex;
@@ -370,10 +373,10 @@ export default function SettingsPage() {
           </head>
           <body>
             <div class="container">
-              <img src="${qrUrl}" alt="QR Code Mesa ${selectedTableForQr}" />
-              <h1>MESA ${selectedTableForQr}</h1>
+              <img src="${escapeHtml(qrUrl)}" alt="QR Code Mesa ${safeTable}" />
+              <h1>MESA ${safeTable}</h1>
               <p>Escaneie para fazer seu pedido</p>
-              <p style="font-size: 10px; margin-top: 15px; font-family: monospace;">${restaurant.name}</p>
+              <p style="font-size: 10px; margin-top: 15px; font-family: monospace;">${safeRestaurantName}</p>
             </div>
             <script>
               window.onload = function() {

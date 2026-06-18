@@ -45,6 +45,7 @@ import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sess
 import { generateQueuePassword, submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
 import { getComplementsForDishWithFallback } from "@/services/posOffline/complementsCache";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
+import { escapeHtml, sanitizePrintImageUrl } from "@/lib/printHtml";
 
 interface CartItem {
   id: string; // unique cart item id (timestamp + dish_id)
@@ -799,16 +800,16 @@ export default function POSTerminal() {
           .map(([title, comps]) => {
             const compsList = comps.map(c => {
               const priceStr = c.price > 0 ? ` (+ R$ ${(c.price / 100).toFixed(2)})` : '';
-              return `${c.name}${priceStr}`;
+              return `${escapeHtml(c.name)}${priceStr}`;
             }).join(", ");
-            return `<div style="font-size: 9px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${title}:</strong> ${compsList}</div>`;
+            return `<div style="font-size: 9px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${escapeHtml(title)}:</strong> ${compsList}</div>`;
           })
           .join("");
       }
       
       let notesText = "";
       if (item.notes) {
-        notesText = `<div style="font-size: 9px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${item.notes}</div>`;
+        notesText = `<div style="font-size: 9px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${escapeHtml(item.notes)}</div>`;
       }
 
       // Composição do preço caso tenha adicionais pagos
@@ -824,7 +825,7 @@ export default function POSTerminal() {
       return `
         <div style="margin-bottom: 6px;">
           <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span style="font-weight: bold; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.dish.name}</span>
+            <span style="font-weight: bold; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.dish.name)}</span>
             <span style="white-space: nowrap;">${item.quantity} x R$ ${(unitTotal / 100).toFixed(2)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 10px;">
@@ -842,8 +843,8 @@ export default function POSTerminal() {
       ? (finalOrder.customer_info as any).observation || (finalOrder.customer_info as any).notes
       : null;
 
-    const customerHtml = custName ? `<p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Cliente: ${custName}</p>` : "";
-    const observationHtml = orderObs ? `<p style="margin: 2px 0; font-weight: bold; color: #ff0000; font-size: 12px;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
+    const customerHtml = custName ? `<p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Cliente: ${escapeHtml(custName)}</p>` : "";
+    const observationHtml = orderObs ? `<p style="margin: 2px 0; font-weight: bold; color: #ff0000; font-size: 12px;">⚠️ OBS PEDIDO: ${escapeHtml(orderObs)}</p>` : "";
 
     // Múltiplos meios de pagamento e troco
     const snapshotPayments = finalSnapshot?.payments || [];
@@ -855,7 +856,7 @@ export default function POSTerminal() {
       paymentsHtml = snapshotPayments.map((p: any) => {
         const methodLabel = getPaymentMethodLabel(p.method);
         const amountFormatted = (p.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        return `<p style="margin: 2px 0; font-size: 11px;">${methodLabel}: ${amountFormatted}</p>`;
+        return `<p style="margin: 2px 0; font-size: 11px;">${escapeHtml(methodLabel)}: ${amountFormatted}</p>`;
       }).join("");
 
       // Add cash details if cash was used and there is received_cash/change
@@ -870,7 +871,7 @@ export default function POSTerminal() {
       // Fallback if no payments are recorded (e.g. old orders or delivery online orders)
       const singleMethod = finalOrder?.payment_method || 'card';
       const methodLabel = singleMethod === 'card' ? 'Cartão (Débito/Crédito)' : singleMethod === 'cash' ? 'Dinheiro' : singleMethod === 'pix' ? 'PIX' : 'Pago pelo App';
-      paymentsHtml = `<p style="margin: 2px 0; font-size: 11px;">Forma de Pagamento: ${methodLabel}</p>`;
+      paymentsHtml = `<p style="margin: 2px 0; font-size: 11px;">Forma de Pagamento: ${escapeHtml(methodLabel)}</p>`;
       
       // Check if cash received/change are in customer_info
       if (singleMethod === 'cash' && finalOrder?.customer_info && typeof finalOrder.customer_info === 'object') {
@@ -887,10 +888,11 @@ export default function POSTerminal() {
     }
 
     const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
+    const safeLogo = sanitizePrintImageUrl(restaurantLogo);
     const htmlContent = `
       <html>
         <head>
-          <title>Comprovante - ${restaurantName}</title>
+          <title>Comprovante - ${escapeHtml(restaurantName)}</title>
           <style>
             @page {
               size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
@@ -915,24 +917,24 @@ export default function POSTerminal() {
         </head>
         <body>
           <div class="text-center">
-            ${restaurantLogo ? `<div style="margin-bottom: 6px;"><img src="${restaurantLogo}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
-            <h3 style="margin: 0 0 4px 0; font-size: 16px; text-transform: uppercase;">${restaurantName}</h3>
+            ${safeLogo ? `<div style="margin-bottom: 6px;"><img src="${escapeHtml(safeLogo)}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
+            <h3 style="margin: 0 0 4px 0; font-size: 16px; text-transform: uppercase;">${escapeHtml(restaurantName)}</h3>
             <p style="margin: 0 0 2px 0; font-size: 12px; font-weight: bold;">Comprovante de Venda</p>
-            <p style="margin: 0; font-size: 9px; color: #555;">ID: ${orderId.substring(0, 8)}...</p>
+            <p style="margin: 0; font-size: 9px; color: #555;">ID: ${escapeHtml(orderId.substring(0, 8))}...</p>
           </div>
 
           ${queuePassword ? `
             <div class="border-t-dashed my-2"></div>
             <div class="text-center" style="padding: 6px 0;">
-              <span style="font-size: 24px; font-weight: 900; font-family: sans-serif;">SENHA: ${queuePassword}</span>
+              <span style="font-size: 24px; font-weight: 900; font-family: sans-serif;">SENHA: ${escapeHtml(queuePassword)}</span>
             </div>
           ` : ''}
 
           <div class="border-t-dashed my-2"></div>
 
           <div style="font-size: 12px; line-height: 1.4;">
-            <p style="margin: 2px 0;">Data: ${formattedDate}</p>
-            <p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Mesa/Comanda: ${tblName}</p>
+            <p style="margin: 2px 0;">Data: ${escapeHtml(formattedDate)}</p>
+            <p style="margin: 2px 0; font-size: 13px; font-weight: bold;">Mesa/Comanda: ${escapeHtml(tblName)}</p>
             ${customerHtml}
             ${observationHtml}
           </div>
@@ -1062,19 +1064,19 @@ export default function POSTerminal() {
         });
         
         compsText = Object.entries(groups)
-          .map(([title, comps]) => `<div style="font-size: 11px; font-weight: bold; color: #111; padding-left: 5px; margin-top: 2px;"><strong>${title}:</strong> ${comps.map(c => c.name).join(", ")}</div>`)
+          .map(([title, comps]) => `<div style="font-size: 11px; font-weight: bold; color: #111; padding-left: 5px; margin-top: 2px;"><strong>${escapeHtml(title)}:</strong> ${comps.map(c => escapeHtml(c.name)).join(", ")}</div>`)
           .join("");
       }
       
       let notesText = "";
       if (item.notes) {
-        notesText = `<div style="font-size: 12px; font-weight: bold; color: red; margin-top: 3px; padding-left: 5px;">⚠️ OBS: ${item.notes}</div>`;
+        notesText = `<div style="font-size: 12px; font-weight: bold; color: red; margin-top: 3px; padding-left: 5px;">⚠️ OBS: ${escapeHtml(item.notes)}</div>`;
       }
 
       return `
         <div style="margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 6px;">
           <div style="font-size: 14px; font-weight: bold;">
-            ${item.quantity} x [ ${item.dish?.name || item.dish_name} ]
+            ${item.quantity} x [ ${escapeHtml(item.dish?.name || item.dish_name)} ]
           </div>
           ${compsText}
           ${notesText}
@@ -1086,7 +1088,7 @@ export default function POSTerminal() {
     const htmlContent = `
       <html>
         <head>
-          <title>Cozinha - ${restaurantName}</title>
+          <title>Cozinha - ${escapeHtml(restaurantName)}</title>
           <style>
             @page {
               size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
@@ -1111,7 +1113,7 @@ export default function POSTerminal() {
         <body>
           <div class="text-center">
             <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: bold;">--- VIA COZINHA ---</h3>
-            <p style="margin: 0; font-size: 10px;">ID: ${orderId.substring(0, 8)}...</p>
+            <p style="margin: 0; font-size: 10px;">ID: ${escapeHtml(orderId.substring(0, 8))}...</p>
           </div>
 
           <div class="border-t-dashed my-2"></div>
@@ -1125,20 +1127,20 @@ export default function POSTerminal() {
 
           ${queuePassword ? `
             <div class="text-center" style="padding: 4px 0;">
-              <span style="font-size: 24px; font-weight: bold;">SENHA: ${queuePassword}</span>
+              <span style="font-size: 24px; font-weight: bold;">SENHA: ${escapeHtml(queuePassword)}</span>
             </div>
             <div class="border-t-dashed my-2"></div>
           ` : ''}
 
           <div style="font-size: 11px; line-height: 1.4;">
-            <p style="margin: 2px 0; font-weight: bold; font-size: 13px;">Mesa/Comanda: ${tblName}</p>
-            <p style="margin: 2px 0;">Cliente: ${custName || "Consumidor"}</p>
-            <p style="margin: 2px 0;">Hora: ${formattedDate}</p>
+            <p style="margin: 2px 0; font-weight: bold; font-size: 13px;">Mesa/Comanda: ${escapeHtml(tblName)}</p>
+            <p style="margin: 2px 0;">Cliente: ${escapeHtml(custName || "Consumidor")}</p>
+            <p style="margin: 2px 0;">Hora: ${escapeHtml(formattedDate)}</p>
             ${(() => {
               const orderObs = finalOrder?.customer_info && typeof finalOrder.customer_info === 'object'
                 ? (finalOrder.customer_info as any).observation || (finalOrder.customer_info as any).notes
                 : null;
-              return orderObs ? `<p style="margin: 4px 0; font-weight: bold; color: red; font-size: 13px; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${orderObs}</p>` : "";
+              return orderObs ? `<p style="margin: 4px 0; font-weight: bold; color: red; font-size: 13px; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${escapeHtml(orderObs)}</p>` : "";
             })()}
           </div>
 

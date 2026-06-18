@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { isOrderPaidOnline } from '@/lib/orderPayment'
+import { escapeHtml, sanitizePrintImageUrl } from '@/lib/printHtml'
 import { Analytics } from '@/services/analytics'
 
 const getPaymentLabel = (method: string) => {
@@ -27,13 +28,15 @@ const convertItemsToHtml = (items: any[], title: string = 'Cupom') => {
   const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
   const itemsHtml = items.map((item) => {
     if (item.type === 'image' && item.path) {
+      const safeSrc = sanitizePrintImageUrl(item.path);
+      if (!safeSrc) return '';
       const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
-      return `<div style="${positionClass} margin-bottom: 8px;"><img src="${item.path}" style="max-width: 90px; max-height: 90px; object-fit: contain; ${item.style || ''}" /></div>`;
+      return `<div style="${positionClass} margin-bottom: 8px;"><img src="${escapeHtml(safeSrc)}" style="max-width: 90px; max-height: 90px; object-fit: contain; ${item.style || ''}" /></div>`;
     }
     if (item.type === 'text') {
       const positionClass = item.position === 'center' ? 'text-align: center;' : item.position === 'right' ? 'text-align: right;' : 'text-align: left;';
       const customStyle = typeof item.style === 'string' ? item.style : '';
-      return `<div style="${positionClass} margin-bottom: 4px; ${customStyle}">${item.value}</div>`;
+      return `<div style="${positionClass} margin-bottom: 4px; ${customStyle}">${escapeHtml(item.value)}</div>`;
     }
     return '';
   }).join('');
@@ -42,7 +45,7 @@ const convertItemsToHtml = (items: any[], title: string = 'Cupom') => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>${title}</title>
+        <title>${escapeHtml(title)}</title>
         <style>
           @page {
             size: ${paperWidth === "58mm" ? "58mm" : "80mm"} auto;
@@ -472,6 +475,18 @@ export function usePrinting() {
     console.warn('A impressão direta para impressora térmica (silenciosa) só é suportada no aplicativo desktop.')
     // Mas fornecemos o fallback de abrir a janela de impressão web tradicional com uma versão simplificada em texto
     try {
+      const safeLogo = sanitizePrintImageUrl(order.restaurant_logo);
+      const displayId = escapeHtml(order.display_id || order.id?.slice(0, 8) || '');
+      const restaurantName = escapeHtml((order.restaurant_name || '').toUpperCase());
+      const queuePassword = order.queue_password ? escapeHtml(order.queue_password) : '';
+      const customerName = escapeHtml(order.customer_name || 'Consumidor');
+      const dateStr = escapeHtml(order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR'));
+      const address = order.address ? escapeHtml(order.address) : '';
+      const orderObsRaw = order.observation || (order.customer_info && typeof order.customer_info === 'object'
+        ? (order.customer_info as any).observation || (order.customer_info as any).notes
+        : null);
+      const orderObs = orderObsRaw ? escapeHtml(orderObsRaw) : '';
+
       const simplifiedHtml = `
         <!DOCTYPE html>
         <html>
@@ -485,28 +500,24 @@ export function usePrinting() {
           </style>
         </head>
         <body>
-          ${order.restaurant_logo ? `<div class="center" style="margin-bottom: 8px;"><img src="${order.restaurant_logo}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
+          ${safeLogo ? `<div class="center" style="margin-bottom: 8px;"><img src="${escapeHtml(safeLogo)}" style="max-width: 90px; max-height: 90px; object-fit: contain;" /></div>` : ''}
           <div class="center bold" style="font-size: 18px;">--- GESTOR MENU ---</div>
-          <div class="center" style="font-size: 16px;">${(order.restaurant_name || '').toUpperCase()}</div>
-          <div class="border center bold" style="font-size: 15px;">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
-          ${order.queue_password ? `<div class="center bold" style="font-size: 26px; padding: 10px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;">SENHA: ${order.queue_password}</div>` : ''}
+          <div class="center" style="font-size: 16px;">${restaurantName}</div>
+          <div class="border center bold" style="font-size: 15px;">PEDIDO: #${displayId}</div>
+          ${queuePassword ? `<div class="center bold" style="font-size: 26px; padding: 10px 0; border-bottom: 1px dashed #000; margin-bottom: 10px;">SENHA: ${queuePassword}</div>` : ''}
           ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
-          <div style="font-size: 13px; font-weight: bold;">Cliente: ${order.customer_name || 'Consumidor'}</div>
-          <div style="font-size: 12px;">Data: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
-          ${order.delivery_type === 'delivery' && order.address ? `
+          <div style="font-size: 13px; font-weight: bold;">Cliente: ${customerName}</div>
+          <div style="font-size: 12px;">Data: ${dateStr}</div>
+          ${order.delivery_type === 'delivery' && address ? `
             <div style="font-size: 12px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 6px;">
               <span class="bold">ENDEREÇO DE ENTREGA:</span><br/>
-              ${order.address}
+              ${address}
             </div>
           ` : ''}
-          ${(() => {
-            const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
-              ? (order.customer_info as any).observation || (order.customer_info as any).notes
-              : null);
-            return orderObs ? `<div style="font-weight: bold; color: red; font-size: 13px; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : '';
-          })()}
+          ${orderObs ? `<div style="font-weight: bold; color: red; font-size: 13px; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : ''}
           <div class="bold" style="margin-top: 10px; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 2px;">PRODUTOS:</div>
           ${order.items?.map((item: any) => {
+            const dishName = escapeHtml(item.dish_name || item.name);
             const compsPrice = item.complements?.reduce((sum: number, c: any) => sum + (c.price || 0), 0) || 0;
             const basePrice = (item.unit_price || 0) - compsPrice;
             const baseFormatted = basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -517,23 +528,23 @@ export function usePrinting() {
               : '';
             const complementsHtml = item.complements?.map((comp: any) => {
               const compPrice = comp.price > 0 ? ` (+ ${(comp.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : '';
-              return `<div style="font-size: 11px; font-style: italic; color: #555; padding-left: 10px;">- ${comp.name}${compPrice}</div>`;
+              return `<div style="font-size: 11px; font-style: italic; color: #555; padding-left: 10px;">- ${escapeHtml(comp.name)}${compPrice}</div>`;
             }).join('') || '';
             
             return `
-              <div style="margin-top: 5px; font-size: 12px; font-weight: bold;">${item.quantity}x ${item.dish_name || item.name}</div>
+              <div style="margin-top: 5px; font-size: 12px; font-weight: bold;">${item.quantity}x ${dishName}</div>
               <div style="font-size: 11px; padding-left: 10px;">${(item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un. | Total: ${((item.unit_price || 0) * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
               ${complementsHtml}
               ${compositionHtml}
             `;
-          }).join('')}
+          }).join('') || ''}
           <div class="border"></div>
           <div class="right bold" style="font-size: 15px;">TOTAL: ${(order.total_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
           <div style="margin-top: 10px;">
             ${(() => {
               if (order.payments && order.payments.length > 0) {
                 let html = order.payments.map((p: any) => {
-                  const methodLabel = getPaymentLabel(p.method);
+                  const methodLabel = escapeHtml(getPaymentLabel(p.method));
                   const amountFormatted = p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                   return `<div style="font-size: 11px;">${methodLabel}: ${amountFormatted}</div>`;
                 }).join("");
@@ -558,7 +569,7 @@ export function usePrinting() {
                   pix: 'PIX',
                   online: 'Pago pelo App'
                 };
-                let html = `<div style="font-size: 11px;">Pagamento: ${paymentMap[order.payment_method] || order.payment_method}</div>`;
+                let html = `<div style="font-size: 11px;">Pagamento: ${escapeHtml(paymentMap[order.payment_method] || order.payment_method)}</div>`;
                 if (order.payment_method === 'cash' && order.customer_info && typeof order.customer_info === 'object') {
                   const info = order.customer_info as any;
                   if (info.received_cash !== undefined && info.received_cash !== null) {
@@ -766,25 +777,25 @@ export function usePrinting() {
         </head>
         <body>
           <div class="center bold" style="font-size: 16px;">--- VIA COZINHA ---</div>
-          <div class="center">${(order.restaurant_name || '').toUpperCase()}</div>
-          <div class="border center bold">PEDIDO: #${order.display_id || order.id.slice(0, 8)}</div>
-          ${order.queue_password ? `<div class="center bold" style="font-size: 24px; padding: 5px 0;">SENHA: ${order.queue_password}</div><div class="border"></div>` : ''}
+          <div class="center">${escapeHtml((order.restaurant_name || '').toUpperCase())}</div>
+          <div class="border center bold">PEDIDO: #${escapeHtml(order.display_id || order.id?.slice(0, 8) || '')}</div>
+          ${order.queue_password ? `<div class="center bold" style="font-size: 24px; padding: 5px 0;">SENHA: ${escapeHtml(order.queue_password)}</div><div class="border"></div>` : ''}
           ${order.is_takeaway ? `<div class="center bold" style="font-size: 18px; background-color: black; color: white; padding: 6px; margin: 5px 0;">*** PEDIDO PARA VIAGEM ***</div><div class="border"></div>` : ''}
-          <div>Mesa/Local: <strong>${order.table_name || 'Balcão'}</strong></div>
-          <div>Cliente: ${order.customer_name || 'Consumidor'}</div>
-          <div>Hora: ${order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</div>
+          <div>Mesa/Local: <strong>${escapeHtml(order.table_name || 'Balcão')}</strong></div>
+          <div>Cliente: ${escapeHtml(order.customer_name || 'Consumidor')}</div>
+          <div>Hora: ${escapeHtml(order.created_at ? new Date(order.created_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR'))}</div>
           ${(() => {
             const orderObs = order.observation || (order.customer_info && typeof order.customer_info === 'object'
               ? (order.customer_info as any).observation || (order.customer_info as any).notes
               : null);
-            return orderObs ? `<div class="obs" style="font-size: 16px; margin: 8px 0; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${orderObs}</div>` : '';
+            return orderObs ? `<div class="obs" style="font-size: 16px; margin: 8px 0; background-color: #eee; padding: 4px; border: 1px solid #ccc;">⚠️ OBS PEDIDO: ${escapeHtml(orderObs)}</div>` : '';
           })()}
           
           <div class="border" style="font-weight: bold;">ITENS PARA PREPARAÇÃO:</div>
           ${order.items?.map((item: any) => `
-            <div class="item-title">${item.quantity}x [ ${item.dish_name || item.name} ]</div>
-            ${item.complements?.map((c: any) => `<div style="padding-left: 15px; font-weight: bold;">+ ${c.name}</div>`).join('') || ''}
-            ${item.notes ? `<div class="obs" style="padding-left: 15px; margin-top: 5px;">⚠️ OBS: ${item.notes}</div>` : ''}
+            <div class="item-title">${item.quantity}x [ ${escapeHtml(item.dish_name || item.name)} ]</div>
+            ${item.complements?.map((c: any) => `<div style="padding-left: 15px; font-weight: bold;">+ ${escapeHtml(c.name)}</div>`).join('') || ''}
+            ${item.notes ? `<div class="obs" style="padding-left: 15px; margin-top: 5px;">⚠️ OBS: ${escapeHtml(item.notes)}</div>` : ''}
             <div style="border-top: 1px solid #ccc; margin: 5px 0;"></div>
           `).join('')}
           <div class="center" style="margin-top: 20px; font-style: italic;">--- FIM VIA COZINHA ---</div>

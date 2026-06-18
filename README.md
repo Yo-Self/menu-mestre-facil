@@ -124,6 +124,9 @@ Após concluir, o dashboard exibe um **checklist opcional** com horários, compl
 - Secrets privados (`SUPABASE_SECRET_KEY`, `SB_SECRET_KEY`, `GOOGLE_AI_API_KEY`, `POSTHOG_API_KEY`, `SENTRY_AUTH_TOKEN`, tokens de Telegram e certificados) devem ficar no gitnode/plataforma de segredos ou em Supabase Edge Function Secrets, conforme o runtime.
 - O build executa `npm run security:env` antes de gerar artefatos. A validação bloqueia segredos em env público e URLs Supabase sem HTTPS em produção.
 - A sessão Supabase do gestor usa `sessionStorage`; não persista JWT ou refresh token em `localStorage`.
+- **Impressão de cupons (XSS):** dados de pedidos (`customer_info`, observações, endereços) são escapados em HTML via `src/lib/printHtml.ts` antes de `document.write`/iframe.
+- **Pedidos públicos:** o cardápio em [web-version](https://github.com/Yo-Self/web-version) (`yo-self.com`) usa o RPC `create_customer_order`; coordenadas de entrega são obrigatórias no servidor. Deploy de migrations e Edge Functions deve ser coordenado entre os dois repositórios.
+- **AI Chat:** Edge Function `ai-chat` aplica rate limit por IP/usuário/restaurante; cardápio público exige `restaurant_id` e carrega o menu no servidor.
 
 ## Contribuição
 

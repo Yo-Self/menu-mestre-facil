@@ -24,3 +24,8 @@ entrypoint = "./functions/scrape-ifood/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/scrape-ifood/*.html" ]
+
+[functions.ai-chat]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/ai-chat/index.ts"

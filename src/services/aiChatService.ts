@@ -73,6 +73,10 @@ export class AIChatService {
         }
       )
 
+      if (response.status === 429) {
+        throw new Error('Muitas mensagens em sequência. Aguarde um momento.')
+      }
+
       if (!response.ok) {
         let errorMessage = 'Failed to get AI response'
         try {
@@ -95,6 +99,13 @@ export class AIChatService {
       }
 
       if (!data.response || typeof data.response !== 'string') {
+        if (typeof (data as { message?: unknown }).message === 'string') {
+          return {
+            response: (data as { message: string }).message,
+            model: data.model || 'unknown',
+            timestamp: data.timestamp || new Date().toISOString(),
+          }
+        }
         throw new Error('Invalid response: missing or invalid response text')
       }
 
