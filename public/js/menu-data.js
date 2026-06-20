@@ -70,6 +70,10 @@ function getCache(key) {
 }
 
 async function fetchDishesPublic(client, { restaurantId, dishIds, featured, search } = {}) {
+  if (Array.isArray(dishIds) && dishIds.length === 0 && !restaurantId && !featured && !search) {
+    return []
+  }
+
   let query = client.from('dishes_public').select('*')
 
   if (restaurantId) {
@@ -263,6 +267,11 @@ export async function getDishesByCategory(categoryId) {
 
   const client = await initSupabase()
   const categoryLinks = await fetchDishCategoryLinks(client, { categoryId })
+  if (categoryLinks.length === 0) {
+    setCache(k, [])
+    return []
+  }
+
   categoryLinks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
 
   const dishIds = categoryLinks.map((link) => link.dish_id)

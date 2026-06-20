@@ -32,6 +32,8 @@ assert('delivery requires delivery_coords_lat/lng path', /delivery_coords_lat/.t
 assert('online_ordering_disabled guard exists', /online_ordering_disabled/.test(combinedSql));
 assert('delivery_coords_mismatch guard exists', /delivery_coords_mismatch/.test(combinedSql));
 assert('geocode_delivery_address function exists', /FUNCTION public\.geocode_delivery_address/.test(combinedSql));
+assert('geocode cache table exists', /TABLE public\.geocode_cache/.test(readFileSync(join(root, 'supabase/migrations/20260620130000_security_deploy_hardening.sql'), 'utf8')));
+assert('create_customer_order persists customer map pin', /THEN v_customer_lat ELSE NULL END/.test(readFileSync(join(root, 'supabase/migrations/20260620130000_security_deploy_hardening.sql'), 'utf8')));
 assert('create_waiter_call RPC exists', /FUNCTION public\.create_waiter_call/.test(readFileSync(join(root, 'supabase/migrations/20260620100000_security_waiter_calls_rpc.sql'), 'utf8')));
 assert('dishes_public view exists', /VIEW public\.dishes_public/.test(readFileSync(join(root, 'supabase/migrations/20260620110000_security_dishes_public_view.sql'), 'utf8')));
 

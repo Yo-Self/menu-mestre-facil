@@ -134,7 +134,18 @@ Após concluir, o dashboard exibe um **checklist opcional** com horários, compl
 - **AI Chat:** Edge Function `ai-chat` aplica rate limit por IP/usuário/restaurante; caminho de gestor exige dono de restaurante e ignora `systemInstruction` customizado; cardápio público exige `restaurant_id` e carrega o menu no servidor.
 - **AI Analyze Dish:** Edge Function `ai-analyze-dish` exige JWT de usuário autenticado, rate limit por usuário/IP e `verify_jwt = true`.
 
-## Contribuição
+## Deploy coordenado (hardening de segurança)
+
+Ao publicar a branch `fix/sec/security-issues`, siga esta ordem no **mesmo projeto Supabase**:
+
+1. **Pré-requisito:** extensão `http` habilitada no Supabase (`CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions`).
+2. **Frontend cardápio** — deploy do [web-version](https://github.com/Yo-Self/web-version) (`dishes_public`, RPC `create_waiter_call`, erros de pedido).
+3. **Migrations** — `supabase db push` a partir deste repositório (`menu-mestre-facil`).
+4. **Edge Functions** — deploy a partir dos dois repositórios:
+   - **web-version:** `stripe-checkout`, `infinitepay-checkout`
+   - **menu-mestre-facil:** `scrape-ifood`, `ai-chat`, `ai-analyze-dish`, `infinitepay-checkout` (manter paridade com web-version)
+
+Não faça merge na `main` até validar pedidos de entrega e cardápio em staging.
 
 1. Fork o projeto
 2. Crie uma branch para sua feature
