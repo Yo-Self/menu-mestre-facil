@@ -69,6 +69,96 @@ function getCache(key) {
   } catch { return null }
 }
 
+async function fetchDishesPublic(client, { restaurantId, dishIds, featured, search } = {}) {
+  let query = client.from('dishes_public').select('*')
+
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId)
+  }
+  if (dishIds?.length) {
+    query = query.in('id', dishIds)
+  }
+  if (featured) {
+    query = query.eq('is_featured', true)
+  }
+  if (search) {
+    const term = search.trim()
+    query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%`)
+  }
+
+  const { data, error } = await query.order('name', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+async function fetchDishCategoryLinks(client, { dishIds, categoryId } = {}) {
+  let query = client
+    .from('dish_categories')
+    .select('dish_id, category_id, position, categories(*)')
+
+  if (dishIds?.length) {
+    query = query.in('dish_id', dishIds)
+  }
+  if (categoryId) {
+    query = query.eq('category_id', categoryId)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data ?? []
+}
+
+function groupLinksByDish(links) {
+  const map = new Map()
+  for (const link of links) {
+    if (!map.has(link.dish_id)) {
+      map.set(link.dish_id, [])
+    }
+    map.get(link.dish_id).push(link)
+  }
+  return map
+}
+
+function enrichDish(dish, links = [], position = null) {
+  const categories = links.map((link) => link.categories).filter(Boolean)
+  return {
+    ...dish,
+    ...(position != null ? { position } : {}),
+    categories,
+  }
+}
+
+function dedupeDishes(dishes) {
+  return dishes.filter((dish, index, self) =>
+    index === self.findIndex((item) => item.id === dish.id)
+  )
+}
+
+function sortLinksByCategoryOrder(links, categories) {
+  const categoryOrder = new Map(
+    categories.map((category, index) => [category.id, category.position ?? index])
+  )
+
+  return [...links].sort((a, b) => {
+    const categoryPositionA = categoryOrder.get(a.category_id) ?? 999
+    const categoryPositionB = categoryOrder.get(b.category_id) ?? 999
+    if (categoryPositionA !== categoryPositionB) {
+      return categoryPositionA - categoryPositionB
+    }
+    return (a.position ?? 0) - (b.position ?? 0)
+  })
+}
+
+function buildDishesFromLinks(dishMap, links, linksByDish) {
+  return links
+    .map((link) => {
+      const dish = dishMap.get(link.dish_id)
+      if (!dish) return null
+      return enrichDish(dish, linksByDish.get(link.dish_id) ?? [], link.position)
+    })
+    .filter(Boolean)
+}
+
 export async function getRestaurants() {
   const k = 'restaurants:list'
   const cached = getCache(k)
@@ -123,142 +213,65 @@ export async function getCategoriesByRestaurant(restaurantId) {
 
 export async function getFeaturedDishes(restaurantId) {
   if (!restaurantId) return []
-  const k = `dishes:featured:${restaurantId}`
+  const k = `dishes_public:featured:${restaurantId}`
   const cached = getCache(k)
   if (cached) return cached
-  
-  // Buscar pratos em destaque com suas categorias e posições
-  const client = await initSupabase();
-  const { data, error } = await client
-    .from('dish_categories')
-    .select(`
-      position,
-      dishes(
-        *,
-        category:categories(*),
-        dish_categories(
-          categories(*)
-        )
-      ),
-      categories!inner(
-        id,
-        name,
-        position
-      )
-    `)
-    .eq('dishes.restaurant_id', restaurantId)
-    .eq('dishes.is_featured', true)
-    .eq('dishes.is_available', true)
-    .order('categories.position', { ascending: true })
-    .order('position', { ascending: true })
-  if (error) throw error
-  
-  // Processar múltiplas categorias
-  const processedData = data?.map(dc => ({
-    ...dc.dishes,
-    position: dc.position,
-    categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
-                (dc.dishes.category ? [dc.dishes.category] : [])
-  })) || []
-  
-  // Remover duplicatas baseado no ID do prato
-  const uniqueDishes = processedData.filter((dish, index, self) => 
-    index === self.findIndex(d => d.id === dish.id)
-  )
-  
+
+  const client = await initSupabase()
+  const [categories, dishes] = await Promise.all([
+    getCategoriesByRestaurant(restaurantId),
+    fetchDishesPublic(client, { restaurantId, featured: true }),
+  ])
+
+  const dishMap = new Map(dishes.map((dish) => [dish.id, dish]))
+  const links = await fetchDishCategoryLinks(client, { dishIds: dishes.map((dish) => dish.id) })
+  const linksByDish = groupLinksByDish(links)
+  const sortedLinks = sortLinksByCategoryOrder(links, categories)
+  const uniqueDishes = dedupeDishes(buildDishesFromLinks(dishMap, sortedLinks, linksByDish))
+
   setCache(k, uniqueDishes)
   return uniqueDishes
 }
 
 export async function getAllDishes(restaurantId) {
   if (!restaurantId) return []
-  const k = `dishes:all:${restaurantId}`
+  const k = `dishes_public:all:${restaurantId}`
   const cached = getCache(k)
   if (cached) return cached
-  
-  // Buscar pratos com suas categorias e posições
-  const client = await initSupabase();
-  const { data, error } = await client
-    .from('dish_categories')
-    .select(`
-      position,
-      dishes(
-        *,
-        category:categories(*),
-        dish_categories(
-          categories(*)
-        )
-      ),
-      categories!inner(
-        id,
-        name,
-        position
-      )
-    `)
-    .eq('dishes.restaurant_id', restaurantId)
-    .eq('dishes.is_available', true)
-    .order('categories.position', { ascending: true })
-    .order('position', { ascending: true })
-  if (error) throw error
-  
-  // Processar múltiplas categorias
-  const processedData = data?.map(dc => ({
-    ...dc.dishes,
-    position: dc.position,
-    categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
-                (dc.dishes.category ? [dc.dishes.category] : [])
-  })) || []
-  
-  // Remover duplicatas baseado no ID do prato
-  const uniqueDishes = processedData.filter((dish, index, self) => 
-    index === self.findIndex(d => d.id === dish.id)
-  )
-  
+
+  const client = await initSupabase()
+  const [categories, dishes] = await Promise.all([
+    getCategoriesByRestaurant(restaurantId),
+    fetchDishesPublic(client, { restaurantId }),
+  ])
+
+  const dishMap = new Map(dishes.map((dish) => [dish.id, dish]))
+  const links = await fetchDishCategoryLinks(client, { dishIds: dishes.map((dish) => dish.id) })
+  const linksByDish = groupLinksByDish(links)
+  const sortedLinks = sortLinksByCategoryOrder(links, categories)
+  const uniqueDishes = dedupeDishes(buildDishesFromLinks(dishMap, sortedLinks, linksByDish))
+
   setCache(k, uniqueDishes)
   return uniqueDishes
 }
 
 export async function getDishesByCategory(categoryId) {
   if (!categoryId) return []
-  const k = `dishes:category:${categoryId}`
+  const k = `dishes_public:category:${categoryId}`
   const cached = getCache(k)
   if (cached) return cached
-  
-  // Buscar pratos que têm esta categoria nas múltiplas categorias, ordenados por posição
-  const client = await initSupabase();
-  const { data, error } = await client
-    .from('dish_categories')
-    .select(`
-      position,
-      dishes(
-        *,
-        category:categories(*),
-        dish_categories(
-          categories(*)
-        )
-      )
-    `)
-    .eq('category_id', categoryId)
-    .eq('dishes.is_available', true)
-    .order('position', { ascending: true })
-  if (error) throw error
-  
-  // Processar e remover duplicatas
-  const dishes = data
-    ?.map(dc => ({
-      ...dc.dishes,
-      position: dc.position,
-      categories: dc.dishes.dish_categories?.map(dc => dc.categories) || 
-                  (dc.dishes.category ? [dc.dishes.category] : [])
-    }))
-    ?.filter(dish => dish) // Remover nulls
-    || []
-  
-  // Remover duplicatas baseado no ID do prato
-  const uniqueDishes = dishes.filter((dish, index, self) => 
-    index === self.findIndex(d => d.id === dish.id)
-  )
-  
+
+  const client = await initSupabase()
+  const categoryLinks = await fetchDishCategoryLinks(client, { categoryId })
+  categoryLinks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+
+  const dishIds = categoryLinks.map((link) => link.dish_id)
+  const dishes = await fetchDishesPublic(client, { dishIds })
+  const dishMap = new Map(dishes.map((dish) => [dish.id, dish]))
+  const allLinks = await fetchDishCategoryLinks(client, { dishIds })
+  const linksByDish = groupLinksByDish(allLinks)
+  const uniqueDishes = dedupeDishes(buildDishesFromLinks(dishMap, categoryLinks, linksByDish))
+
   setCache(k, uniqueDishes)
   return uniqueDishes
 }
@@ -266,30 +279,13 @@ export async function getDishesByCategory(categoryId) {
 export async function searchDishes(restaurantId, term) {
   const t = term?.trim()
   if (!t || t.length < 2) return []
-  const client = await initSupabase();
-  const { data, error } = await client
-    .from('dishes')
-    .select(`
-      *,
-      category:categories(*),
-      dish_categories(
-        categories(*)
-      )
-    `)
-    .eq('restaurant_id', restaurantId)
-    .eq('is_available', true)
-    .or(`name.ilike.%${t}%,description.ilike.%${t}%`)
-    .order('name', { ascending: true })
-  if (error) throw error
-  
-  // Processar múltiplas categorias
-  const processedData = data?.map(dish => ({
-    ...dish,
-    categories: dish.dish_categories?.map(dc => dc.categories) || 
-                (dish.category ? [dish.category] : [])
-  })) || []
-  
-  return processedData
+
+  const client = await initSupabase()
+  const dishes = await fetchDishesPublic(client, { restaurantId, search: t })
+  const links = await fetchDishCategoryLinks(client, { dishIds: dishes.map((dish) => dish.id) })
+  const linksByDish = groupLinksByDish(links)
+
+  return dishes.map((dish) => enrichDish(dish, linksByDish.get(dish.id) ?? []))
 }
 
 // Pequena ajuda utilitária
