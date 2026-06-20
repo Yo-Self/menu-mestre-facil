@@ -1,3 +1,73 @@
+export class CheckoutUrlError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CheckoutUrlError'
+  }
+}
+
+const DEFAULT_ALLOWED_HOST_SUFFIXES = [
+  'yo-self.com',
+  'localhost',
+  '127.0.0.1',
+  'vercel.app',
+]
+
+function collectAllowedHostSuffixes(): string[] {
+  const suffixes = new Set(DEFAULT_ALLOWED_HOST_SUFFIXES.map((host) => host.toLowerCase()))
+
+  const envValues = [
+    Deno.env.get('SITE_URL'),
+    Deno.env.get('PUBLIC_SITE_URL'),
+    Deno.env.get('NEXT_PUBLIC_SITE_URL'),
+    Deno.env.get('CHECKOUT_ALLOWED_HOST_SUFFIXES'),
+  ]
+
+  for (const raw of envValues) {
+    if (!raw) continue
+
+    if (raw.includes(',')) {
+      for (const part of raw.split(',')) {
+        const trimmed = part.trim().toLowerCase()
+        if (trimmed) suffixes.add(trimmed)
+      }
+      continue
+    }
+
+    try {
+      suffixes.add(new URL(raw).hostname.toLowerCase())
+    } catch {
+      suffixes.add(raw.toLowerCase())
+    }
+  }
+
+  return [...suffixes]
+}
+
+function hostMatchesAllowlist(hostname: string, suffixes: string[]): boolean {
+  const host = hostname.toLowerCase()
+  return suffixes.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))
+}
+
+export function assertAllowedCheckoutUrl(urlString: string, label = 'URL'): string {
+  let parsed: URL
+
+  try {
+    parsed = new URL(urlString)
+  } catch {
+    throw new CheckoutUrlError(`${label} inválida`)
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new CheckoutUrlError(`${label} deve usar HTTP ou HTTPS`)
+  }
+
+  if (!hostMatchesAllowlist(parsed.hostname, collectAllowedHostSuffixes())) {
+    throw new CheckoutUrlError(`${label} com host não permitido`)
+  }
+
+  return parsed.href
+}
+
 const DEFAULT_SITE_URL = 'https://yo-self.com'
 
 function siteBaseUrl(): string {
@@ -15,11 +85,7 @@ function queryParamsFromUrl(urlString: string): URLSearchParams {
   return new URLSearchParams(urlString.slice(queryIndex + 1))
 }
 
-/**
- * InfinitePay only accepts HTTP(S) redirect URLs. Native apps (iOS) send custom
- * schemes like yoself-app:// — map those to a public HTTPS fallback while keeping
- * order_id (and optional access token) for post-payment flows.
- */
+/** Maps native deep links (e.g. yoself-app://) to HTTPS for InfinitePay redirect_url. */
 export function resolveInfinitePayRedirectUrl(
   successUrl: string,
   orderId: string,
@@ -28,10 +94,10 @@ export function resolveInfinitePayRedirectUrl(
   try {
     const parsed = new URL(successUrl)
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.href
+      return assertAllowedCheckoutUrl(parsed.href, 'success_url')
     }
   } catch {
-    // Custom scheme or malformed URL — fall through to HTTPS fallback.
+    // Custom scheme — fall through to HTTPS fallback.
   }
 
   const params = queryParamsFromUrl(successUrl)
@@ -41,12 +107,13 @@ export function resolveInfinitePayRedirectUrl(
   params.set('capture_method', 'pix')
   params.set('order_id', orderId)
 
-  const token = params.get('token')
-  if (token && !params.has('access_token')) {
-    params.set('access_token', token)
+  const token = params.get('token') || params.get('order_token') || params.get('access_token')
+  if (token && !params.has('order_token')) {
+    params.set('order_token', token)
   }
+  params.delete('access_token')
+  params.delete('token')
 
-  // Universal Links on yo-self.com only match /restaurant/* — use that path so iOS opens the app.
   const path = restaurantSlug?.trim()
     ? `/restaurant/${encodeURIComponent(restaurantSlug.trim())}/`
     : '/'

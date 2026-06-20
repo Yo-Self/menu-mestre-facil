@@ -10,6 +10,7 @@ const root = join(import.meta.dirname, '..');
 const migrationFiles = [
   'supabase/migrations/20260618000000_fix_delivery_coords_rls_sanitize.sql',
   'supabase/migrations/20260620120000_security_ordering_delivery_geocode.sql',
+  'supabase/migrations/20260620140000_security_cardapio_rls_hardening.sql',
 ];
 
 let failed = 0;
@@ -36,6 +37,10 @@ assert('geocode cache table exists', /TABLE public\.geocode_cache/.test(readFile
 assert('create_customer_order persists customer map pin', /THEN v_customer_lat ELSE NULL END/.test(readFileSync(join(root, 'supabase/migrations/20260620130000_security_deploy_hardening.sql'), 'utf8')));
 assert('create_waiter_call RPC exists', /FUNCTION public\.create_waiter_call/.test(readFileSync(join(root, 'supabase/migrations/20260620100000_security_waiter_calls_rpc.sql'), 'utf8')));
 assert('dishes_public view exists', /VIEW public\.dishes_public/.test(readFileSync(join(root, 'supabase/migrations/20260620110000_security_dishes_public_view.sql'), 'utf8')));
+assert('profiles_public view exists', /VIEW public\.profiles_public/.test(readFileSync(join(root, 'supabase/migrations/20260620140000_security_cardapio_rls_hardening.sql'), 'utf8')));
+assert('table order rate limit exists', /table_order_rate_limited/.test(readFileSync(join(root, 'supabase/migrations/20260620140000_security_cardapio_rls_hardening.sql'), 'utf8')));
+assert('missing_table_name guard exists', /missing_table_name/.test(readFileSync(join(root, 'supabase/migrations/20260620140000_security_cardapio_rls_hardening.sql'), 'utf8')));
+assert('drops public orders read policy', /Leitura pública de pedidos/.test(readFileSync(join(root, 'supabase/migrations/20260620140000_security_cardapio_rls_hardening.sql'), 'utf8')));
 
 if (failed > 0) {
   process.exit(1);

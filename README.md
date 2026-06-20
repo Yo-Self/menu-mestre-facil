@@ -139,11 +139,13 @@ Após concluir, o dashboard exibe um **checklist opcional** com horários, compl
 Ao publicar a branch `fix/sec/security-issues`, siga esta ordem no **mesmo projeto Supabase**:
 
 1. **Pré-requisito:** extensão `http` habilitada no Supabase (`CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions`).
-2. **Frontend cardápio** — deploy do [web-version](https://github.com/Yo-Self/web-version) (`dishes_public`, RPC `create_waiter_call`, erros de pedido).
-3. **Migrations** — `supabase db push` a partir deste repositório (`menu-mestre-facil`).
+2. **Frontend cardápio** — deploy do [web-version](https://github.com/Yo-Self/web-version) (`dishes_public`, `profiles_public`, RPC `create_waiter_call`, verificação server-side de pagamento).
+3. **Migrations** — `supabase db push` a partir deste repositório (`menu-mestre-facil`), incluindo `20260620140000_security_cardapio_rls_hardening.sql` (RLS pedidos/perfis/garçom, rate limit mesa).
 4. **Edge Functions** — deploy a partir dos dois repositórios:
-   - **web-version:** `stripe-checkout`, `infinitepay-checkout`
+   - **web-version:** `stripe-checkout`, `infinitepay-checkout` (allowlist de `success_url`/`cancel_url`)
    - **menu-mestre-facil:** `scrape-ifood`, `ai-chat`, `ai-analyze-dish`, `infinitepay-checkout` (manter paridade com web-version)
+
+Opcional: `CHECKOUT_ALLOWED_HOST_SUFFIXES` nas Edge Functions de checkout para domínios extras de staging.
 
 Não faça merge na `main` até validar pedidos de entrega e cardápio em staging.
 

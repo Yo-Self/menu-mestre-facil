@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8'
-import { resolveInfinitePayRedirectUrl } from '../_shared/checkoutUrls.ts'
+import { assertAllowedCheckoutUrl, CheckoutUrlError, resolveInfinitePayRedirectUrl } from '../_shared/checkoutUrls.ts'
 import { priceOrderItemsFromMenu } from '../_shared/order-pricing.ts'
 import { captureEdgeException } from '../_shared/sentry.ts'
 
@@ -309,6 +309,27 @@ serve(async (req) => {
     }
     if (!success_url) {
       return jsonResponse({ error: 'success_url is required' }, 400)
+    }
+
+    if (success_url.startsWith('http://') || success_url.startsWith('https://')) {
+      try {
+        assertAllowedCheckoutUrl(success_url, 'success_url')
+      } catch (err) {
+        if (err instanceof CheckoutUrlError) {
+          return jsonResponse({ error: err.message }, 400)
+        }
+        throw err
+      }
+    }
+    if (body.cancel_url?.startsWith('http://') || body.cancel_url?.startsWith('https://')) {
+      try {
+        assertAllowedCheckoutUrl(body.cancel_url, 'cancel_url')
+      } catch (err) {
+        if (err instanceof CheckoutUrlError) {
+          return jsonResponse({ error: err.message }, 400)
+        }
+        throw err
+      }
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
