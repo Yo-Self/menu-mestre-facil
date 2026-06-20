@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { cheerio } from 'https://deno.land/x/cheerio@1.0.7/mod.ts';
 import { captureEdgeException } from '../_shared/sentry.ts';
+import { AuthError, requireRestaurantOwner } from '../_shared/auth.ts';
+import { assertAllowedIfoodUrl, safeFetch, UrlSecurityError } from '../_shared/urlSecurity.ts';
 
 // Definindo os headers do CORS diretamente aqui
 const corsHeaders = {
@@ -119,10 +121,18 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json()
-    if (!url) {
-      throw new Error("URL não fornecida.");
+    await requireRestaurantOwner(req)
+
+    const { url: rawUrl } = await req.json()
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return new Response(JSON.stringify({ error: 'URL não fornecida' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
     }
+
+    const validatedUrl = assertAllowedIfoodUrl(rawUrl)
+    const url = validatedUrl.href
 
     // Inicializa dados básicos
     const menuData: ScrapedData = {
@@ -233,11 +243,11 @@ serve(async (req) => {
     for (const tryUrl of urlsToTry) {
       try {
         // Primeira tentativa: com headers de navegador real
-        let response = await fetch(tryUrl, { headers: getRotatingHeaders() });
+        let response = await safeFetch(tryUrl, { headers: getRotatingHeaders() });
         
         if (!response.ok) {
           // Segunda tentativa: com headers mais simples
-          response = await fetch(tryUrl, {
+          response = await safeFetch(tryUrl, {
             headers: {
               'User-Agent': getRotatingHeaders()['User-Agent'],
               'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -247,7 +257,7 @@ serve(async (req) => {
         
         if (!response.ok) {
           // Terceira tentativa: com headers mínimos
-          response = await fetch(tryUrl, {
+          response = await safeFetch(tryUrl, {
             headers: {
               'User-Agent': getRotatingHeaders()['User-Agent']
             }
@@ -293,7 +303,7 @@ serve(async (req) => {
     // MÉTODO 5: Tentar com diferentes estratégias de parsing se não encontrou nada
     if (!bestResult || bestResult.menu_items.length === 0) {
       try {
-        const response = await fetch(url, { headers: getRotatingHeaders() });
+        const response = await safeFetch(url, { headers: getRotatingHeaders() });
         if (response.ok) {
           const html = await response.text();
           const $ = cheerio.load(html);
@@ -333,7 +343,7 @@ serve(async (req) => {
       for (const param of queryParams) {
         try {
           const queryUrl = url.includes('?') ? url + param.replace('?', '&') : url + param;
-          const response = await fetch(queryUrl, { headers: getRotatingHeaders() });
+          const response = await safeFetch(queryUrl, { headers: getRotatingHeaders() });
           
           if (response.ok) {
             const html = await response.text();
@@ -364,7 +374,7 @@ serve(async (req) => {
 
       for (const menuUrl of specificMenuUrls) {
         try {
-          const response = await fetch(menuUrl, { headers: getRotatingHeaders() });
+          const response = await safeFetch(menuUrl, { headers: getRotatingHeaders() });
           if (response.ok) {
             const html = await response.text();
             const $ = cheerio.load(html);
@@ -402,17 +412,17 @@ serve(async (req) => {
     if (bestResult) {
       Object.assign(menuData, bestResult);
     } else {
-      // Fallback: tentar a URL original
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Falha ao buscar a URL: ${response.statusText}`);
+      try {
+        const response = await safeFetch(url);
+        if (response.ok) {
+          const html = await response.text();
+          const $ = cheerio.load(html);
+          const fallbackResult = await extractDataFromHTML($, url);
+          Object.assign(menuData, fallbackResult);
+        }
+      } catch {
+        // Ignora falhas de fetch no fallback
       }
-      
-      const html = await response.text();
-      const $ = cheerio.load(html);
-      
-      const fallbackResult = await extractDataFromHTML($, url);
-      Object.assign(menuData, fallbackResult);
     }
 
     // Validações e fallbacks finais
@@ -438,9 +448,22 @@ serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    if (error instanceof AuthError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: error.status,
+      })
+    }
+
+    if (error instanceof UrlSecurityError) {
+      return new Response(JSON.stringify({ error: 'URL não permitida' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
     await captureEdgeException(error, { functionName: 'scrape-ifood' });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ error: 'Não foi possível processar a solicitação' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     });
@@ -796,16 +819,17 @@ async function extractDataFromJSON(jsonData: unknown, url: string): Promise<Scra
 
   // Fallback para extração HTML se JSON falhar
   if (menuData.menu_items.length === 0) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Falha ao buscar a URL: ${response.statusText}`);
+    try {
+      const response = await safeFetch(url);
+      if (response.ok) {
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        const fallbackResult = await extractDataFromHTML($, url);
+        Object.assign(menuData, fallbackResult);
+      }
+    } catch {
+      // Ignora falhas de fetch no fallback JSON
     }
-    
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    
-    const fallbackResult = await extractDataFromHTML($, url);
-    Object.assign(menuData, fallbackResult);
   }
 
   // Validações e fallbacks finais

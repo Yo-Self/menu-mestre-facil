@@ -2,6 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { GoogleGenerativeAI } from "npm:@google/generative-ai@^0.21.0"
 import { captureEdgeException } from '../_shared/sentry.ts'
 import { capturePostHogAiGeneration } from '../_shared/posthog-llm.ts'
+import { AuthError, requireAuthenticatedUser, userOwnsRestaurant, isValidUuid } from '../_shared/auth.ts'
+import { createServiceSupabase, enforceRateLimit, getClientIp } from '../_shared/rateLimit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +23,13 @@ const VISION_MODELS = [
   'gemini-1.5-flash-latest',
   'gemini-1.5-flash',
 ]
+
+function jsonResponse(body: Record<string, unknown>, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
 
 function isAllowedImageUrl(url: string): boolean {
   try {
@@ -85,7 +94,7 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
 
   const response = await fetch(imageUrl)
   if (!response.ok) {
-    throw new Error(`Não foi possível baixar a imagem: ${response.status}`)
+    throw new Error('Não foi possível baixar a imagem')
   }
 
   const contentType = response.headers.get('content-type') || 'image/jpeg'
@@ -164,26 +173,59 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(req)
+    const supabase = createServiceSupabase()
+    const clientIp = getClientIp(req)
+
+    const userLimitResponse = await enforceRateLimit(
+      supabase,
+      'ai-analyze-dish:user',
+      authUser.userId,
+      30,
+      60,
+    )
+    if (userLimitResponse) {
+      return new Response(userLimitResponse.body, {
+        status: userLimitResponse.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const ipLimitResponse = await enforceRateLimit(
+      supabase,
+      'ai-analyze-dish:ip',
+      clientIp,
+      60,
+      60,
+    )
+    if (ipLimitResponse) {
+      return new Response(ipLimitResponse.body, {
+        status: ipLimitResponse.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
     if (!apiKey) {
-      throw new Error('GOOGLE_AI_API_KEY environment variable is not set')
+      return jsonResponse({ error: 'Serviço de análise indisponível' }, 503)
     }
 
     const body = await req.json()
-    const { image_url, cuisine_type, existing_categories, distinct_id } = body
+    const { image_url, cuisine_type, existing_categories, restaurant_id } = body
 
     if (!image_url || typeof image_url !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'image_url é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return jsonResponse({ error: 'image_url é obrigatório' }, 400)
     }
 
     if (!isAllowedImageUrl(image_url)) {
-      return new Response(
-        JSON.stringify({ error: 'URL de imagem não permitida' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return jsonResponse({ error: 'URL de imagem não permitida' }, 400)
+    }
+
+    if (isValidUuid(restaurant_id)) {
+      const ownsRestaurant = await userOwnsRestaurant(authUser.userId, restaurant_id)
+      if (!ownsRestaurant) {
+        return jsonResponse({ error: 'Acesso negado ao restaurante informado' }, 403)
+      }
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
@@ -198,7 +240,7 @@ Deno.serve(async (req) => {
 
     const latencyMs = Date.now() - startedAt
     await capturePostHogAiGeneration({
-      distinctId: typeof distinct_id === 'string' ? distinct_id : 'onboarding-anonymous',
+      distinctId: authUser.userId,
       input: `analyze-dish: ${image_url}`,
       output: JSON.stringify(result),
       model,
@@ -206,21 +248,19 @@ Deno.serve(async (req) => {
       properties: {
         feature: 'onboarding_menu',
         cuisine_type: cuisine_type || null,
+        restaurant_id: restaurant_id || null,
       },
     })
 
-    return new Response(
-      JSON.stringify({ result, model, timestamp: new Date().toISOString() }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return jsonResponse({ result, model, timestamp: new Date().toISOString() }, 200)
   } catch (error) {
+    if (error instanceof AuthError) {
+      return jsonResponse({ error: error.message }, error.status)
+    }
+
     console.error('Erro em ai-analyze-dish:', error)
     await captureEdgeException(error, { functionName: 'ai-analyze-dish' })
 
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
-    return new Response(
-      JSON.stringify({ error: errorMessage, timestamp: new Date().toISOString() }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return jsonResponse({ error: 'Não foi possível analisar a imagem' }, 500)
   }
 })

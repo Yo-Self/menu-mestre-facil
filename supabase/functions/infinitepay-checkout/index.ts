@@ -85,7 +85,7 @@ async function loadAndValidateCheckout(
 ): Promise<{ ok: true; data: ValidatedInfinitePayCheckout } | { ok: false; response: Response }> {
   const { data: restaurant, error: restaurantError } = await supabase
     .from('restaurants')
-    .select('infinitepay_handle, pix_payment_enabled, open, is_open_for_orders')
+    .select('infinitepay_handle, pix_payment_enabled, open, is_open_for_orders, online_ordering_enabled')
     .eq('id', restaurantId)
     .single()
 
@@ -106,6 +106,10 @@ async function loadAndValidateCheckout(
 
   if (!restaurant.open || !restaurant.is_open_for_orders) {
     return { ok: false, response: jsonResponse({ error: 'Restaurant is not accepting orders' }, 403) }
+  }
+
+  if (restaurant.online_ordering_enabled === false) {
+    return { ok: false, response: jsonResponse({ error: 'Online ordering is disabled for this restaurant' }, 403) }
   }
 
   const { data: order, error: orderError } = await supabase

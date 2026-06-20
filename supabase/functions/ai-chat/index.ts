@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai@0.11.2'
 import { captureEdgeException } from '../_shared/sentry.ts'
 import { createServiceSupabase, enforceRateLimit, getClientIp } from '../_shared/rateLimit.ts'
-import { getUserFromRequest, isValidUuid } from '../_shared/auth.ts'
+import { getUserFromRequest, isValidUuid, requireRestaurantOwner, AuthError } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -393,7 +393,7 @@ serve(async (req) => {
       restaurantData: _clientRestaurantData,
       chatHistory,
       history,
-      systemInstruction,
+      systemInstruction: _systemInstruction,
       distinct_id,
       trace_id,
     } = body as {
@@ -424,6 +424,15 @@ serve(async (req) => {
     }
 
     if (authUser) {
+      try {
+        await requireRestaurantOwner(req)
+      } catch (error) {
+        if (error instanceof AuthError) {
+          return jsonResponse({ error: error.message }, error.status)
+        }
+        throw error
+      }
+
       const userLimitResponse = await enforceRateLimit(
         supabase,
         'ai-chat:user',
@@ -438,13 +447,8 @@ serve(async (req) => {
         })
       }
 
-      if (typeof systemInstruction === 'string' && systemInstruction.length > 4000) {
-        return jsonResponse({ error: 'systemInstruction too long' }, 400)
-      }
-
-      restaurantContext = typeof systemInstruction === 'string' && systemInstruction.trim()
-        ? systemInstruction.trim()
-        : 'Você é um assistente útil para gestores de restaurantes. Responda em português brasileiro de forma concisa.'
+      restaurantContext =
+        'Você é um assistente útil para gestores de restaurantes. Responda em português brasileiro de forma concisa.'
       trackingProps = { ...trackingProps, profile: 'manager', user_id: authUser.userId }
     } else {
       if (!isValidUuid(restaurant_id)) {

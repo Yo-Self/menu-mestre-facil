@@ -127,9 +127,12 @@ Após concluir, o dashboard exibe um **checklist opcional** com horários, compl
 - Secrets privados (`SUPABASE_SECRET_KEY`, `SB_SECRET_KEY`, `GOOGLE_AI_API_KEY`, `POSTHOG_API_KEY`, `SENTRY_AUTH_TOKEN`, tokens de Telegram e certificados) devem ficar no gitnode/plataforma de segredos ou em Supabase Edge Function Secrets, conforme o runtime.
 - O build executa `npm run security:env` antes de gerar artefatos. A validação bloqueia segredos em env público e URLs Supabase sem HTTPS em produção.
 - A sessão Supabase do gestor usa `sessionStorage`; não persista JWT ou refresh token em `localStorage`.
-- **Impressão de cupons (XSS):** dados de pedidos (`customer_info`, observações, endereços) são escapados em HTML via `src/lib/printHtml.ts` antes de `document.write`/iframe.
-- **Pedidos públicos:** o cardápio em [web-version](https://github.com/Yo-Self/web-version) (`yo-self.com`) usa o RPC `create_customer_order`; coordenadas de entrega são obrigatórias no servidor. Deploy de migrations e Edge Functions deve ser coordenado entre os dois repositórios.
-- **AI Chat:** Edge Function `ai-chat` aplica rate limit por IP/usuário/restaurante; cardápio público exige `restaurant_id` e carrega o menu no servidor.
+- **Impressão de cupons (XSS):** dados de pedidos (`customer_info`, observações, endereços) são escapados em HTML via `src/lib/printHtml.ts` antes de `document.write`/iframe; `order_items.notes` é sanitizado no RPC e via trigger.
+- **Pedidos públicos:** o cardápio em [web-version](https://github.com/Yo-Self/web-version) (`yo-self.com`) usa o RPC `create_customer_order`; coordenadas de entrega são obrigatórias e validadas contra geocodificação server-side (`delivery_coords_mismatch` se > 500 m); `online_ordering_enabled` é checado no RPC e nos checkouts. O cardápio público deve ler pratos via view `dishes_public` (sem `cost_price`).
+- **Chamada de garçom:** inserts anônimos diretos em `waiter_calls` foram removidos; clientes usam o RPC `create_waiter_call` (valida `waiter_call_enabled` e limita 1 chamada pendente por mesa).
+- **Import iFood:** Edge Function `scrape-ifood` exige gestor autenticado e allowlist de hosts iFood (anti-SSRF).
+- **AI Chat:** Edge Function `ai-chat` aplica rate limit por IP/usuário/restaurante; caminho de gestor exige dono de restaurante e ignora `systemInstruction` customizado; cardápio público exige `restaurant_id` e carrega o menu no servidor.
+- **AI Analyze Dish:** Edge Function `ai-analyze-dish` exige JWT de usuário autenticado, rate limit por usuário/IP e `verify_jwt = true`.
 
 ## Contribuição
 

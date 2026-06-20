@@ -24,6 +24,23 @@ export interface Printer {
   description?: string
 }
 
+type PrintTextItem = {
+  type: 'text'
+  value: string
+  style?: string
+  position?: string
+}
+
+/** User-controlled strings must flow through convertItemsToHtml (escapeHtml on value). */
+const printTextItem = (
+  value: unknown,
+  options?: { style?: string; position?: string },
+): PrintTextItem => ({
+  type: 'text',
+  value: String(value ?? ''),
+  ...options,
+})
+
 const convertItemsToHtml = (items: any[], title: string = 'Cupom') => {
   const paperWidth = localStorage.getItem("thermal_paper_width") || "80mm";
   const itemsHtml = items.map((item) => {
@@ -167,29 +184,23 @@ export function usePrinting() {
         }
 
         // Cabeçalho - Nome do Restaurante
-        items.push({
-          type: 'text',
-          value: '--- GESTOR MENU ---',
+        items.push(printTextItem('--- GESTOR MENU ---', {
           style: 'font-weight: bold; font-size: 18px; margin-bottom: 3px;',
           position: 'center'
-        })
+        }))
 
         if (order.restaurant_name) {
-          items.push({
-            type: 'text',
-            value: order.restaurant_name.toUpperCase(),
+          items.push(printTextItem(order.restaurant_name.toUpperCase(), {
             style: 'font-weight: bold; font-size: 16px; margin-bottom: 10px;',
             position: 'center'
-          })
+          }))
         }
 
         // Detalhes do Pedido
-        items.push({
-          type: 'text',
-          value: `PEDIDO: #${order.display_id || order.id.slice(0, 8)}`,
+        items.push(printTextItem(`PEDIDO: #${order.display_id || order.id.slice(0, 8)}`, {
           style: 'font-weight: bold; font-size: 15px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;',
           position: 'center'
-        })
+        }))
 
         // Senha Sequencial de Fila
         if (order.queue_password) {
@@ -531,11 +542,16 @@ export function usePrinting() {
               return `<div style="font-size: 11px; font-style: italic; color: #555; padding-left: 10px;">- ${escapeHtml(comp.name)}${compPrice}</div>`;
             }).join('') || '';
             
+            const notesHtml = item.notes
+              ? `<div style="font-size: 10px; color: red; padding-left: 10px; margin-top: 2px;">Obs: ${escapeHtml(item.notes)}</div>`
+              : '';
+
             return `
               <div style="margin-top: 5px; font-size: 12px; font-weight: bold;">${item.quantity}x ${dishName}</div>
               <div style="font-size: 11px; padding-left: 10px;">${(item.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un. | Total: ${((item.unit_price || 0) * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
               ${complementsHtml}
               ${compositionHtml}
+              ${notesHtml}
             `;
           }).join('') || ''}
           <div class="border"></div>

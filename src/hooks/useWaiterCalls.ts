@@ -65,23 +65,18 @@ export function useWaiterCalls({
 
   const createCall = useCallback(async (tableNumber: number, notes?: string) => {
     try {
-      const { data: callData, error: callError } = await supabase
-        .from('waiter_calls')
-        .insert({
-          restaurant_id: restaurantId,
-          table_number: tableNumber,
-          notes,
-          status: 'pending',
-        })
-        .select()
-        .single();
+      const { data: callData, error: callError } = await supabase.rpc('create_waiter_call', {
+        p_restaurant_id: restaurantId,
+        p_table_number: tableNumber,
+        p_notes: notes?.trim() || null,
+      });
 
       if (callError) {
         throw callError;
       }
 
       await fetchCalls();
-      return callData;
+      return callData as WaiterCall;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
       throw err;

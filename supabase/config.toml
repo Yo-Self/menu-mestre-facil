@@ -30,6 +30,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/ai-chat/index.ts"
 
+[functions.ai-analyze-dish]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/ai-analyze-dish/index.ts"
+
 [functions.infinitepay-checkout]
 enabled = true
 verify_jwt = true
@@ -39,3 +44,4 @@ entrypoint = "./functions/infinitepay-checkout/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/infinitepay-webhook/index.ts"
+
