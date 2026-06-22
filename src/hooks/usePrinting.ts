@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { isOrderPaidOnline } from '@/lib/orderPayment'
-import { escapeHtml, sanitizePrintImageUrl } from '@/lib/printHtml'
+import { escapeHtml, sanitizePrintImageUrl, formatPrefaceAnswerLines } from '@/lib/printHtml'
 import { Analytics } from '@/services/analytics'
 
 const getPaymentLabel = (method: string) => {
@@ -317,18 +317,15 @@ export function usePrinting() {
               });
             }
 
-            // Complementos
-            if (item.complements && item.complements.length > 0) {
-              item.complements.forEach((comp: any) => {
-                const compPrice = comp.price > 0 ? ` (+ ${(comp.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : ''
-                items.push({
-                  type: 'text',
-                  value: `  - ${comp.name}${compPrice}`,
-                  style: 'font-size: 10px; font-style: italic; color: #555;',
-                  position: 'left'
-                })
+            // Complementos e respostas de pergunta prévia (linha única por grupo)
+            formatPrefaceAnswerLines(item).forEach((line) => {
+              items.push({
+                type: 'text',
+                value: `  ${line}`,
+                style: 'font-size: 10px; font-weight: bold; color: #333; padding-left: 10px;',
+                position: 'left'
               })
-            }
+            })
 
             // Observação do item
             if (item.notes) {
@@ -537,10 +534,9 @@ export function usePrinting() {
             const compositionHtml = compsPrice > 0 
               ? `<div style="font-size: 10px; font-style: italic; color: #555; padding-left: 10px;">Composição: ${baseFormatted} base + ${compsFormatted} adicional = ${sumFormatted}</div>`
               : '';
-            const complementsHtml = item.complements?.map((comp: any) => {
-              const compPrice = comp.price > 0 ? ` (+ ${(comp.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : '';
-              return `<div style="font-size: 11px; font-style: italic; color: #555; padding-left: 10px;">- ${escapeHtml(comp.name)}${compPrice}</div>`;
-            }).join('') || '';
+            const complementsHtml = formatPrefaceAnswerLines(item)
+              .map((line) => `<div style="font-size: 11px; font-weight: bold; color: #333; padding-left: 10px;">${escapeHtml(line)}</div>`)
+              .join('');
             
             const notesHtml = item.notes
               ? `<div style="font-size: 10px; color: red; padding-left: 10px; margin-top: 2px;">Obs: ${escapeHtml(item.notes)}</div>`
@@ -723,17 +719,14 @@ export function usePrinting() {
               position: 'left'
             })
 
-            // Complementos
-            if (item.complements && item.complements.length > 0) {
-              item.complements.forEach((comp: any) => {
-                items.push({
-                  type: 'text',
-                  value: `  + ${comp.name}`,
-                  style: 'font-size: 11px; font-weight: bold; padding-left: 10px;',
-                  position: 'left'
-                })
+            formatPrefaceAnswerLines(item).forEach((line) => {
+              items.push({
+                type: 'text',
+                value: `  ${line}`,
+                style: 'font-size: 11px; font-weight: bold; padding-left: 10px;',
+                position: 'left'
               })
-            }
+            })
 
             // Observação do item
             if (item.notes) {
@@ -810,7 +803,7 @@ export function usePrinting() {
           <div class="border" style="font-weight: bold;">ITENS PARA PREPARAÇÃO:</div>
           ${order.items?.map((item: any) => `
             <div class="item-title">${item.quantity}x [ ${escapeHtml(item.dish_name || item.name)} ]</div>
-            ${item.complements?.map((c: any) => `<div style="padding-left: 15px; font-weight: bold;">+ ${escapeHtml(c.name)}</div>`).join('') || ''}
+            ${formatPrefaceAnswerLines(item).map((line) => `<div style="padding-left: 15px; font-weight: bold;">${escapeHtml(line)}</div>`).join('')}
             ${item.notes ? `<div class="obs" style="padding-left: 15px; margin-top: 5px;">⚠️ OBS: ${escapeHtml(item.notes)}</div>` : ''}
             <div style="border-top: 1px solid #ccc; margin: 5px 0;"></div>
           `).join('')}

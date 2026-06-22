@@ -41,6 +41,7 @@ import { usePrinting } from '../../hooks/usePrinting'
 import { useRestaurant } from '../../hooks/useRestaurant'
 import { supabase } from '../../integrations/supabase/client'
 import { useToast } from '../../hooks/use-toast'
+import { OrderItemComplementLines } from './OrderItemComplementLines'
 
 interface OrderCardProps {
   order: OrderWithItems
@@ -329,6 +330,9 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
               name: c.name,
               price: (c.price || 0) / 100 // conversão de centavos
             }))
+          : [],
+        complement_group_answers: Array.isArray(item.complement_group_answers)
+          ? item.complement_group_answers
           : [],
         notes: item.notes || '',
         sent_to_kitchen: item.sent_to_kitchen !== false
@@ -804,22 +808,12 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                         {formatPrice(item.price_at_time_of_order * item.quantity)}
                       </span>
                     </div>
-                    {(item.complement_group_answers || item.selected_complements) && (
-                      <div className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}>
-                        {Array.isArray(item.complement_group_answers) &&
-                          item.complement_group_answers.map((answer: any, answerIndex: number) => (
-                            <div key={`answer-${answerIndex}`}>
-                              {answer.group_title}: {answer.answer_label}
-                            </div>
-                          ))
-                        }
-                        {Array.isArray(item.selected_complements) && 
-                          item.selected_complements.map((complement: any, compIndex: number) => (
-                            <div key={compIndex}>+ {complement.name}</div>
-                          ))
-                        }
-                      </div>
-                    )}
+                    <OrderItemComplementLines
+                      selectedComplements={item.selected_complements}
+                      complementGroupAnswers={item.complement_group_answers}
+                      className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} mt-0.5 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}
+                      lineClassName="text-[10px] text-muted-foreground italic"
+                    />
                     {item.notes && (
                       <div className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} text-[10px] text-destructive/80 font-medium mt-1 bg-red-500/5 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}>
                         Obs: {item.notes}

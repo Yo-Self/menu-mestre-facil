@@ -50,7 +50,7 @@ import {
   groupHasPreface,
 } from "@/components/complements/ComplementPrefaceSelector";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
-import { escapeHtml, sanitizePrintImageUrl } from "@/lib/printHtml";
+import { escapeHtml, sanitizePrintImageUrl, formatOrderItemComplementLinesHtml } from "@/lib/printHtml";
 
 interface CartItem {
   id: string; // unique cart item id (timestamp + dish_id)
@@ -840,26 +840,8 @@ export default function POSTerminal() {
       const unitTotal = dishPrice + compsPrice;
       const totalItemPrice = ((unitTotal * item.quantity) / 100).toFixed(2);
       
-      let compsText = "";
-      if (item.selected_complements && item.selected_complements.length > 0) {
-        const groups: Record<string, any[]> = {};
-        item.selected_complements.forEach((c: any) => {
-          const title = c.group_title || "Complementos";
-          if (!groups[title]) groups[title] = [];
-          groups[title].push(c);
-        });
-        
-        compsText = Object.entries(groups)
-          .map(([title, comps]) => {
-            const compsList = comps.map(c => {
-              const priceStr = c.price > 0 ? ` (+ R$ ${(c.price / 100).toFixed(2)})` : '';
-              return `${escapeHtml(c.name)}${priceStr}`;
-            }).join(", ");
-            return `<div style="font-size: 9px; color: #555; padding-left: 5px; margin-top: 1px;"><strong>${escapeHtml(title)}:</strong> ${compsList}</div>`;
-          })
-          .join("");
-      }
-      
+      const complementLinesHtml = formatOrderItemComplementLinesHtml(item);
+
       let notesText = "";
       if (item.notes) {
         notesText = `<div style="font-size: 9px; color: red; padding-left: 5px; margin-top: 1px;"><strong>Obs:</strong> ${escapeHtml(item.notes)}</div>`;
@@ -885,7 +867,7 @@ export default function POSTerminal() {
             <span>&nbsp;</span>
             <span style="font-weight: bold;">R$ ${totalItemPrice}</span>
           </div>
-          ${compsText}
+          ${complementLinesHtml}
           ${compositionText}
           ${notesText}
         </div>
@@ -1107,20 +1089,11 @@ export default function POSTerminal() {
     if (!iframeDoc) return;
 
     const itemsHtml = filteredItems.map((item: any) => {
-      let compsText = "";
-      if (item.selected_complements && item.selected_complements.length > 0) {
-        const groups: Record<string, any[]> = {};
-        item.selected_complements.forEach((c: any) => {
-          const title = c.group_title || "Complementos";
-          if (!groups[title]) groups[title] = [];
-          groups[title].push(c);
-        });
-        
-        compsText = Object.entries(groups)
-          .map(([title, comps]) => `<div style="font-size: 11px; font-weight: bold; color: #111; padding-left: 5px; margin-top: 2px;"><strong>${escapeHtml(title)}:</strong> ${comps.map(c => escapeHtml(c.name)).join(", ")}</div>`)
-          .join("");
-      }
-      
+      const complementLinesHtml = formatOrderItemComplementLinesHtml(
+        item,
+        "font-size: 11px; font-weight: bold; color: #111; padding-left: 5px; margin-top: 2px;"
+      );
+
       let notesText = "";
       if (item.notes) {
         notesText = `<div style="font-size: 12px; font-weight: bold; color: red; margin-top: 3px; padding-left: 5px;">⚠️ OBS: ${escapeHtml(item.notes)}</div>`;
@@ -1131,7 +1104,7 @@ export default function POSTerminal() {
           <div style="font-size: 14px; font-weight: bold;">
             ${item.quantity} x [ ${escapeHtml(item.dish?.name || item.dish_name)} ]
           </div>
-          ${compsText}
+          ${complementLinesHtml}
           ${notesText}
         </div>
       `;
