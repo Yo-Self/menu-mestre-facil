@@ -1236,17 +1236,6 @@ export default function POSWaiterTerminal() {
 
               return (
               <div key={group.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
-                {prefaceActive && (
-                  <ComplementPrefaceSelector
-                    question={group.preface_question}
-                    options={group.preface_options}
-                    selectedAnswerId={prefaceAnswersTemp[group.id]}
-                    onChange={(answerId) =>
-                      setPrefaceAnswersTemp((prev) => ({ ...prev, [group.id]: answerId }))
-                    }
-                  />
-                )}
-
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-heading font-bold text-sm text-foreground">{group.title}</h5>
@@ -1257,6 +1246,17 @@ export default function POSWaiterTerminal() {
                     <Badge variant="secondary" className="text-[9px] font-semibold rounded-lg px-2">Até {group.max_selections}</Badge>
                   </div>
                 </div>
+
+                {prefaceActive && (
+                  <ComplementPrefaceSelector
+                    question={group.preface_question}
+                    options={group.preface_options}
+                    selectedAnswerId={prefaceAnswersTemp[group.id]}
+                    onChange={(answerId) =>
+                      setPrefaceAnswersTemp((prev) => ({ ...prev, [group.id]: answerId }))
+                    }
+                  />
+                )}
 
                 <div className={`grid grid-cols-1 gap-2 ${prefaceBlocked ? "opacity-50 pointer-events-none" : ""}`}>
                   {group.complements.map((comp: any) => {
