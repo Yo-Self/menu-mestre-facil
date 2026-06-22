@@ -114,18 +114,20 @@ serve(async (req) => {
       ? order.infinitepay_invoice_slug
       : null
 
-    if (!storedSlug) {
-      console.error('InfinitePay webhook rejected: order has no checkout invoice slug', orderId)
-      return jsonResponse({ error: 'Order not linked to InfinitePay checkout' }, 400)
-    }
-
-    if (invoiceSlug !== storedSlug) {
+    if (storedSlug && invoiceSlug !== storedSlug) {
       console.error('InfinitePay webhook rejected: invoice_slug mismatch', {
         orderId,
         expected: storedSlug,
         received: invoiceSlug,
       })
       return jsonResponse({ error: 'Invoice slug mismatch' }, 400)
+    }
+
+    if (!storedSlug) {
+      console.log('InfinitePay webhook: no stored invoice slug; verifying with webhook slug', {
+        orderId,
+        invoiceSlug,
+      })
     }
 
     const restaurant = order.restaurants as { infinitepay_handle?: string | null } | null
@@ -165,6 +167,7 @@ serve(async (req) => {
       status: 'new',
       payment_provider: 'infinitepay',
       infinitepay_transaction_nsu: transactionNsu,
+      infinitepay_invoice_slug: invoiceSlug,
     }
 
     const { error: updateError } = await supabase

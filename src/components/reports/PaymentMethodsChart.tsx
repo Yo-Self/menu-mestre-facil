@@ -25,7 +25,7 @@ const METHOD_COLORS: Record<string, string> = {
   'Cartão de Crédito': '#3B82F6',   // Blue
   'Cartão de Débito': '#6366F1',    // Indigo
   'Dinheiro': '#F59E0B',            // Amber/Gold
-  'Stripe (Online)': '#8B5CF6',     // Violet
+  'Pago Cartão': '#8B5CF6',     // Violet
   'Pago pelo App': '#EC4899',       // Pink
   'Cartão': '#06B6D4',              // Cyan
   'Outro/Não especificado': '#64748B' // Slate/Gray

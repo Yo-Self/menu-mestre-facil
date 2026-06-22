@@ -6,12 +6,18 @@ export type OnlinePaidOrderFields = {
   payment_provider?: string | null
 }
 
+function isConfirmedOnlinePaymentStatus(status: string | null | undefined): boolean {
+  return status !== 'pending_payment' && status !== 'cancelled'
+}
+
 export function isOrderPaidOnline(order: OnlinePaidOrderFields | null | undefined): boolean {
   if (!order) return false
-  if (order.stripe_payment_intent_id) return true
   if (order.infinitepay_transaction_nsu) return true
   if (order.payment_provider === 'infinitepay' || order.payment_provider === 'stripe') {
-    return order.status !== 'pending_payment' && order.status !== 'cancelled'
+    return isConfirmedOnlinePaymentStatus(order.status)
+  }
+  if (order.stripe_payment_intent_id) {
+    return isConfirmedOnlinePaymentStatus(order.status)
   }
   return false
 }
@@ -21,8 +27,8 @@ export function getOnlinePaymentProviderLabel(order: OnlinePaidOrderFields | nul
   if (order?.payment_provider === 'infinitepay' || order?.infinitepay_transaction_nsu) {
     return 'Pago PIX'
   }
-  if (order?.stripe_payment_intent_id || order?.payment_provider === 'stripe') {
-    return 'Stripe (Online)'
+  if (order?.payment_provider === 'stripe' || order?.stripe_payment_intent_id) {
+    return 'Pago Cartão'
   }
   return 'Pago online'
 }

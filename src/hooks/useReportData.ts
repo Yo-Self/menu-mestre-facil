@@ -157,7 +157,7 @@ function aggregateOrders(orders: ReportOrder[], expenses: any[] = []): ReportSum
       credit_card: 'Cartão de Crédito',
       debit_card: 'Cartão de Débito',
       pix: 'Pix',
-      stripe: 'Stripe (Online)',
+      stripe: 'Pago Cartão',
       infinitepay: 'Pago PIX',
       card: 'Cartão',
       online: 'Pago pelo App',

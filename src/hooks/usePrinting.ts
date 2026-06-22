@@ -9,7 +9,7 @@ const getPaymentLabel = (method: string) => {
     credit_card: 'Cartão de Crédito',
     debit_card: 'Cartão de Débito',
     pix: 'PIX',
-    stripe: 'Online (Stripe)',
+    stripe: 'Pago Cartão',
     infinitepay: 'Pago PIX',
     card: 'Cartão (Débito/Crédito)',
     online: 'Pago pelo App'
