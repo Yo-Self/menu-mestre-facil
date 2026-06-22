@@ -11,6 +11,7 @@ export interface POSOrderItemInput {
   quantity: number;
   price_at_time_of_order: number; // in cents
   selected_complements?: any;
+  complement_group_answers?: any;
   notes?: string | null;
   needs_preparation?: boolean;
 }

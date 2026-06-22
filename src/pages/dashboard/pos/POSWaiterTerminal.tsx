@@ -48,6 +48,11 @@ import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
 import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
 import { submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
 import { getComplementsForDishWithFallback } from "@/services/posOffline/complementsCache";
+import {
+  buildPrefaceAnswersPayload,
+  ComplementPrefaceSelector,
+  groupHasPreface,
+} from "@/components/complements/ComplementPrefaceSelector";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
 
 interface CartItem {
@@ -59,6 +64,12 @@ interface CartItem {
     name: string;
     price: number;
     group_title?: string;
+  }[];
+  complement_group_answers?: {
+    group_id: string;
+    group_title: string;
+    answer_id: string;
+    answer_label: string;
   }[];
   notes?: string;
 }
@@ -90,6 +101,7 @@ export default function POSWaiterTerminal() {
   const [selectedDishForComplements, setSelectedDishForComplements] = useState<any>(null);
   const [complementGroups, setComplementGroups] = useState<any[]>([]);
   const [selectedComplementsTemp, setSelectedComplementsTemp] = useState<{[groupId: string]: any[]}>({});
+  const [prefaceAnswersTemp, setPrefaceAnswersTemp] = useState<Record<string, string>>({});
 
   const [savingOrder, setSavingOrder] = useState(false);
   const [viewMode, setViewMode] = useState<"tables" | "grid">("tables");
@@ -252,6 +264,7 @@ export default function POSWaiterTerminal() {
         initial[g.id] = [];
       });
       setSelectedComplementsTemp(initial);
+      setPrefaceAnswersTemp({});
       
       setComplementsModalOpen(true);
     } else {
@@ -259,7 +272,16 @@ export default function POSWaiterTerminal() {
     }
   };
 
-  const handleComplementSelect = (groupId: string, comp: any, maxSelections: number) => {
+  const handleComplementSelect = (groupId: string, comp: any, maxSelections: number, group: any) => {
+    if (groupHasPreface(group) && !prefaceAnswersTemp[groupId]) {
+      toast({
+        title: "Responda a pergunta",
+        description: "Selecione uma opção antes de escolher os complementos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedComplementsTemp(prev => {
       const selected = prev[groupId] || [];
       const exists = selected.find(s => s.id === comp.id);
@@ -285,8 +307,18 @@ export default function POSWaiterTerminal() {
     if (!selectedDishForComplements) return;
 
     for (const group of complementGroups) {
+      const selections = selectedComplementsTemp[group.id] || [];
+      if (groupHasPreface(group)) {
+        if ((group.required || selections.length > 0) && !prefaceAnswersTemp[group.id]) {
+          toast({
+            title: "Pergunta obrigatória",
+            description: `Responda a pergunta em "${group.title}" antes de continuar.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       if (group.required) {
-        const selections = selectedComplementsTemp[group.id] || [];
         if (selections.length === 0) {
           toast({
             title: "Seleção obrigatória",
@@ -297,6 +329,8 @@ export default function POSWaiterTerminal() {
         }
       }
     }
+
+    const complementGroupAnswers = buildPrefaceAnswersPayload(complementGroups, prefaceAnswersTemp);
 
     const flatComplements = Object.entries(selectedComplementsTemp).flatMap(([groupId, arr]) => {
       const group = complementGroups.find(g => g.id === groupId);
@@ -309,17 +343,23 @@ export default function POSWaiterTerminal() {
       }));
     });
 
-    addToCart(selectedDishForComplements, flatComplements);
+    addToCart(selectedDishForComplements, flatComplements, complementGroupAnswers);
     setComplementsModalOpen(false);
+    setPrefaceAnswersTemp({});
   };
 
-  const addToCart = (dish: any, complements: any[]) => {
+  const addToCart = (
+    dish: any,
+    complements: any[],
+    complementGroupAnswers: CartItem["complement_group_answers"] = []
+  ) => {
     const cartId = `${Date.now()}-${dish.id}`;
     const newItem: CartItem = {
       id: cartId,
       dish,
       quantity: 1,
       selected_complements: complements,
+      complement_group_answers: complementGroupAnswers.length > 0 ? complementGroupAnswers : undefined,
     };
     
     setCart(prev => [...prev, newItem]);
@@ -508,6 +548,7 @@ export default function POSWaiterTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
         notes: item.notes || null,
         needs_preparation: item.dish.needs_preparation !== false
       }));
@@ -1189,8 +1230,23 @@ export default function POSWaiterTerminal() {
           </DialogHeader>
 
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-            {complementGroups.map((group) => (
+            {complementGroups.map((group) => {
+              const prefaceActive = groupHasPreface(group);
+              const prefaceBlocked = prefaceActive && !prefaceAnswersTemp[group.id];
+
+              return (
               <div key={group.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
+                {prefaceActive && (
+                  <ComplementPrefaceSelector
+                    question={group.preface_question}
+                    options={group.preface_options}
+                    selectedAnswerId={prefaceAnswersTemp[group.id]}
+                    onChange={(answerId) =>
+                      setPrefaceAnswersTemp((prev) => ({ ...prev, [group.id]: answerId }))
+                    }
+                  />
+                )}
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-heading font-bold text-sm text-foreground">{group.title}</h5>
@@ -1202,7 +1258,7 @@ export default function POSWaiterTerminal() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className={`grid grid-cols-1 gap-2 ${prefaceBlocked ? "opacity-50 pointer-events-none" : ""}`}>
                   {group.complements.map((comp: any) => {
                     const selected = selectedComplementsTemp[group.id] || [];
                     const isSelected = selected.some(s => s.id === comp.id);
@@ -1210,7 +1266,7 @@ export default function POSWaiterTerminal() {
                     return (
                       <div
                         key={comp.id}
-                        onClick={() => handleComplementSelect(group.id, comp, group.max_selections)}
+                        onClick={() => handleComplementSelect(group.id, comp, group.max_selections, group)}
                         className={`flex items-center justify-between p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                           isSelected
                             ? "bg-primary/5 border-primary/50 text-primary"
@@ -1232,8 +1288,14 @@ export default function POSWaiterTerminal() {
                     );
                   })}
                 </div>
+                {prefaceBlocked && (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Responda a pergunta acima para escolher os complementos.
+                  </p>
+                )}
               </div>
-            ))}
+            );
+            })}
           </div>
 
           <DialogFooter>

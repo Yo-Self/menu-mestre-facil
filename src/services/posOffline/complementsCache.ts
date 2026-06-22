@@ -18,7 +18,9 @@ export async function fetchComplementsByDish(
         title,
         description,
         required,
-        max_selections
+        max_selections,
+        preface_question,
+        preface_options
       )
     `)
     .in("dish_id", dishIds)
@@ -70,6 +72,8 @@ export async function fetchComplementsByDish(
       description?: string | null;
       required: boolean;
       max_selections: number;
+      preface_question?: string | null;
+      preface_options?: unknown;
     } | null;
 
     if (!group) continue;
@@ -85,6 +89,8 @@ export async function fetchComplementsByDish(
       description: group.description || undefined,
       required: group.required,
       max_selections: group.max_selections,
+      preface_question: group.preface_question,
+      preface_options: group.preface_options as CachedComplementGroup["preface_options"],
       complements: complementsByGroup[group.id] || [],
     });
   }

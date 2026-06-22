@@ -804,8 +804,15 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                         {formatPrice(item.price_at_time_of_order * item.quantity)}
                       </span>
                     </div>
-                    {item.selected_complements && (
+                    {(item.complement_group_answers || item.selected_complements) && (
                       <div className={`${order.order_items.length > 1 ? 'ml-9' : 'ml-3'} text-[10px] text-muted-foreground mt-0.5 italic space-y-0.5 transition-all duration-200 ${isChecked ? 'opacity-50' : ''}`}>
+                        {Array.isArray(item.complement_group_answers) &&
+                          item.complement_group_answers.map((answer: any, answerIndex: number) => (
+                            <div key={`answer-${answerIndex}`}>
+                              {answer.group_title}: {answer.answer_label}
+                            </div>
+                          ))
+                        }
                         {Array.isArray(item.selected_complements) && 
                           item.selected_complements.map((complement: any, compIndex: number) => (
                             <div key={compIndex}>+ {complement.name}</div>

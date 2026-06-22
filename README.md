@@ -20,6 +20,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - Criação de categorias de pratos
 - Cadastro de pratos com preços e descrições
 - Sistema de complementos e ingredientes
+- **Pergunta prévia em grupos de complementos**: em _Complementos_ (criar/editar grupo), ative "Pergunta antes dos complementos" com texto e opções (mínimo 2). Com 2 opções o cliente vê uma chave (toggle); com 3 ou mais, um seletor. A resposta é obrigatória antes de escolher adicionais quando o grupo tem pergunta ativa; fica salva em `order_items.complement_group_answers` e aparece no POS, cozinha e cardápios (web, iOS, Android).
 - Menus ativos e inativos
 
 ### 🔔 Chamadas de Garçom

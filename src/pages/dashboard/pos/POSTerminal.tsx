@@ -44,6 +44,11 @@ import { loadPOSCatalogWithFallback } from "@/services/posOffline/catalogCache";
 import { cachePOSSession, getCachedPOSSession } from "@/services/posOffline/sessionCache";
 import { generateQueuePassword, submitPOSOrder } from "@/services/posOffline/posOrderSubmit";
 import { getComplementsForDishWithFallback } from "@/services/posOffline/complementsCache";
+import {
+  buildPrefaceAnswersPayload,
+  ComplementPrefaceSelector,
+  groupHasPreface,
+} from "@/components/complements/ComplementPrefaceSelector";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
 import { escapeHtml, sanitizePrintImageUrl } from "@/lib/printHtml";
 
@@ -56,6 +61,12 @@ interface CartItem {
     name: string;
     price: number;
     group_title?: string;
+  }[];
+  complement_group_answers?: {
+    group_id: string;
+    group_title: string;
+    answer_id: string;
+    answer_label: string;
   }[];
   notes?: string;
 }
@@ -115,6 +126,7 @@ export default function POSTerminal() {
   const [selectedDishForComplements, setSelectedDishForComplements] = useState<any>(null);
   const [complementGroups, setComplementGroups] = useState<any[]>([]);
   const [selectedComplementsTemp, setSelectedComplementsTemp] = useState<{[groupId: string]: any[]}>({});
+  const [prefaceAnswersTemp, setPrefaceAnswersTemp] = useState<Record<string, string>>({});
 
   // Checkout dialog states
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -358,6 +370,7 @@ export default function POSTerminal() {
         initial[g.id] = [];
       });
       setSelectedComplementsTemp(initial);
+      setPrefaceAnswersTemp({});
       
       setComplementsModalOpen(true);
     } else {
@@ -366,7 +379,16 @@ export default function POSTerminal() {
     }
   };
 
-  const handleComplementSelect = (groupId: string, comp: any, maxSelections: number) => {
+  const handleComplementSelect = (groupId: string, comp: any, maxSelections: number, group: any) => {
+    if (groupHasPreface(group) && !prefaceAnswersTemp[groupId]) {
+      toast({
+        title: "Responda a pergunta",
+        description: "Selecione uma opção antes de escolher os complementos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedComplementsTemp(prev => {
       const selected = prev[groupId] || [];
       const exists = selected.find(s => s.id === comp.id);
@@ -393,10 +415,20 @@ export default function POSTerminal() {
   const handleConfirmComplements = () => {
     if (!selectedDishForComplements) return;
 
-    // Check required complement groups
+    // Check required complement groups and preface answers
     for (const group of complementGroups) {
+      const selections = selectedComplementsTemp[group.id] || [];
+      if (groupHasPreface(group)) {
+        if ((group.required || selections.length > 0) && !prefaceAnswersTemp[group.id]) {
+          toast({
+            title: "Pergunta obrigatória",
+            description: `Responda a pergunta em "${group.title}" antes de continuar.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       if (group.required) {
-        const selections = selectedComplementsTemp[group.id] || [];
         if (selections.length === 0) {
           toast({
             title: "Seleção obrigatória",
@@ -407,6 +439,8 @@ export default function POSTerminal() {
         }
       }
     }
+
+    const complementGroupAnswers = buildPrefaceAnswersPayload(complementGroups, prefaceAnswersTemp);
 
     const flatComplements = Object.entries(selectedComplementsTemp).flatMap(([groupId, arr]) => {
       const group = complementGroups.find(g => g.id === groupId);
@@ -419,18 +453,34 @@ export default function POSTerminal() {
       }));
     });
 
-    addToCart(selectedDishForComplements, flatComplements);
+    addToCart(selectedDishForComplements, flatComplements, complementGroupAnswers);
     setComplementsModalOpen(false);
     setSelectedDishForComplements(null);
     setComplementGroups([]);
+    setPrefaceAnswersTemp({});
   };
 
-  const addToCart = (dish: any, complements: any[]) => {
+  const addToCart = (
+    dish: any,
+    complements: any[],
+    complementGroupAnswers: CartItem["complement_group_answers"] = []
+  ) => {
     setCart(prev => {
+      const answersKey = (complementGroupAnswers || [])
+        .map((answer) => `${answer.group_id}:${answer.answer_id}`)
+        .sort()
+        .join("|");
+
       // Check if item with same complements already exists in cart
       const existingItem = prev.find(item => {
         if (item.dish.id !== dish.id) return false;
         if (item.selected_complements.length !== complements.length) return false;
+        
+        const currentAnswersKey = (item.complement_group_answers || [])
+          .map((answer) => `${answer.group_id}:${answer.answer_id}`)
+          .sort()
+          .join("|");
+        if (currentAnswersKey !== answersKey) return false;
         
         // Match exact complements
         const currentIds = item.selected_complements.map(c => c.complement_id).sort();
@@ -454,6 +504,7 @@ export default function POSTerminal() {
             dish,
             quantity: 1,
             selected_complements: complements,
+            complement_group_answers: complementGroupAnswers.length > 0 ? complementGroupAnswers : undefined,
           }
         ];
       }
@@ -582,6 +633,7 @@ export default function POSTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
         notes: item.notes || null,
         needs_preparation: item.dish.needs_preparation !== false
       }));
@@ -676,6 +728,7 @@ export default function POSTerminal() {
         quantity: item.quantity,
         price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
         selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+        complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
         notes: item.notes || null,
         needs_preparation: item.dish.needs_preparation !== false
       }));
@@ -1740,6 +1793,17 @@ export default function POSTerminal() {
                 <div key={item.id} className="flex gap-3 p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/30 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <h5 className="font-heading font-bold text-xs text-foreground truncate">{item.dish.name}</h5>
+
+                    {item.complement_group_answers && item.complement_group_answers.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {item.complement_group_answers.map((answer) => (
+                          <div key={answer.group_id} className="text-[9px] text-muted-foreground">
+                            <span className="font-semibold text-foreground/85">{answer.group_title}:</span>{" "}
+                            {answer.answer_label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     
                     {/* Complements listed underneath */}
                     {item.selected_complements.length > 0 && (() => {
@@ -2116,8 +2180,23 @@ export default function POSTerminal() {
           </DialogHeader>
 
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-            {complementGroups.map((group) => (
+            {complementGroups.map((group) => {
+              const prefaceActive = groupHasPreface(group);
+              const prefaceBlocked = prefaceActive && !prefaceAnswersTemp[group.id];
+
+              return (
               <div key={group.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
+                {prefaceActive && (
+                  <ComplementPrefaceSelector
+                    question={group.preface_question}
+                    options={group.preface_options}
+                    selectedAnswerId={prefaceAnswersTemp[group.id]}
+                    onChange={(answerId) =>
+                      setPrefaceAnswersTemp((prev) => ({ ...prev, [group.id]: answerId }))
+                    }
+                  />
+                )}
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-heading font-bold text-sm text-foreground">{group.title}</h5>
@@ -2129,7 +2208,7 @@ export default function POSTerminal() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className={`grid grid-cols-1 gap-2 ${prefaceBlocked ? "opacity-50 pointer-events-none" : ""}`}>
                   {group.complements.map((comp: any) => {
                     const selected = selectedComplementsTemp[group.id] || [];
                     const isSelected = selected.some(s => s.id === comp.id);
@@ -2137,7 +2216,7 @@ export default function POSTerminal() {
                     return (
                       <div
                         key={comp.id}
-                        onClick={() => handleComplementSelect(group.id, comp, group.max_selections)}
+                        onClick={() => handleComplementSelect(group.id, comp, group.max_selections, group)}
                         className={`flex items-center justify-between p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                           isSelected
                             ? "bg-primary/5 border-primary/50 text-primary"
@@ -2159,8 +2238,14 @@ export default function POSTerminal() {
                     );
                   })}
                 </div>
+                {prefaceBlocked && (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Responda a pergunta acima para escolher os complementos.
+                  </p>
+                )}
               </div>
-            ))}
+            );
+            })}
           </div>
 
           <DialogFooter>

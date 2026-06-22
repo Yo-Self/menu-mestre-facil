@@ -101,6 +101,8 @@ export type Database = {
           description: string | null
           id: string
           max_selections: number
+          preface_options: Json | null
+          preface_question: string | null
           required: boolean
           restaurant_id: string
           title: string
@@ -111,6 +113,8 @@ export type Database = {
           description?: string | null
           id?: string
           max_selections?: number
+          preface_options?: Json | null
+          preface_question?: string | null
           required?: boolean
           restaurant_id: string
           title: string
@@ -121,6 +125,8 @@ export type Database = {
           description?: string | null
           id?: string
           max_selections?: number
+          preface_options?: Json | null
+          preface_question?: string | null
           required?: boolean
           restaurant_id?: string
           title?: string
@@ -642,6 +648,7 @@ export type Database = {
       }
       order_items: {
         Row: {
+          complement_group_answers: Json | null
           created_at: string
           dish_id: string | null
           id: string
@@ -652,6 +659,7 @@ export type Database = {
           sent_to_kitchen: boolean
         }
         Insert: {
+          complement_group_answers?: Json | null
           created_at?: string
           dish_id?: string | null
           id?: string
@@ -662,6 +670,7 @@ export type Database = {
           sent_to_kitchen?: boolean
         }
         Update: {
+          complement_group_answers?: Json | null
           created_at?: string
           dish_id?: string | null
           id?: string

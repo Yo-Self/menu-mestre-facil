@@ -30,6 +30,8 @@ export interface CachedComplementGroup {
   description?: string;
   required: boolean;
   max_selections: number;
+  preface_question?: string | null;
+  preface_options?: import("@/types/complementPreface").PrefaceOption[] | null;
   complements: {
     id: string;
     name: string;

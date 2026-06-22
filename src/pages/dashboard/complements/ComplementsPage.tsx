@@ -10,6 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ComplementGroupPrefaceEditor } from "@/components/dashboard/ComplementGroupPrefaceEditor";
+import {
+  buildPrefaceDbFields,
+  createEmptyPrefaceOptions,
+  parsePrefaceOptions,
+  validatePrefaceFields,
+  type PrefaceOption,
+} from "@/types/complementPreface";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +29,8 @@ type ComplementGroup = {
   max_selections: number;
   restaurant_id: string;
   created_at: string;
+  preface_question?: string | null;
+  preface_options?: PrefaceOption[] | null;
   linked_dishes?: { id: string; name: string }[];
 };
 
@@ -61,6 +71,9 @@ export default function ComplementsPage() {
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [newGroupRequired, setNewGroupRequired] = useState(false);
   const [newGroupMaxSelections, setNewGroupMaxSelections] = useState<number | "">(1);
+  const [newPrefaceEnabled, setNewPrefaceEnabled] = useState(false);
+  const [newPrefaceQuestion, setNewPrefaceQuestion] = useState("");
+  const [newPrefaceOptions, setNewPrefaceOptions] = useState<PrefaceOption[]>(() => createEmptyPrefaceOptions());
   
   // Estado para edição de complementos
   const [editingComplement, setEditingComplement] = useState<Complement | null>(null);
@@ -71,6 +84,9 @@ export default function ComplementsPage() {
   const [editGroupDescription, setEditGroupDescription] = useState("");
   const [editGroupRequired, setEditGroupRequired] = useState(false);
   const [editGroupMaxSelections, setEditGroupMaxSelections] = useState<number | "">(1);
+  const [editPrefaceEnabled, setEditPrefaceEnabled] = useState(false);
+  const [editPrefaceQuestion, setEditPrefaceQuestion] = useState("");
+  const [editPrefaceOptions, setEditPrefaceOptions] = useState<PrefaceOption[]>(() => createEmptyPrefaceOptions());
   
   // Estados para formulário de complemento
   const [showComplementForm, setShowComplementForm] = useState<Record<string, boolean>>({});
@@ -216,6 +232,13 @@ export default function ComplementsPage() {
       }
 
       const maxSel = newGroupMaxSelections === "" ? 1 : Number(newGroupMaxSelections);
+      const prefaceError = validatePrefaceFields(newPrefaceEnabled, newPrefaceQuestion, newPrefaceOptions);
+      if (prefaceError) {
+        toast({ title: "Pergunta inválida", description: prefaceError, variant: "destructive" });
+        setSavingGroup(false);
+        return;
+      }
+      const prefaceFields = buildPrefaceDbFields(newPrefaceEnabled, newPrefaceQuestion, newPrefaceOptions);
       
       const { error: groupError } = await supabase
         .from("complement_groups")
@@ -225,6 +248,8 @@ export default function ComplementsPage() {
           required: newGroupRequired,
           max_selections: Number.isFinite(maxSel) && maxSel > 0 ? maxSel : 1,
           restaurant_id: restaurants[0].id,
+          preface_question: prefaceFields.preface_question,
+          preface_options: prefaceFields.preface_options,
         });
       
       if (groupError) throw groupError;
@@ -234,6 +259,9 @@ export default function ComplementsPage() {
       setNewGroupDescription("");  
       setNewGroupRequired(false);
       setNewGroupMaxSelections(1);
+      setNewPrefaceEnabled(false);
+      setNewPrefaceQuestion("");
+      setNewPrefaceOptions(createEmptyPrefaceOptions());
       await loadGroupsAndComplements();
     } catch (error: any) {
       toast({ title: "Erro ao criar grupo", description: error.message, variant: "destructive" });
@@ -295,6 +323,8 @@ export default function ComplementsPage() {
           required: originalGroup.required,
           max_selections: originalGroup.max_selections,
           restaurant_id: originalGroup.restaurant_id,
+          preface_question: originalGroup.preface_question,
+          preface_options: originalGroup.preface_options,
         })
         .select()
         .single();
@@ -341,6 +371,10 @@ export default function ComplementsPage() {
     setEditGroupDescription(group.description || "");
     setEditGroupRequired(group.required);
     setEditGroupMaxSelections(group.max_selections);
+    const parsedOptions = parsePrefaceOptions(group.preface_options);
+    setEditPrefaceEnabled(Boolean(group.preface_question?.trim()) && parsedOptions.length >= 2);
+    setEditPrefaceQuestion(group.preface_question || "");
+    setEditPrefaceOptions(parsedOptions.length >= 2 ? parsedOptions : createEmptyPrefaceOptions());
   };
 
   const handleSaveEditGroup = async () => {
@@ -353,6 +387,13 @@ export default function ComplementsPage() {
         return;
       }
 
+      const prefaceError = validatePrefaceFields(editPrefaceEnabled, editPrefaceQuestion, editPrefaceOptions);
+      if (prefaceError) {
+        toast({ title: "Pergunta inválida", description: prefaceError, variant: "destructive" });
+        return;
+      }
+      const prefaceFields = buildPrefaceDbFields(editPrefaceEnabled, editPrefaceQuestion, editPrefaceOptions);
+
       const { error } = await supabase
         .from("complement_groups")
         .update({
@@ -360,6 +401,8 @@ export default function ComplementsPage() {
           description: editGroupDescription.trim() || null,
           required: editGroupRequired,
           max_selections: maxSel,
+          preface_question: prefaceFields.preface_question,
+          preface_options: prefaceFields.preface_options,
         })
         .eq("id", editingGroup.id);
       
@@ -379,6 +422,9 @@ export default function ComplementsPage() {
     setEditGroupDescription("");
     setEditGroupRequired(false);
     setEditGroupMaxSelections(1);
+    setEditPrefaceEnabled(false);
+    setEditPrefaceQuestion("");
+    setEditPrefaceOptions(createEmptyPrefaceOptions());
   };
 
   const toggleGroupExpansion = (groupId: string) => {
@@ -574,6 +620,20 @@ export default function ComplementsPage() {
                 />
               </div>
             </div>
+            <ComplementGroupPrefaceEditor
+              idPrefix="new-preface"
+              enabled={newPrefaceEnabled}
+              onEnabledChange={(enabled) => {
+                setNewPrefaceEnabled(enabled);
+                if (enabled && newPrefaceOptions.length < 2) {
+                  setNewPrefaceOptions(createEmptyPrefaceOptions());
+                }
+              }}
+              question={newPrefaceQuestion}
+              onQuestionChange={setNewPrefaceQuestion}
+              options={newPrefaceOptions}
+              onOptionsChange={setNewPrefaceOptions}
+            />
             <div className="pt-2">
               <Button type="submit" disabled={savingGroup}>
                 {savingGroup ? "Criando..." : "Criar Grupo"}
@@ -639,6 +699,20 @@ export default function ComplementsPage() {
                         />
                       </div>
                     </div>
+                    <ComplementGroupPrefaceEditor
+                      idPrefix={`edit-preface-${group.id}`}
+                      enabled={editPrefaceEnabled}
+                      onEnabledChange={(enabled) => {
+                        setEditPrefaceEnabled(enabled);
+                        if (enabled && editPrefaceOptions.length < 2) {
+                          setEditPrefaceOptions(createEmptyPrefaceOptions());
+                        }
+                      }}
+                      question={editPrefaceQuestion}
+                      onQuestionChange={setEditPrefaceQuestion}
+                      options={editPrefaceOptions}
+                      onOptionsChange={setEditPrefaceOptions}
+                    />
                   </div>
                 ) : (
                   // Interface normal
@@ -660,6 +734,7 @@ export default function ComplementsPage() {
                     </div>
                     <CardDescription>
                       {group.description || "Sem descrição"} • {group.required ? "Obrigatório" : "Opcional"} • Máximo de {group.max_selections}
+                      {group.preface_question ? " • Com pergunta prévia" : ""}
                     </CardDescription>
                     {group.linked_dishes && group.linked_dishes.length > 0 && (
                       <div className="mt-2 text-sm">
