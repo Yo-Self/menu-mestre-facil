@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { cheerio } from 'https://deno.land/x/cheerio@1.0.7/mod.ts';
+import cheerio from 'npm:cheerio@1.0.0-rc.12';
 import { captureEdgeException } from '../_shared/sentry.ts';
 import { AuthError, requireRestaurantOwner } from '../_shared/auth.ts';
 import { assertAllowedIfoodUrl, safeFetch, UrlSecurityError } from '../_shared/urlSecurity.ts';
