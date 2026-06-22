@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRestaurant } from '@/components/providers/RestaurantProvider';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +48,7 @@ interface RestaurantOption {
 
 const SP_FALLBACK_LAT = -23.55052;
 const SP_FALLBACK_LNG = -46.633308;
+const DELIVERY_ORDERS_POLL_MS = 5_000;
 
 function isSpFallbackCoords(lat: number, lng: number) {
   return lat === SP_FALLBACK_LAT && lng === SP_FALLBACK_LNG;
@@ -266,31 +267,48 @@ export default function DeliveryPage() {
     }
   };
 
+  const refreshDeliveryOrders = useCallback(async () => {
+    if (!currentRestaurantId) return;
+
+    try {
+      const { data: ords, error: ordsErr } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('restaurant_id', currentRestaurantId)
+        .eq('order_type', 'delivery')
+        .in('status', ['new', 'in_preparation', 'ready'])
+        .order('created_at', { ascending: true });
+
+      if (ordsErr) throw ordsErr;
+      setOrders(ords || []);
+    } catch (e: unknown) {
+      console.error('Erro ao atualizar pedidos de delivery:', e);
+    }
+  }, [currentRestaurantId]);
+
   useEffect(() => {
     if (!restaurantsReady || !currentRestaurantId) return;
 
-    fetchData();
+    void fetchData();
 
-    const channel = supabase
-      .channel(`delivery_orders_realtime_${currentRestaurantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${currentRestaurantId}`,
-        },
-        () => {
-          fetchData();
-        }
-      )
-      .subscribe();
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshDeliveryOrders();
+      }
+    };
+
+    const interval = setInterval(tick, DELIVERY_ORDERS_POLL_MS);
+
+    const onFocus = () => {
+      void refreshDeliveryOrders();
+    };
+    window.addEventListener('focus', onFocus);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
-  }, [currentRestaurantId, restaurantsReady]);
+  }, [currentRestaurantId, restaurantsReady, refreshDeliveryOrders]);
 
   // 2.5 Geocodificar endereço de texto do restaurante se coordenadas estiverem nulas
   useEffect(() => {

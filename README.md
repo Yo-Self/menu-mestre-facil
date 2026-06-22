@@ -50,6 +50,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 - **Roteamento Dinâmico**: Pedidos que contêm apenas itens prontos (que não precisam de preparo) pulam a fila da cozinha e mudam diretamente para o status **Concluído**.
 - **Controle de Itens Mistos (PDV)**: Caixa/Garçom possui a opção de "Receber tudo junto". Se desmarcado, apenas itens que requerem preparo são listados no painel de pedidos da cozinha e impressos na via de preparação.
 - **Checklist Auxiliar de Cozinha**: Quando um pedido contém mais de um item, o card de pedidos no painel Kanban exibe caixas de seleção (checkboxes) interativas ao lado de cada item. Isso permite que a cozinha risque e marque visualmente os pratos concluídos (com persistência local de status) sem que isso impeça ou bloqueie a movimentação do pedido para o status "Pronto".
+- **Atualização Automática do Kanban (segura)**: O painel de pedidos e o painel de delivery atualizam status via **polling autenticado (RLS)** a cada ~5 segundos enquanto a aba está visível, com refetch imediato ao focar a janela. A tabela `orders` **não** usa Supabase Realtime — alinhado à postura de segurança do cardápio e do app iOS (RPC tokenizado + polling, sem streaming de pedidos).
 
 ### 📝 Edição Dinâmica de Pedidos (Painel Kanban)
 
@@ -60,7 +61,7 @@ Sistema completo para gestão de restaurantes, incluindo cadastro de pratos, cat
 
 - **Feature Flags de Pedidos e Pagamentos Online**: A chave master _Permitir Fazer Pedidos Online_ (`online_ordering_enabled`) controla se os clientes podem fazer pedidos e pagar online no cardápio. Se desativada, desliga e oculta todos os checkouts online (Stripe e InfinitePay PIX). Se ativada, libera as sub-flags individuais para **Stripe** (cartão e Apple/Google Pay) e **InfinitePay** (PIX).
 - **PIX InfinitePay (opt-in)**: Em _Editar restaurante_ (sob _Pedidos Online_), configure o InfiniteTag e ative _Pagamento PIX online_. Independente do Stripe; valor mínimo R$ 1,00 no cardápio.
-- **Tempo Real & Resiliência**: Funciona instantaneamente por meio de assinaturas em tempo real do Supabase (Realtime) se o painel estiver aberto, e também possui um mecanismo de atualização em lote no carregamento inicial para processar pagamentos realizados enquanto o painel administrativo estava offline.
+- **Pagamentos & Resiliência**: Confirmação de pagamentos online (Stripe/InfinitePay) via webhooks no backend. O painel re-sincroniza pedidos ao carregar e durante o polling periódico, processando pagamentos realizados enquanto o gestor estava offline.
 
 ### 📥 Importador e Scraping de Cardápios (iFood)
 

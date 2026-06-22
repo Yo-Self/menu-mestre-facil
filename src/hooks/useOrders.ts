@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../integrations/supabase/client'
 import { OrderStatus, OrderWithItems } from '../types/orders'
+
+const ORDERS_POLL_MS = 5_000
 
 export function useOrders(restaurantId?: string) {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchOrders = async (isInitialFetch = false) => {
+  const fetchOrders = useCallback(async (isInitialFetch = false) => {
     if (!restaurantId) {
       setOrders([])
       if (isInitialFetch) setLoading(false)
@@ -18,7 +20,6 @@ export function useOrders(restaurantId?: string) {
       if (isInitialFetch) setLoading(true)
       setError(null)
 
-      // Fetch orders with their items and dish details
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -42,7 +43,7 @@ export function useOrders(restaurantId?: string) {
     } finally {
       if (isInitialFetch) setLoading(false)
     }
-  }
+  }, [restaurantId])
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -58,7 +59,6 @@ export function useOrders(restaurantId?: string) {
         throw error
       }
 
-      // Update local state immediately for better UX
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId
@@ -87,7 +87,6 @@ export function useOrders(restaurantId?: string) {
     }>
   }) => {
     try {
-      // Create the order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,7 +103,6 @@ export function useOrders(restaurantId?: string) {
         throw orderError
       }
 
-      // Create order items
       const orderItems = orderData.order_items.map(item => ({
         order_id: order.id,
         dish_id: item.dish_id,
@@ -121,7 +119,6 @@ export function useOrders(restaurantId?: string) {
         throw itemsError
       }
 
-      // Refresh orders list
       await fetchOrders()
 
       return order
@@ -142,7 +139,6 @@ export function useOrders(restaurantId?: string) {
         throw error
       }
 
-      // Remove from local state
       setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId))
 
       return true
@@ -152,95 +148,29 @@ export function useOrders(restaurantId?: string) {
     }
   }
 
-  // Subscribe to real-time updates
   useEffect(() => {
     if (!restaurantId) return
 
-    fetchOrders(true)
+    void fetchOrders(true)
 
-    // Subscribe to order changes
-    const ordersSubscription = supabase
-      .channel('orders_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`
-        },
-        (payload) => {
-          console.log('Order change received:', payload)
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchOrders()
+      }
+    }
 
-          const handleUpsert = async (orderId: string) => {
-            try {
-              const { data: orderData, error } = await supabase
-                .from('orders')
-                .select(`
-                  *,
-                  order_items (
-                    *,
-                    dishes (*)
-                  )
-                `)
-                .eq('id', orderId)
-                .single()
+    const interval = setInterval(tick, ORDERS_POLL_MS)
 
-              if (error) {
-                console.error('Error fetching updated order:', error)
-                return
-              }
-
-              if (orderData) {
-                setOrders(prevOrders => {
-                  const existingOrderIndex = prevOrders.findIndex(o => o.id === orderId)
-                  if (existingOrderIndex !== -1) {
-                    // Update existing order
-                    const newOrders = [...prevOrders]
-                    newOrders[existingOrderIndex] = orderData
-                    return newOrders
-                  } else {
-                    // Add new order
-                    return [orderData, ...prevOrders]
-                  }
-                })
-              }
-            } catch (err) {
-              console.error('Error processing upsert:', err)
-            }
-          }
-
-          if (payload.eventType === 'INSERT') {
-            console.log('Novo pedido inserido via real-time:', payload.new.id)
-            handleUpsert(payload.new.id)
-          } else if (payload.eventType === 'UPDATE') {
-            console.log('Pedido atualizado via real-time:', payload.new.id)
-            handleUpsert(payload.new.id)
-          } else if (payload.eventType === 'DELETE') {
-            console.log('Pedido deletado via real-time:', payload.old.id)
-            const deletedOrder = payload.old as OrderWithItems
-            setOrders(prevOrders =>
-              prevOrders.filter(order => order.id !== deletedOrder.id)
-            )
-          }
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to orders changes!')
-        } else if (status === 'TIMED_OUT') {
-          console.error('Subscription to orders changes timed out.', err)
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to orders changes:', err)
-        } else if (status === 'CLOSED') {
-          console.log('Subscription to orders changes closed.')
-        }
-      })
+    const onFocus = () => {
+      void fetchOrders()
+    }
+    window.addEventListener('focus', onFocus)
 
     return () => {
-      ordersSubscription.unsubscribe()
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
     }
-  }, [restaurantId])
+  }, [restaurantId, fetchOrders])
 
   return {
     orders,
