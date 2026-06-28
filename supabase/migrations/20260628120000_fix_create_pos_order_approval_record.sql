@@ -1,62 +1,5 @@
--- Migration: pos_custom_items_and_discount
--- Custom line items (avulso) + discount with password approval for POS
-
-ALTER TABLE public.order_items
-  ADD COLUMN IF NOT EXISTS custom_name text;
-
-COMMENT ON COLUMN public.order_items.custom_name IS
-  'Display name for custom/ad-hoc POS items when dish_id is NULL.';
-
-ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS discount_amount integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS discount_type text,
-  ADD COLUMN IF NOT EXISTS discount_value integer,
-  ADD COLUMN IF NOT EXISTS discount_approved_at timestamptz,
-  ADD COLUMN IF NOT EXISTS discount_approved_by uuid REFERENCES auth.users(id);
-
-ALTER TABLE public.orders
-  DROP CONSTRAINT IF EXISTS orders_discount_amount_nonneg;
-
-ALTER TABLE public.orders
-  ADD CONSTRAINT orders_discount_amount_nonneg CHECK (discount_amount >= 0);
-
-COMMENT ON COLUMN public.orders.discount_amount IS 'Discount applied in cents (subtracted from item subtotal).';
-COMMENT ON COLUMN public.orders.discount_type IS 'fixed or percent';
-COMMENT ON COLUMN public.orders.discount_value IS 'For fixed: cents. For percent: basis points (1000 = 10%).';
-
-CREATE TABLE IF NOT EXISTS public.pos_discount_approvals (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  discount_type text NOT NULL CHECK (discount_type IN ('fixed', 'percent')),
-  discount_value integer NOT NULL CHECK (discount_value > 0),
-  discount_amount integer NOT NULL CHECK (discount_amount >= 0),
-  subtotal_at_approval integer NOT NULL CHECK (subtotal_at_approval >= 0),
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '5 minutes'),
-  used_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_pos_discount_approvals_restaurant
-  ON public.pos_discount_approvals (restaurant_id, expires_at)
-  WHERE used_at IS NULL;
-
-ALTER TABLE public.pos_discount_approvals ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Restaurant owners can view discount approvals"
-  ON public.pos_discount_approvals
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.restaurants r
-      WHERE r.id = pos_discount_approvals.restaurant_id
-        AND r.user_id = auth.uid()
-    )
-  );
-
-DROP FUNCTION IF EXISTS public.create_pos_order(
-  uuid, uuid, uuid, text, jsonb, jsonb, jsonb, boolean, uuid[]
-);
+-- Fix: PL/pgSQL evaluates v_approval fields in INSERT even when no discount approval,
+-- causing "record v_approval is not assigned yet" on orders without discount.
 
 CREATE OR REPLACE FUNCTION public.create_pos_order(
   p_client_order_id uuid,
@@ -325,12 +268,3 @@ BEGIN
   RETURN v_existing;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.create_pos_order(
-  uuid, uuid, uuid, text, jsonb, jsonb, jsonb, boolean, uuid[], uuid
-) TO authenticated;
-
-COMMENT ON FUNCTION public.create_pos_order(
-  uuid, uuid, uuid, text, jsonb, jsonb, jsonb, boolean, uuid[], uuid
-) IS
-  'Creates a POS order atomically with custom items, optional discount approval, and client_order_id idempotency.';
