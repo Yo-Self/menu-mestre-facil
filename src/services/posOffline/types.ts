@@ -18,6 +18,7 @@ export interface POSOutboxOrder {
   received_cash?: number | null;
   change?: number | null;
   active_order_ids_to_close?: string[];
+  discount_approval_id?: string | null;
   created_at: string;
   status: OutboxOrderStatus;
   retry_count: number;
@@ -73,6 +74,7 @@ export interface POSOrderSubmitInput {
   received_cash?: number | null;
   change?: number | null;
   active_order_ids_to_close?: string[];
+  discount_approval_id?: string | null;
 }
 
 export interface POSOrderSubmitResult {

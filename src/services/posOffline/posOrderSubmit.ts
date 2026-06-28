@@ -17,17 +17,23 @@ function buildCustomerInfo(input: POSOrderSubmitInput) {
   };
 }
 
+function computeOrderSubtotal(items: POSOutboxOrder["items"]): number {
+  return items.reduce(
+    (acc, item) => acc + item.price_at_time_of_order * item.quantity,
+    0,
+  );
+}
+
 function toLocalOrderView(payload: POSOutboxOrder): Record<string, unknown> {
+  const subtotal = computeOrderSubtotal(payload.items);
   return {
     id: payload.client_order_id,
     client_order_id: payload.client_order_id,
     created_at: payload.created_at,
     table_name: payload.table_name,
     customer_info: buildCustomerInfo(payload),
-    total_price: payload.items.reduce(
-      (acc, item) => acc + item.price_at_time_of_order * item.quantity,
-      0
-    ),
+    total_price: subtotal,
+    discount_amount: 0,
     status: "new",
     origin: "pos",
     _queued: true,
@@ -51,6 +57,7 @@ export function buildOutboxOrder(input: POSOrderSubmitInput): POSOutboxOrder {
     received_cash: input.received_cash,
     change: input.change,
     active_order_ids_to_close: input.active_order_ids_to_close,
+    discount_approval_id: input.discount_approval_id ?? null,
     created_at: new Date().toISOString(),
     status: "pending",
     retry_count: 0,
@@ -58,6 +65,13 @@ export function buildOutboxOrder(input: POSOrderSubmitInput): POSOutboxOrder {
 }
 
 export async function submitPOSOrder(input: POSOrderSubmitInput): Promise<POSOrderSubmitResult> {
+  if (input.discount_approval_id) {
+    const canReachServer = await checkSupabaseConnectivity();
+    if (!canReachServer) {
+      throw new Error("Desconto requer conexão com a internet para aprovação.");
+    }
+  }
+
   const payload = buildOutboxOrder(input);
   const canReachServer = await checkSupabaseConnectivity();
 

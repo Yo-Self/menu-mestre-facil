@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { isOrderPaidOnline } from '@/lib/orderPayment'
-import { escapeHtml, sanitizePrintImageUrl, formatPrefaceAnswerLines } from '@/lib/printHtml'
+import { escapeHtml, sanitizePrintImageUrl, formatPrefaceAnswerLines, formatDiscountReceiptLine } from '@/lib/printHtml'
 import { Analytics } from '@/services/analytics'
 
 const getPaymentLabel = (method: string) => {
@@ -354,6 +354,27 @@ export function usePrinting() {
           position: 'center'
         })
 
+        const discountAmount = Number(order.discount_amount || 0);
+        const subtotalAmount = Number(order.total_price || 0) + discountAmount;
+        if (discountAmount > 0) {
+          items.push({
+            type: 'text',
+            value: `SUBTOTAL: ${subtotalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+            style: 'font-size: 12px;',
+            position: 'right'
+          });
+          items.push({
+            type: 'text',
+            value: formatDiscountReceiptLine(
+              Math.round(discountAmount * 100),
+              order.discount_type,
+              order.discount_value,
+            ),
+            style: 'font-size: 12px; font-weight: bold;',
+            position: 'right'
+          });
+        }
+
         const totalFormatted = (order.total_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         items.push({
           type: 'text',
@@ -525,7 +546,7 @@ export function usePrinting() {
           ${orderObs ? `<div style="font-weight: bold; color: red; font-size: 13px; margin-top: 5px; margin-bottom: 5px;">OBS PEDIDO: ${orderObs}</div>` : ''}
           <div class="bold" style="margin-top: 10px; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 2px;">PRODUTOS:</div>
           ${order.items?.map((item: any) => {
-            const dishName = escapeHtml(item.dish_name || item.name);
+            const dishName = escapeHtml(item.dish_name || item.name || item.custom_name);
             const compsPrice = item.complements?.reduce((sum: number, c: any) => sum + (c.price || 0), 0) || 0;
             const basePrice = (item.unit_price || 0) - compsPrice;
             const baseFormatted = basePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -551,6 +572,16 @@ export function usePrinting() {
             `;
           }).join('') || ''}
           <div class="border"></div>
+          ${(() => {
+            const discountAmount = Number(order.discount_amount || 0);
+            const subtotalAmount = Number(order.total_price || 0) + discountAmount;
+            let html = '';
+            if (discountAmount > 0) {
+              html += `<div style="font-size: 12px; text-align: right;">SUBTOTAL: ${subtotalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>`;
+              html += `<div style="font-size: 12px; font-weight: bold; text-align: right;">${escapeHtml(formatDiscountReceiptLine(Math.round(discountAmount * 100), order.discount_type, order.discount_value))}</div>`;
+            }
+            return html;
+          })()}
           <div class="right bold" style="font-size: 15px;">TOTAL: ${(order.total_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
           <div style="margin-top: 10px;">
             ${(() => {

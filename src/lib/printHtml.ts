@@ -80,3 +80,27 @@ export function sanitizePrintImageUrl(url: unknown): string | null {
     return null;
   }
 }
+
+export function getOrderItemDisplayName(item: {
+  custom_name?: string | null;
+  customName?: string | null;
+  dish?: { name?: string | null } | null;
+  dishes?: { name?: string | null } | null;
+}): string {
+  const custom = item.custom_name ?? item.customName;
+  if (custom) return custom;
+  return item.dish?.name ?? item.dishes?.name ?? "Produto";
+}
+
+export function formatDiscountReceiptLine(
+  discountAmount: number,
+  discountType?: string | null,
+  discountValue?: number | null,
+): string {
+  if (!discountAmount || discountAmount <= 0) return "";
+  if (discountType === "percent" && discountValue) {
+    const pct = (discountValue / 100).toFixed(discountValue % 100 === 0 ? 0 : 2);
+    return `DESCONTO (${pct}%): -R$ ${(discountAmount / 100).toFixed(2)}`;
+  }
+  return `DESCONTO: -R$ ${(discountAmount / 100).toFixed(2)}`;
+}

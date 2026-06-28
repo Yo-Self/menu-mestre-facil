@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, User, Bell, Shield, Palette, Globe, Zap, Printer, Download } from "lucide-react";
+import { Settings, User, Bell, Shield, Palette, Globe, Zap, Printer, Download, Percent } from "lucide-react";
+import { setRestaurantDiscountPin } from "@/services/posDiscount";
 import { supabase } from "@/integrations/supabase/client";
 import { generateSlug, generateUniqueSlug } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,12 @@ export default function SettingsPage() {
   const [printKitchenReceipt, setPrintKitchenReceipt] = useState(localStorage.getItem("thermal_print_kitchen") === "true");
   const [printAutomaticReceipt, setPrintAutomaticReceipt] = useState(localStorage.getItem("thermal_print_automatic") === "true");
 
+  const [discountPinEnabled, setDiscountPinEnabled] = useState(false);
+  const [discountPinValue, setDiscountPinValue] = useState("");
+  const [discountPinConfirm, setDiscountPinConfirm] = useState("");
+  const [discountPinAccountPassword, setDiscountPinAccountPassword] = useState("");
+  const [savingDiscountPin, setSavingDiscountPin] = useState(false);
+
   const handleTogglePrintPassword = (checked: boolean) => {
     setPrintQueuePassword(checked);
     localStorage.setItem("thermal_print_password", checked ? "true" : "false");
@@ -70,6 +77,107 @@ export default function SettingsPage() {
       title: checked ? "Impressão automática ativada!" : "Impressão automática desativada!",
       description: checked ? "Os cupons de venda serão impressos automaticamente ao finalizar o pedido." : "Os cupons do PDV só serão impressos ao clicar no botão manualmente."
     });
+  };
+
+  const handleSaveDiscountPin = async () => {
+    if (!restaurant) return;
+
+    if (!discountPinAccountPassword) {
+      toast({
+        title: "Senha da conta obrigatória",
+        description: "Confirme sua senha da conta para alterar o PIN do caixa.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (discountPinValue) {
+      if (!/^[0-9]{4,6}$/.test(discountPinValue)) {
+        toast({
+          title: "PIN inválido",
+          description: "Use 4 a 6 dígitos numéricos.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (discountPinValue !== discountPinConfirm) {
+        toast({
+          title: "PIN não confere",
+          description: "A confirmação do PIN deve ser igual ao PIN informado.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (!discountPinEnabled) {
+      toast({
+        title: "Informe um PIN",
+        description: "Digite um PIN de 4 a 6 dígitos para configurar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingDiscountPin(true);
+    try {
+      const result = await setRestaurantDiscountPin({
+        restaurantId: restaurant.id,
+        accountPassword: discountPinAccountPassword,
+        pin: discountPinValue || undefined,
+      });
+
+      setDiscountPinEnabled(result.pinEnabled);
+      setDiscountPinValue("");
+      setDiscountPinConfirm("");
+      setDiscountPinAccountPassword("");
+
+      toast({
+        title: result.pinEnabled ? "PIN configurado" : "PIN atualizado",
+        description: "O PIN do caixa pode ser usado para aprovar descontos no PDV.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao salvar PIN",
+        description: err.message || "Não foi possível atualizar o PIN.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDiscountPin(false);
+    }
+  };
+
+  const handleRemoveDiscountPin = async () => {
+    if (!restaurant || !discountPinEnabled) return;
+    if (!discountPinAccountPassword) {
+      toast({
+        title: "Senha da conta obrigatória",
+        description: "Digite sua senha da conta para remover o PIN.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingDiscountPin(true);
+    try {
+      const result = await setRestaurantDiscountPin({
+        restaurantId: restaurant.id,
+        accountPassword: discountPinAccountPassword,
+        removePin: true,
+      });
+      setDiscountPinEnabled(result.pinEnabled);
+      setDiscountPinAccountPassword("");
+      toast({
+        title: "PIN removido",
+        description: "A aprovação de desconto voltará a exigir apenas a senha da conta.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao remover PIN",
+        description: err.message || "Não foi possível remover o PIN.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDiscountPin(false);
+    }
   };
 
   useEffect(() => {
@@ -211,6 +319,7 @@ export default function SettingsPage() {
         .maybeSingle();
 
       setRestaurant(restaurantData);
+      setDiscountPinEnabled(!!restaurantData?.pos_discount_pin_enabled);
 
       setFormData({
         full_name: profileData.full_name || "",
@@ -649,6 +758,89 @@ export default function SettingsPage() {
         </Card>
 
         <Separator />
+
+        <Separator />
+
+        {restaurant && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Percent className="h-5 w-5" />
+                  PDV e Segurança
+                </CardTitle>
+                <CardDescription>
+                  Configure o PIN do caixa para aprovar descontos no terminal de vendas sem usar a senha da conta.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+                  Status:{" "}
+                  <span className={`font-bold ${discountPinEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+                    {discountPinEnabled ? "PIN do caixa ativo" : "PIN do caixa não configurado"}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="discount-pin">Novo PIN (4 a 6 dígitos)</Label>
+                  <Input
+                    id="discount-pin"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Ex.: 1234"
+                    value={discountPinValue}
+                    onChange={(e) => setDiscountPinValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="discount-pin-confirm">Confirmar PIN</Label>
+                  <Input
+                    id="discount-pin-confirm"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Repita o PIN"
+                    value={discountPinConfirm}
+                    onChange={(e) => setDiscountPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="discount-pin-account-password">Senha da conta (obrigatória)</Label>
+                  <Input
+                    id="discount-pin-account-password"
+                    type="password"
+                    placeholder="Confirme com sua senha de login"
+                    value={discountPinAccountPassword}
+                    onChange={(e) => setDiscountPinAccountPassword(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Alterar ou remover o PIN exige a senha da conta do gestor.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => void handleSaveDiscountPin()} disabled={savingDiscountPin}>
+                    {savingDiscountPin ? "Salvando..." : discountPinValue ? "Salvar PIN" : "Atualizar"}
+                  </Button>
+                  {discountPinEnabled && (
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleRemoveDiscountPin()}
+                      disabled={savingDiscountPin}
+                    >
+                      Remover PIN
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Separator />
+          </>
+        )}
 
         {/* Segurança */}
         <Card>

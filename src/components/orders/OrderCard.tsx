@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/ui/WhatsappIcon'
 import { isOrderPaidOnline, getOnlinePaymentProviderLabel } from '@/lib/orderPayment'
+import { getOrderItemDisplayName } from '@/lib/printHtml'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -305,7 +306,10 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       customer_phone: getCustomerPhone(),
       delivery_type: getDeliveryType(),
       table_name: order.table_name,
-      total_price: order.total_price / 100, // conversão de centavos
+      total_price: order.total_price / 100,
+      discount_amount: ((order as any).discount_amount || 0) / 100,
+      discount_type: (order as any).discount_type || null,
+      discount_value: (order as any).discount_value || null,
       payment_method: order.payment_method || 'card',
       restaurant_name: restaurant?.name || 'Gestor Menu',
       restaurant_logo: restaurant?.image_url || '',
@@ -323,8 +327,8 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
       })),
       items: order.order_items.map((item: any) => ({
         quantity: item.quantity,
-        dish_name: item.dishes?.name || 'Prato',
-        unit_price: item.price_at_time_of_order / 100, // conversão de centavos
+        dish_name: item.custom_name || item.dishes?.name || 'Prato',
+        unit_price: item.price_at_time_of_order / 100,
         complements: Array.isArray(item.selected_complements) 
           ? item.selected_complements.map((c: any) => ({
               name: c.name,
@@ -801,7 +805,7 @@ export function OrderCard({ order, onStatusChange, currentStatus }: OrderCardPro
                           </div>
                         )}
                         <span className={`text-foreground font-semibold truncate ${isChecked ? 'line-through text-muted-foreground/50 font-normal' : ''}`}>
-                          {item.quantity}x {item.dishes?.name || 'Prato removido'}
+                          {item.quantity}x {getOrderItemDisplayName({ custom_name: (item as any).custom_name, dishes: item.dishes })}
                         </span>
                       </div>
                       <span className={`text-muted-foreground shrink-0 ml-2 font-mono ${isChecked ? 'line-through text-muted-foreground/40' : ''}`}>

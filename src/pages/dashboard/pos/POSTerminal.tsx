@@ -25,6 +25,9 @@ import {
   User,
   Tags,
   RefreshCw,
+  PackagePlus,
+  Percent,
+  Lock,
 } from "lucide-react";
 import {
   Dialog,
@@ -50,12 +53,23 @@ import {
   groupHasPreface,
 } from "@/components/complements/ComplementPrefaceSelector";
 import { usePOSResilience } from "@/hooks/usePOSResilience";
-import { escapeHtml, sanitizePrintImageUrl, formatOrderItemComplementLinesHtml } from "@/lib/printHtml";
+import { escapeHtml, sanitizePrintImageUrl, formatOrderItemComplementLinesHtml, getOrderItemDisplayName, formatDiscountReceiptLine } from "@/lib/printHtml";
+import {
+  calculateDiscountPreview,
+  formatDiscountLabel,
+  requestDiscountApproval,
+  fetchDiscountPinEnabled,
+  type POSDiscountState,
+  type POSDiscountType,
+  type POSDiscountAuthMethod,
+} from "@/services/posDiscount";
 
 interface CartItem {
-  id: string; // unique cart item id (timestamp + dish_id)
+  id: string;
   dish: any;
   quantity: number;
+  isCustom?: boolean;
+  customName?: string;
   selected_complements: {
     complement_id: string;
     name: string;
@@ -69,6 +83,32 @@ interface CartItem {
     answer_label: string;
   }[];
   notes?: string;
+}
+
+function mapCartToOrderItems(cart: CartItem[]): POSOrderItemInput[] {
+  return cart.map((item) => {
+    if (item.isCustom) {
+      return {
+        dish_id: null,
+        custom_name: item.customName || item.dish.name,
+        quantity: item.quantity,
+        price_at_time_of_order: item.dish.price,
+        selected_complements: null,
+        notes: item.notes || null,
+        needs_preparation: false,
+      };
+    }
+    return {
+      dish_id: item.dish.id,
+      quantity: item.quantity,
+      price_at_time_of_order:
+        item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
+      selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
+      complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
+      notes: item.notes || null,
+      needs_preparation: item.dish.needs_preparation !== false,
+    };
+  });
 }
 
 export default function POSTerminal() {
@@ -144,9 +184,29 @@ export default function POSTerminal() {
   const [receiptSnapshot, setReceiptSnapshot] = useState<{
     items: CartItem[];
     subtotal: number;
+    discountAmount?: number;
+    discountType?: POSDiscountType | null;
+    discountValue?: number | null;
+    total: number;
     tableName: string;
     customerName: string;
   } | null>(null);
+
+  // Custom item dialog
+  const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemPrice, setCustomItemPrice] = useState("");
+
+  // Discount dialog
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountStep, setDiscountStep] = useState<"configure" | "password">("configure");
+  const [discountTypeInput, setDiscountTypeInput] = useState<POSDiscountType>("fixed");
+  const [discountInputValue, setDiscountInputValue] = useState("");
+  const [discountPassword, setDiscountPassword] = useState("");
+  const [discountAuthMethod, setDiscountAuthMethod] = useState<POSDiscountAuthMethod>("account");
+  const [discountPinEnabled, setDiscountPinEnabled] = useState(false);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discount, setDiscount] = useState<POSDiscountState & { subtotalAtApproval: number } | null>(null);
 
   const [viewMode, setViewMode] = useState<"grid" | "tables">("grid");
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
@@ -297,6 +357,10 @@ export default function POSTerminal() {
       }
       setActiveSession(session);
       await loadPOSData();
+      if (currentRestaurantId) {
+        const pinEnabled = await fetchDiscountPinEnabled(currentRestaurantId);
+        setDiscountPinEnabled(pinEnabled);
+      }
     } catch (err) {
       console.error(err);
       navigate("/dashboard/pos");
@@ -535,6 +599,168 @@ export default function POSTerminal() {
     }, 0);
   };
 
+  const getCartTotal = () => {
+    const subtotal = getCartSubtotal();
+    const discountAmount = discount?.amount ?? 0;
+    return Math.max(0, subtotal - discountAmount);
+  };
+
+  useEffect(() => {
+    if (discount && getCartSubtotal() !== discount.subtotalAtApproval) {
+      setDiscount(null);
+    }
+  }, [cart, discount]);
+
+  const addCustomItemToCart = () => {
+    const name = customItemName.trim();
+    const priceCents = Math.round(parseFloat(customItemPrice.replace(",", ".")) * 100);
+
+    if (!name) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Informe o nome do item personalizado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Informe um valor maior que zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCart((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        isCustom: true,
+        customName: name,
+        dish: { name, price: priceCents, needs_preparation: false },
+        quantity: 1,
+        selected_complements: [],
+      },
+    ]);
+
+    setCustomItemName("");
+    setCustomItemPrice("");
+    setCustomItemModalOpen(false);
+  };
+
+  const openDiscountModal = async () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Carrinho vazio",
+        description: "Adicione itens antes de aplicar desconto.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (currentRestaurantId) {
+      const pinEnabled = await fetchDiscountPinEnabled(currentRestaurantId);
+      setDiscountPinEnabled(pinEnabled);
+      setDiscountAuthMethod(pinEnabled ? "pin" : "account");
+    } else {
+      setDiscountAuthMethod("account");
+    }
+    setDiscountStep("configure");
+    setDiscountTypeInput("fixed");
+    setDiscountInputValue("");
+    setDiscountPassword("");
+    setDiscountModalOpen(true);
+  };
+
+  const handleConfirmDiscountPassword = async () => {
+    if (!currentRestaurantId) return;
+    if (!discountPassword) {
+      toast({
+        title: discountAuthMethod === "pin" ? "PIN obrigatório" : "Senha obrigatória",
+        description:
+          discountAuthMethod === "pin"
+            ? "Digite o PIN do caixa para aprovar o desconto."
+            : "Digite a senha da conta para aprovar o desconto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (discountAuthMethod === "pin" && !discountPinEnabled) {
+      toast({
+        title: "PIN não configurado",
+        description: "Configure um PIN em Configurações > PDV e Segurança.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const subtotal = getCartSubtotal();
+    const rawValue =
+      discountTypeInput === "fixed"
+        ? Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100)
+        : Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100);
+
+    if (!Number.isFinite(rawValue) || rawValue <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Informe um desconto válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDiscountLoading(true);
+    try {
+      const result = await requestDiscountApproval({
+        restaurantId: currentRestaurantId,
+        secret: discountPassword,
+        authMethod: discountAuthMethod,
+        discountType: discountTypeInput,
+        discountValue: rawValue,
+        subtotalCents: subtotal,
+      });
+
+      setDiscount({
+        type: result.discountType,
+        value: result.discountValue,
+        amount: result.discountAmount,
+        approvalId: result.approvalId,
+        subtotalAtApproval: subtotal,
+      });
+
+      setDiscountModalOpen(false);
+      setDiscountPassword("");
+      setDiscountStep("configure");
+
+      toast({
+        title: "Desconto aplicado",
+        description: `Desconto de R$ ${(result.discountAmount / 100).toFixed(2)} aprovado.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Desconto não aprovado",
+        description: err.message || (discountAuthMethod === "pin" ? "PIN incorreto." : "Senha incorreta ou erro ao aprovar."),
+        variant: "destructive",
+      });
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+
+  const removeDiscount = () => {
+    setDiscount(null);
+  };
+
+  const discountPreviewAmount = calculateDiscountPreview(
+    getCartSubtotal(),
+    discountTypeInput,
+    discountTypeInput === "fixed"
+      ? Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100) || 0
+      : Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100) || 0,
+  );
+
   // Checkout functions
   const openCheckout = () => {
     if (cart.length === 0) {
@@ -545,18 +771,18 @@ export default function POSTerminal() {
       });
       return;
     }
-    const subtotal = getCartSubtotal();
+    const total = getCartTotal();
     setPayments([]);
-    setCurrentPaymentAmount((subtotal / 100).toFixed(2));
+    setCurrentPaymentAmount((total / 100).toFixed(2));
     setReceivedCashAmount("");
     setCheckoutModalOpen(true);
   };
 
   const addPayment = () => {
     const amountInCents = Math.round(parseFloat(currentPaymentAmount) * 100);
-    const subtotal = getCartSubtotal();
+    const total = getCartTotal();
     const alreadyPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = subtotal - alreadyPaid;
+    const remaining = total - alreadyPaid;
 
     if (isNaN(amountInCents) || amountInCents <= 0) {
       toast({
@@ -597,7 +823,7 @@ export default function POSTerminal() {
 
     // Recalculate remaining
     const nextPaid = alreadyPaid + amountInCents;
-    const nextRemaining = subtotal - nextPaid;
+    const nextRemaining = total - nextPaid;
     setCurrentPaymentAmount((nextRemaining / 100).toFixed(2));
     if (currentPaymentMethod === "cash") {
       setReceivedCashAmount((nextRemaining / 100).toFixed(2));
@@ -606,21 +832,21 @@ export default function POSTerminal() {
 
   const removePayment = (index: number) => {
     setPayments(prev => prev.filter((_, i) => i !== index));
-    // Reset amount input
-    const subtotal = getCartSubtotal();
-    const remaining = subtotal - payments.filter((_, i) => i !== index).reduce((sum, p) => sum + p.amount, 0);
+    const total = getCartTotal();
+    const remaining = total - payments.filter((_, i) => i !== index).reduce((sum, p) => sum + p.amount, 0);
     setCurrentPaymentAmount((remaining / 100).toFixed(2));
   };
 
   const handleFinishSale = async () => {
     if (!activeSession) return;
     const subtotal = getCartSubtotal();
+    const total = getCartTotal();
     const paidSum = payments.reduce((sum, p) => sum + p.amount, 0);
 
-    if (paidSum < subtotal) {
+    if (paidSum < total) {
       toast({
         title: "Pagamento incompleto",
-        description: `Faltam R$ ${((subtotal - paidSum) / 100).toFixed(2)} para completar o pagamento.`,
+        description: `Faltam R$ ${((total - paidSum) / 100).toFixed(2)} para completar o pagamento.`,
         variant: "destructive",
       });
       return;
@@ -628,15 +854,7 @@ export default function POSTerminal() {
 
     setSavingOrder(true);
     try {
-      const orderItemsInput: POSOrderItemInput[] = cart.map(item => ({
-        dish_id: item.dish.id,
-        quantity: item.quantity,
-        price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
-        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
-        complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
-        notes: item.notes || null,
-        needs_preparation: item.dish.needs_preparation !== false
-      }));
+      const orderItemsInput = mapCartToOrderItems(cart);
 
       const queuePassword = generateQueuePassword();
 
@@ -660,12 +878,17 @@ export default function POSTerminal() {
         received_cash: savedReceivedCash,
         change: savedChange,
         active_order_ids_to_close: activeOrderIdsBeingClosed.length > 0 ? activeOrderIdsBeingClosed : undefined,
+        discount_approval_id: discount?.approvalId ?? null,
       });
 
       setCreatedOrder(finalOrder);
       const snapshot = {
         items: [...cart],
-        subtotal: subtotal,
+        subtotal,
+        discountAmount: discount?.amount ?? 0,
+        discountType: discount?.type ?? null,
+        discountValue: discount?.value ?? null,
+        total,
         tableName: tableName,
         customerName: customerName,
         receiveAllTogether: receiveAllTogether,
@@ -684,6 +907,7 @@ export default function POSTerminal() {
       setCheckoutModalOpen(false);
       setSuccessModalOpen(true);
       setCart([]);
+      setDiscount(null);
       setTableName("Balcão");
       setCustomerName("");
       setCustomerPhone("");
@@ -723,15 +947,7 @@ export default function POSTerminal() {
 
     setSavingOrder(true);
     try {
-      const orderItemsInput: POSOrderItemInput[] = cart.map(item => ({
-        dish_id: item.dish.id,
-        quantity: item.quantity,
-        price_at_time_of_order: item.dish.price + item.selected_complements.reduce((sum, c) => sum + c.price, 0),
-        selected_complements: item.selected_complements.length > 0 ? item.selected_complements : null,
-        complement_group_answers: item.complement_group_answers?.length ? item.complement_group_answers : null,
-        notes: item.notes || null,
-        needs_preparation: item.dish.needs_preparation !== false
-      }));
+      const orderItemsInput = mapCartToOrderItems(cart);
 
       const queuePassword = generateQueuePassword();
       const kitchenSnapshot = {
@@ -807,7 +1023,18 @@ export default function POSTerminal() {
       : receiptSnapshot;
     
     const items = finalSnapshot?.items || cart;
-    const subtotalVal = finalSnapshot?.subtotal || getCartSubtotal();
+    const subtotalVal = finalSnapshot?.subtotal ?? getCartSubtotal();
+    const discountVal =
+      finalSnapshot?.discountAmount ??
+      finalOrder?.discount_amount ??
+      0;
+    const discountTypeVal = finalSnapshot?.discountType ?? finalOrder?.discount_type ?? null;
+    const discountValueVal = finalSnapshot?.discountValue ?? finalOrder?.discount_value ?? null;
+    const totalVal =
+      finalSnapshot?.total ??
+      finalOrder?.total_price ??
+      Math.max(0, subtotalVal - discountVal);
+    const discountLine = formatDiscountReceiptLine(discountVal, discountTypeVal, discountValueVal);
     const orderId = finalOrder?.id || "";
     const formattedDate = new Date(finalOrder?.created_at || Date.now()).toLocaleString("pt-BR");
     const tblName = finalSnapshot?.tableName || tableName;
@@ -836,9 +1063,10 @@ export default function POSTerminal() {
     // Construct the items HTML using simple flex elements styled with inline CSS
     const itemsHtml = items.map((item: any) => {
       const dishPrice = item.dish.price || 0;
-      const compsPrice = item.selected_complements.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+      const compsPrice = (item.selected_complements || []).reduce((sum: number, c: any) => sum + (c.price || 0), 0);
       const unitTotal = dishPrice + compsPrice;
       const totalItemPrice = ((unitTotal * item.quantity) / 100).toFixed(2);
+      const itemName = getOrderItemDisplayName({ customName: item.customName, dish: item.dish });
       
       const complementLinesHtml = formatOrderItemComplementLinesHtml(item);
 
@@ -860,7 +1088,7 @@ export default function POSTerminal() {
       return `
         <div style="margin-bottom: 6px;">
           <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span style="font-weight: bold; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.dish.name)}</span>
+            <span style="font-weight: bold; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(itemName)}</span>
             <span style="white-space: nowrap;">${item.quantity} x R$ ${(unitTotal / 100).toFixed(2)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 10px;">
@@ -988,8 +1216,10 @@ export default function POSTerminal() {
 
           <div class="text-right" style="font-size: 12px; line-height: 1.5;">
             <p style="margin: 2px 0;">SUBTOTAL: R$ ${(subtotalVal / 100).toFixed(2)}</p>
+            ${discountLine ? `<p style="margin: 2px 0; font-weight: bold;">${escapeHtml(discountLine)}</p>` : ""}
+            <p style="margin: 2px 0; font-weight: bold;">TOTAL: R$ ${(totalVal / 100).toFixed(2)}</p>
             ${paymentsHtml}
-            <p style="margin: 4px 0 2px 0; font-weight: bold; font-size: 14px; border-top: 1px dashed #000; padding-top: 4px;">TOTAL PAGO: R$ ${(subtotalVal / 100).toFixed(2)}</p>
+            <p style="margin: 4px 0 2px 0; font-weight: bold; font-size: 14px; border-top: 1px dashed #000; padding-top: 4px;">TOTAL PAGO: R$ ${(totalVal / 100).toFixed(2)}</p>
           </div>
 
           <div class="border-t-dashed my-2" style="margin-top: 15px;"></div>
@@ -1291,6 +1521,18 @@ export default function POSTerminal() {
       
       ordersToImport.forEach(order => {
         (order.order_items || []).forEach((item: any) => {
+          if (item.custom_name) {
+            importedCartItems.push({
+              id: `${Date.now()}-${item.id}-${Math.random()}`,
+              isCustom: true,
+              customName: item.custom_name,
+              dish: { name: item.custom_name, price: item.price_at_time_of_order, needs_preparation: false },
+              quantity: item.quantity,
+              selected_complements: [],
+            });
+            return;
+          }
+
           const complements = (item.selected_complements as any[]) || [];
           const complementsSum = complements.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
           const baseDishPrice = item.price_at_time_of_order - complementsSum;
@@ -1518,8 +1760,10 @@ export default function POSTerminal() {
   }
 
   const subtotal = getCartSubtotal();
+  const discountAmount = discount?.amount ?? 0;
+  const total = getCartTotal();
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remainingToPay = subtotal - totalPaid;
+  const remainingToPay = total - totalPaid;
   const cashReceivedAmount = parseFloat(receivedCashAmount) || 0;
   const cashPaymentAmount = payments.find(p => p.method === "cash")?.amount 
     || (currentPaymentMethod === "cash" ? Math.round((parseFloat(currentPaymentAmount) || 0) * 100) : 0);
@@ -1749,6 +1993,17 @@ export default function POSTerminal() {
         </CardHeader>
         
         {/* Cart items list */}
+        <div className="px-4 pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-9 text-xs font-bold rounded-lg border-dashed border-primary/40 text-primary hover:bg-primary/5"
+            onClick={() => setCustomItemModalOpen(true)}
+          >
+            <PackagePlus className="h-4 w-4 mr-2" />
+            Adicionar item personalizado
+          </Button>
+        </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-12">
@@ -1765,7 +2020,12 @@ export default function POSTerminal() {
               return (
                 <div key={item.id} className="flex gap-3 p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/30 transition-colors group">
                   <div className="flex-1 min-w-0">
-                    <h5 className="font-heading font-bold text-xs text-foreground truncate">{item.dish.name}</h5>
+                    <div className="flex items-center gap-2">
+                      <h5 className="font-heading font-bold text-xs text-foreground truncate">{getOrderItemDisplayName({ customName: item.customName, dish: item.dish })}</h5>
+                      {item.isCustom && (
+                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 shrink-0">Avulso</Badge>
+                      )}
+                    </div>
 
                     {item.complement_group_answers && item.complement_group_answers.length > 0 && (
                       <div className="mt-1 space-y-0.5">
@@ -1943,8 +2203,8 @@ export default function POSTerminal() {
         {/* Subtotal & Action Button */}
         <div className="p-4 border-t space-y-4">
           {(() => {
-            const hasPrep = cart.some(i => i.dish.needs_preparation !== false);
-            const hasNonPrep = cart.some(i => i.dish.needs_preparation === false);
+            const hasPrep = cart.some(i => !i.isCustom && i.dish.needs_preparation !== false);
+            const hasNonPrep = cart.some(i => i.isCustom || i.dish.needs_preparation === false);
             const isMixedCart = hasPrep && hasNonPrep;
             
             if (isMixedCart) {
@@ -1966,10 +2226,49 @@ export default function POSTerminal() {
             return null;
           })()}
 
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-[11px] font-bold rounded-lg border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
+                onClick={openDiscountModal}
+                disabled={cart.length === 0}
+              >
+                <Percent className="h-3.5 w-3.5 mr-1" />
+                {discount ? "Alterar desconto" : "Aplicar desconto"}
+              </Button>
+              {discount && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-[11px] font-bold text-destructive hover:text-destructive"
+                  onClick={removeDiscount}
+                >
+                  Remover
+                </Button>
+              )}
+            </div>
+
+            {discount && discountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400 px-1">
+                <span>Desconto ({formatDiscountLabel(discount.type, discount.value)})</span>
+                <span>-{(discountAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+              </div>
+            )}
+
+            {discountAmount > 0 && subtotal !== total && (
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+                <span>Subtotal</span>
+                <span>{(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-between font-heading font-black">
             <span className="text-sm text-muted-foreground">Valor Total:</span>
             <span className="text-2xl text-primary">
-              {(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {(total / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </span>
           </div>
 
@@ -2049,7 +2348,7 @@ export default function POSTerminal() {
                           return (
                             <div key={item.id} className="py-2 first:pt-0 last:pb-0 flex justify-between gap-4 text-xs font-semibold">
                               <div className="min-w-0 flex-1">
-                                <span className="font-bold text-foreground">{item.quantity}x {item.dish?.name || "Produto"}</span>
+                                <span className="font-bold text-foreground">{item.quantity}x {item.custom_name || item.dish?.name || "Produto"}</span>
                                 {itemComplements.length > 0 && (() => {
                                   const groups: Record<string, any[]> = {};
                                   itemComplements.forEach(c => {
@@ -2250,8 +2549,13 @@ export default function POSTerminal() {
             <div className="text-left sm:text-right">
               <span className="text-[10px] text-muted-foreground uppercase font-black tracking-wider block">Total a Pagar</span>
               <span className="text-2xl md:text-3xl font-black text-primary font-heading">
-                {(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                {(total / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </span>
+              {discountAmount > 0 && (
+                <span className="text-[10px] text-muted-foreground block mt-1">
+                  Subtotal {(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · Desconto -{(discountAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </span>
+              )}
             </div>
           </div>
 
@@ -2359,9 +2663,21 @@ export default function POSTerminal() {
 
               {/* Status summary */}
               <div className="border-t border-border/80 pt-3 space-y-2 bg-background p-3 rounded-xl border shadow-sm">
+                {discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-xs md:text-sm font-bold text-muted-foreground">
+                      <span>Subtotal:</span>
+                      <span>{(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                    </div>
+                    <div className="flex justify-between text-xs md:text-sm font-bold text-amber-600">
+                      <span>Desconto:</span>
+                      <span>-{(discountAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between text-xs md:text-sm font-bold text-muted-foreground">
                   <span>Total Geral:</span>
-                  <span>{(subtotal / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                  <span>{(total / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                 </div>
                 <div className="flex justify-between text-xs md:text-sm font-extrabold text-green-600">
                   <span>Total Pago:</span>
@@ -2537,13 +2853,13 @@ export default function POSTerminal() {
                 
                 {(receiptSnapshot?.items || cart).map((item, index) => {
                   const dishPrice = item.dish.price || 0;
-                  const compsPrice = item.selected_complements.reduce((sum, c) => sum + (c.price || 0), 0);
+                  const compsPrice = (item.selected_complements || []).reduce((sum, c) => sum + (c.price || 0), 0);
                   const unitTotal = dishPrice + compsPrice;
                   
                   return (
                     <div key={index} className="space-y-0.5 text-[10px] border-b border-zinc-100 dark:border-zinc-800/40 pb-1.5 last:border-0">
                       <div className="flex justify-between font-semibold">
-                        <span className="truncate max-w-[150px]">{item.dish.name}</span>
+                        <span className="truncate max-w-[150px]">{getOrderItemDisplayName({ customName: item.customName, dish: item.dish })}</span>
                         <div className="flex gap-4">
                           <span>{item.quantity}</span>
                           <span>{((unitTotal * item.quantity) / 100).toFixed(2)}</span>
@@ -2587,6 +2903,11 @@ export default function POSTerminal() {
 
               <div className="space-y-1 text-right text-[10px]">
                 <p className="font-semibold">SUBTOTAL: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}</p>
+                {(receiptSnapshot?.discountAmount ?? createdOrder?.discount_amount ?? 0) > 0 && (
+                  <p className="font-semibold text-amber-700">
+                    DESCONTO: -R$ {(((receiptSnapshot?.discountAmount ?? createdOrder?.discount_amount ?? 0)) / 100).toFixed(2)}
+                  </p>
+                )}
                 
                 {receiptSnapshot?.payments && receiptSnapshot.payments.length > 0 ? (
                   <>
@@ -2631,7 +2952,7 @@ export default function POSTerminal() {
                 )}
 
                 <p className="text-primary font-black text-xs mt-1 border-t border-dashed pt-1">
-                  TOTAL PAGO: R$ {((receiptSnapshot?.subtotal || subtotal) / 100).toFixed(2)}
+                  TOTAL PAGO: R$ {(((receiptSnapshot?.total ?? createdOrder?.total_price ?? receiptSnapshot?.subtotal ?? subtotal)) / 100).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -2657,6 +2978,218 @@ export default function POSTerminal() {
               Nova Venda
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CUSTOM ITEM DIALOG */}
+      <Dialog open={customItemModalOpen} onOpenChange={setCustomItemModalOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="font-heading font-black text-lg flex items-center gap-2">
+              <PackagePlus className="h-5 w-5 text-primary" />
+              Item personalizado
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Adicione um item avulso (ex.: embalagem de presente) com nome e valor livres.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="custom-item-name">Nome do item</Label>
+              <Input
+                id="custom-item-name"
+                placeholder="Ex.: Embalagem de presente"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custom-item-price">Valor (R$)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">R$</span>
+                <Input
+                  id="custom-item-price"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0,00"
+                  className="pl-9"
+                  value={customItemPrice}
+                  onChange={(e) => setCustomItemPrice(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setCustomItemModalOpen(false)}>Cancelar</Button>
+            <Button onClick={addCustomItemToCart}>Adicionar ao carrinho</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DISCOUNT DIALOG */}
+      <Dialog
+        open={discountModalOpen}
+        onOpenChange={(open) => {
+          setDiscountModalOpen(open);
+          if (!open) {
+            setDiscountStep("configure");
+            setDiscountPassword("");
+            setDiscountAuthMethod("account");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border border-border/60 shadow-2xl bg-white dark:bg-zinc-950">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="font-heading font-black text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5 text-amber-600" />
+              {discountStep === "password" ? "Confirmar aprovação" : "Aplicar desconto"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              {discountStep === "password"
+                ? "Use a senha da conta ou o PIN do caixa para aprovar o desconto."
+                : "Escolha valor fixo ou porcentagem sobre o subtotal do carrinho."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {discountStep === "configure" ? (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={discountTypeInput === "fixed" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setDiscountTypeInput("fixed")}
+                  >
+                    Valor fixo (R$)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={discountTypeInput === "percent" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setDiscountTypeInput("percent")}
+                  >
+                    Porcentagem (%)
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="discount-value">
+                    {discountTypeInput === "fixed" ? "Valor do desconto (R$)" : "Porcentagem (%)"}
+                  </Label>
+                  <Input
+                    id="discount-value"
+                    type="number"
+                    step={discountTypeInput === "fixed" ? "0.01" : "0.1"}
+                    min="0.01"
+                    placeholder={discountTypeInput === "fixed" ? "0,00" : "10"}
+                    value={discountInputValue}
+                    onChange={(e) => setDiscountInputValue(e.target.value)}
+                  />
+                </div>
+                {discountInputValue && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>{(getCartSubtotal() / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-amber-700">
+                      <span>Desconto</span>
+                      <span>-{(discountPreviewAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                    </div>
+                    <div className="flex justify-between font-black">
+                      <span>Total</span>
+                      <span>{((getCartSubtotal() - discountPreviewAmount) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="ghost" onClick={() => setDiscountModalOpen(false)}>Cancelar</Button>
+                <Button
+                  onClick={() => {
+                    const raw =
+                      discountTypeInput === "fixed"
+                        ? Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100)
+                        : Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100);
+                    if (!Number.isFinite(raw) || raw <= 0) {
+                      toast({ title: "Valor inválido", variant: "destructive" });
+                      return;
+                    }
+                    setDiscountStep("password");
+                  }}
+                >
+                  Continuar
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="rounded-xl border p-3 text-xs bg-muted/30">
+                  <p>Desconto: <strong>{formatDiscountLabel(discountTypeInput, Math.round(parseFloat(discountInputValue.replace(",", ".")) * 100))}</strong></p>
+                  <p>Valor: <strong>-{(discountPreviewAmount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={discountAuthMethod === "account" ? "default" : "outline"}
+                    className="flex-1 text-xs"
+                    onClick={() => setDiscountAuthMethod("account")}
+                  >
+                    Senha da conta
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={discountAuthMethod === "pin" ? "default" : "outline"}
+                    className="flex-1 text-xs"
+                    onClick={() => setDiscountAuthMethod("pin")}
+                    disabled={!discountPinEnabled}
+                  >
+                    PIN do caixa
+                  </Button>
+                </div>
+
+                {!discountPinEnabled && (
+                  <p className="text-[11px] text-muted-foreground">
+                    PIN do caixa não configurado. Defina em Configurações &gt; PDV e Segurança.
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="discount-password" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    {discountAuthMethod === "pin" ? "PIN do caixa" : "Senha da conta"}
+                  </Label>
+                  <Input
+                    id="discount-password"
+                    type={discountAuthMethod === "pin" ? "tel" : "password"}
+                    inputMode={discountAuthMethod === "pin" ? "numeric" : "text"}
+                    maxLength={discountAuthMethod === "pin" ? 6 : undefined}
+                    placeholder={discountAuthMethod === "pin" ? "4 a 6 dígitos" : "Digite sua senha"}
+                    value={discountPassword}
+                    onChange={(e) => {
+                      const value = discountAuthMethod === "pin"
+                        ? e.target.value.replace(/\D/g, "").slice(0, 6)
+                        : e.target.value;
+                      setDiscountPassword(value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleConfirmDiscountPassword();
+                    }}
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="ghost" onClick={() => setDiscountStep("configure")}>Voltar</Button>
+                <Button onClick={() => void handleConfirmDiscountPassword()} disabled={discountLoading}>
+                  {discountLoading ? "Aprovando..." : "Aprovar desconto"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

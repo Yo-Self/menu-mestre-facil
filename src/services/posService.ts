@@ -7,7 +7,8 @@ export type POSTransaction = Database["public"]["Tables"]["pos_transactions"]["R
 export type OrderPayment = Database["public"]["Tables"]["order_payments"]["Row"];
 
 export interface POSOrderItemInput {
-  dish_id: string;
+  dish_id?: string | null;
+  custom_name?: string | null;
   quantity: number;
   price_at_time_of_order: number; // in cents
   selected_complements?: any;
@@ -237,7 +238,8 @@ export async function createPOSOrder(
     const sentToKitchen = isMixedOrder && receiveAllTogether ? true : (item.needs_preparation !== false);
     return {
       order_id: order.id,
-      dish_id: item.dish_id,
+      dish_id: item.dish_id ?? null,
+      custom_name: item.custom_name ?? null,
       quantity: item.quantity,
       price_at_time_of_order: item.price_at_time_of_order,
       selected_complements: item.selected_complements || null,
@@ -276,6 +278,7 @@ export async function createPOSOrder(
   // 5. Decrement Stock for sold items (if stock_quantity is set)
   try {
     for (const item of items) {
+      if (!item.dish_id) continue;
       // Get current stock
       const { data: dishData } = await supabase
         .from("dishes")
@@ -338,6 +341,7 @@ export async function createPOSOrderFromOutbox(order: POSOutboxOrder) {
     p_active_order_ids_to_close: order.active_order_ids_to_close?.length
       ? order.active_order_ids_to_close
       : null,
+    p_discount_approval_id: order.discount_approval_id ?? null,
   } as never);
 
   if (error) {

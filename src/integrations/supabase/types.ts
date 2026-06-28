@@ -650,8 +650,10 @@ export type Database = {
         Row: {
           complement_group_answers: Json | null
           created_at: string
+          custom_name: string | null
           dish_id: string | null
           id: string
+          notes: string | null
           order_id: string
           price_at_time_of_order: number
           quantity: number
@@ -661,8 +663,10 @@ export type Database = {
         Insert: {
           complement_group_answers?: Json | null
           created_at?: string
+          custom_name?: string | null
           dish_id?: string | null
           id?: string
+          notes?: string | null
           order_id: string
           price_at_time_of_order: number
           quantity: number
@@ -672,8 +676,10 @@ export type Database = {
         Update: {
           complement_group_answers?: Json | null
           created_at?: string
+          custom_name?: string | null
           dish_id?: string | null
           id?: string
+          notes?: string | null
           order_id?: string
           price_at_time_of_order?: number
           quantity?: number
@@ -738,8 +744,15 @@ export type Database = {
       }
       orders: {
         Row: {
+          client_order_id: string | null
           created_at: string
+          customer_access_token: string
           customer_info: Json | null
+          discount_amount: number
+          discount_approved_at: string | null
+          discount_approved_by: string | null
+          discount_type: string | null
+          discount_value: number | null
           id: string
           origin: string
           pos_session_id: string | null
@@ -761,8 +774,15 @@ export type Database = {
           delivery_address_details: Json | null
         }
         Insert: {
+          client_order_id?: string | null
           created_at?: string
+          customer_access_token?: string
           customer_info?: Json | null
+          discount_amount?: number
+          discount_approved_at?: string | null
+          discount_approved_by?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           origin?: string
           pos_session_id?: string | null
@@ -784,8 +804,14 @@ export type Database = {
           delivery_address_details?: Json | null
         }
         Update: {
+          client_order_id?: string | null
           created_at?: string
           customer_info?: Json | null
+          discount_amount?: number
+          discount_approved_at?: string | null
+          discount_approved_by?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           origin?: string
           pos_session_id?: string | null
@@ -1050,6 +1076,7 @@ export type Database = {
           pix_payment_enabled: boolean
           online_ordering_enabled: boolean
           delivery_enabled: boolean
+          pos_discount_pin_enabled: boolean
           delivery_max_distance: number
           delivery_base_fee: number
           delivery_fee_per_km: number
@@ -1092,6 +1119,7 @@ export type Database = {
           pix_payment_enabled?: boolean
           online_ordering_enabled?: boolean
           delivery_enabled?: boolean
+          pos_discount_pin_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number
           delivery_fee_per_km?: number
@@ -1134,6 +1162,7 @@ export type Database = {
           pix_payment_enabled?: boolean
           online_ordering_enabled?: boolean
           delivery_enabled?: boolean
+          pos_discount_pin_enabled?: boolean
           delivery_max_distance?: number
           delivery_base_fee?: number
           delivery_fee_per_km?: number

@@ -75,6 +75,7 @@ interface OrderItemInfo {
   quantity: number;
   price_at_time_of_order: number;
   dish_id: string | null;
+  custom_name?: string | null;
   dishes: {
     id: string;
     name: string;
@@ -263,6 +264,7 @@ export default function FinancialPage() {
             quantity,
             price_at_time_of_order,
             dish_id,
+            custom_name,
             dishes (
               id,
               name,
@@ -288,6 +290,7 @@ export default function FinancialPage() {
           quantity: item.quantity,
           price_at_time_of_order: item.price_at_time_of_order,
           dish_id: item.dish_id,
+          custom_name: item.custom_name,
           dishes: item.dishes ? {
             id: item.dishes.id,
             name: item.dishes.name,
@@ -507,7 +510,7 @@ export default function FinancialPage() {
           const dishId = item.dish_id;
           const existing = summaryMap.get(dishId) || {
             id: dishId,
-            name: item.dishes?.name || "Produto Removido",
+            name: item.custom_name || item.dishes?.name || "Produto Removido",
             category: "Geral",
             price: (item.price_at_time_of_order / 100),
             cost_price: item.dishes?.cost_price ?? null,
