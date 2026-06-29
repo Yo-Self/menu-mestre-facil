@@ -1,8 +1,50 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '../integrations/supabase/client'
 import { OrderStatus, OrderWithItems } from '../types/orders'
 
-const ORDERS_POLL_MS = 5_000
+export const ORDERS_FALLBACK_POLL_MS = 60_000
+const KANBAN_FINISHED_WINDOW_MS = 24 * 60 * 60 * 1000
+
+const KANBAN_ACTIVE_STATUSES = ['new', 'in_preparation', 'ready', 'pending_payment'] as const
+
+const KANBAN_ORDER_SELECT = `
+  *,
+  order_items (
+    id, order_id, dish_id, quantity, price_at_time_of_order,
+    selected_complements, notes, sent_to_kitchen,
+    dishes (id, name, needs_preparation, image_url)
+  )
+`
+
+function getKanbanFinishedCutoffIso(): string {
+  return new Date(Date.now() - KANBAN_FINISHED_WINDOW_MS).toISOString()
+}
+
+function buildKanbanOrdersFilter(): string {
+  const cutoff = getKanbanFinishedCutoffIso()
+  return `status.in.(${KANBAN_ACTIVE_STATUSES.join(',')}),and(status.in.(finished,cancelled),created_at.gte.${cutoff})`
+}
+
+export function isKanbanVisibleOrder(order: Pick<OrderWithItems, 'status' | 'created_at'>): boolean {
+  if ((KANBAN_ACTIVE_STATUSES as readonly string[]).includes(order.status)) {
+    return true
+  }
+  if (order.status === 'finished' || order.status === 'cancelled') {
+    const orderTime = new Date(order.created_at).getTime()
+    return orderTime >= Date.now() - KANBAN_FINISHED_WINDOW_MS
+  }
+  return false
+}
+
+function kanbanOrdersQuery(restaurantId: string) {
+  return supabase
+    .from('orders')
+    .select(KANBAN_ORDER_SELECT)
+    .eq('restaurant_id', restaurantId)
+    .or(buildKanbanOrdersFilter())
+    .order('created_at', { ascending: false })
+}
 
 export function useOrders(restaurantId?: string) {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
@@ -20,23 +62,13 @@ export function useOrders(restaurantId?: string) {
       if (isInitialFetch) setLoading(true)
       setError(null)
 
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            dishes (*)
-          )
-        `)
-        .eq('restaurant_id', restaurantId)
-        .order('created_at', { ascending: false })
+      const { data: ordersData, error: ordersError } = await kanbanOrdersQuery(restaurantId)
 
       if (ordersError) {
         throw ordersError
       }
 
-      setOrders(ordersData || [])
+      setOrders((ordersData as OrderWithItems[]) || [])
     } catch (err) {
       console.error('Error fetching orders:', err)
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos')
@@ -45,11 +77,40 @@ export function useOrders(restaurantId?: string) {
     }
   }, [restaurantId])
 
+  const fetchSingleOrder = useCallback(async (orderId: string) => {
+    if (!restaurantId) return
+
+    try {
+      const { data: orderData, error: orderError } = await kanbanOrdersQuery(restaurantId)
+        .eq('id', orderId)
+        .maybeSingle()
+
+      if (orderError) {
+        console.error('Error fetching updated order:', orderError)
+        return
+      }
+
+      setOrders((prevOrders) => {
+        const without = prevOrders.filter((order) => order.id !== orderId)
+
+        if (!orderData || !isKanbanVisibleOrder(orderData as OrderWithItems)) {
+          return without
+        }
+
+        return [orderData as OrderWithItems, ...without].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+      })
+    } catch (err) {
+      console.error('Error processing order update:', err)
+    }
+  }, [restaurantId])
+
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           status: newStatus,
           updated_at: new Date().toISOString()
         })
@@ -119,7 +180,7 @@ export function useOrders(restaurantId?: string) {
         throw itemsError
       }
 
-      await fetchOrders()
+      await fetchSingleOrder(order.id)
 
       return order
     } catch (err) {
@@ -153,24 +214,65 @@ export function useOrders(restaurantId?: string) {
 
     void fetchOrders(true)
 
+    const handleOrderChange = (
+      payload: RealtimePostgresChangesPayload<{ id: string; restaurant_id?: string }>
+    ) => {
+      if (payload.eventType === 'DELETE') {
+        const deletedId = payload.old?.id
+        if (deletedId) {
+          setOrders((prev) => prev.filter((order) => order.id !== deletedId))
+        }
+        return
+      }
+
+      const orderId = payload.new?.id
+      if (orderId) {
+        void fetchSingleOrder(orderId)
+      }
+    }
+
+    const channel = supabase
+      .channel(`orders:${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        handleOrderChange
+      )
+      .subscribe()
+
     const tick = () => {
       if (document.visibilityState === 'visible') {
         void fetchOrders()
       }
     }
 
-    const interval = setInterval(tick, ORDERS_POLL_MS)
+    const interval = setInterval(tick, ORDERS_FALLBACK_POLL_MS)
 
     const onFocus = () => {
       void fetchOrders()
     }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchOrders()
+      }
+    }
+
     window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      supabase.removeChannel(channel)
     }
-  }, [restaurantId, fetchOrders])
+  }, [restaurantId, fetchOrders, fetchSingleOrder])
 
   return {
     orders,

@@ -35,7 +35,6 @@ export default function OrdersPage() {
 
     try {
       await updateOrderStatus(orderId, newStatus)
-      await refetch()
     } catch (error) {
       console.error('Error updating order status:', error)
     }

@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { buildGoogleMapsScriptUrl, getGoogleMapsApiKey } from '@/lib/google-maps';
 import { getAppPlatform } from '@/lib/platform';
+import { ORDERS_FALLBACK_POLL_MS } from '@/hooks/useOrders';
 import {
   Truck,
   MapPin,
@@ -48,7 +49,14 @@ interface RestaurantOption {
 
 const SP_FALLBACK_LAT = -23.55052;
 const SP_FALLBACK_LNG = -46.633308;
-const DELIVERY_ORDERS_POLL_MS = 5_000;
+const DELIVERY_ACTIVE_STATUSES = ['new', 'in_preparation', 'ready'] as const;
+
+function isDeliveryPanelOrder(order: { order_type?: string | null; status?: string | null }) {
+  return (
+    order.order_type === 'delivery' &&
+    DELIVERY_ACTIVE_STATUSES.includes(order.status as (typeof DELIVERY_ACTIVE_STATUSES)[number])
+  );
+}
 
 function isSpFallbackCoords(lat: number, lng: number) {
   return lat === SP_FALLBACK_LAT && lng === SP_FALLBACK_LNG;
@@ -291,22 +299,65 @@ export default function DeliveryPage() {
 
     void fetchData();
 
+    const handleOrderChange = (payload: {
+      eventType: string;
+      new: { id?: string; order_type?: string | null; status?: string | null };
+      old: { id?: string; order_type?: string | null };
+    }) => {
+      if (payload.eventType === 'DELETE') {
+        if (payload.old?.order_type === 'delivery' && payload.old.id) {
+          setOrders((prev) => prev.filter((order) => order.id !== payload.old.id));
+        }
+        return;
+      }
+
+      if (payload.new && isDeliveryPanelOrder(payload.new)) {
+        void refreshDeliveryOrders();
+      } else if (payload.new?.order_type === 'delivery' && payload.new.id) {
+        setOrders((prev) => prev.filter((order) => order.id !== payload.new.id));
+      }
+    };
+
+    const channel = supabase
+      .channel(`delivery-orders:${currentRestaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${currentRestaurantId}`,
+        },
+        handleOrderChange
+      )
+      .subscribe();
+
     const tick = () => {
       if (document.visibilityState === 'visible') {
         void refreshDeliveryOrders();
       }
     };
 
-    const interval = setInterval(tick, DELIVERY_ORDERS_POLL_MS);
+    const interval = setInterval(tick, ORDERS_FALLBACK_POLL_MS);
 
     const onFocus = () => {
       void refreshDeliveryOrders();
     };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshDeliveryOrders();
+      }
+    };
+
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      supabase.removeChannel(channel);
     };
   }, [currentRestaurantId, restaurantsReady, refreshDeliveryOrders]);
 
